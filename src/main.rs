@@ -665,7 +665,10 @@ impl RiceWineApp {
                 self.install = Some(InstallDraft::default());
             }
             if ui
-                .add_enabled(!self.busy, egui::Button::new("Import existing prefix…"))
+                .add_enabled(
+                    !self.busy && self.store.is_some(),
+                    egui::Button::new("Import existing prefix…"),
+                )
                 .clicked()
             {
                 self.import = Some(ImportDraft::default());
@@ -687,6 +690,12 @@ impl RiceWineApp {
                 self.search.clear();
             }
         });
+        if self.store.is_none() {
+            ui.add_space(28.0);
+            ui.heading("Library unavailable");
+            ui.label("RiceWine could not load the catalog. Review the error above and preserve the original data before attempting recovery.");
+            return;
+        }
         if self
             .store
             .as_ref()

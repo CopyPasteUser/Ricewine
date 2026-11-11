@@ -108,15 +108,7 @@ pub fn save_profile(prefix: &Path, profile: &PrefixProfile) -> Result<(), String
     if !prefix.is_dir() {
         return Err(format!("Prefix does not exist: {}", prefix.display()));
     }
-    if profile.version != PROFILE_VERSION {
-        return Err("Cannot save an unsupported profile version".into());
-    }
-    validate_runner(&profile.runner)?;
-    validate_launch_options(profile)?;
-    if profile.template == Template::Legacy32 && matches!(profile.runner, Runner::ProtonUmu { .. })
-    {
-        return Err("Legacy 32-bit prefixes require Wine, not Proton".into());
-    }
+    validate_profile(profile)?;
     let contents = toml::to_string_pretty(profile).map_err(|e| e.to_string())?;
     let final_path = profile_path(prefix);
     let temp_path = prefix.join(format!(
@@ -137,6 +129,21 @@ pub fn save_profile(prefix: &Path, profile: &PrefixProfile) -> Result<(), String
     if let Err(error) = result {
         let _ = fs::remove_file(&temp_path);
         return Err(format!("Saving runner profile failed: {error}"));
+    }
+    Ok(())
+}
+
+/// Used before any potentially expensive or modifying Wine operation.
+/// Otherwise an invalid profile can leave an orphaned prefix after setup.
+pub fn validate_profile(profile: &PrefixProfile) -> Result<(), String> {
+    if profile.version != PROFILE_VERSION {
+        return Err("Unsupported runner profile version".into());
+    }
+    validate_runner(&profile.runner)?;
+    validate_launch_options(profile)?;
+    if profile.template == Template::Legacy32 && matches!(profile.runner, Runner::ProtonUmu { .. })
+    {
+        return Err("Legacy 32-bit prefixes require Wine, not Proton".into());
     }
     Ok(())
 }
@@ -288,11 +295,7 @@ pub fn install_with_profile(
     file: &Path,
     mode: InstallMode,
 ) -> Result<Application, String> {
-    validate_runner(&profile.runner)?;
-    if profile.template == Template::Legacy32 && matches!(profile.runner, Runner::ProtonUmu { .. })
-    {
-        return Err("Legacy 32-bit prefixes require Wine, not Proton".into());
-    }
+    validate_profile(profile)?;
     let app = match &profile.runner {
         Runner::SystemWine => core::install_with_arch(
             root,
@@ -395,13 +398,29 @@ pub fn run_winetricks(
     profile: &PrefixProfile,
     verb: &str,
 ) -> Result<(), String> {
+    let executable = executable_on_path("winetricks").ok_or("Install winetricks first")?;
+    let mut command = winetricks_command(&executable, app, profile, verb)?;
+    core::run_logged(
+        &mut command,
+        &root.join("logs").join(format!("{}.log", app.id)),
+        None,
+    )
+}
+
+/// Construct a component operation separately from spawning it. This lets
+/// tests verify exact arguments and environment without invoking real Wine.
+pub fn winetricks_command(
+    executable: &Path,
+    app: &Application,
+    profile: &PrefixProfile,
+    verb: &str,
+) -> Result<Command, String> {
     if !WINETRICKS_VERBS.contains(&verb) {
         return Err("Unsupported Winetricks component".into());
     }
     if !app.prefix.is_dir() {
         return Err("Wine prefix is missing".into());
     }
-    let executable = executable_on_path("winetricks").ok_or("Install winetricks first")?;
     let mut command = Command::new(executable);
     command.args(["-q", verb]).env("WINEPREFIX", &app.prefix);
     match &profile.runner {
@@ -414,11 +433,7 @@ pub fn run_winetricks(
             return Err("Winetricks for Proton prefixes is not supported yet; use Wine".into());
         }
     }
-    core::run_logged(
-        &mut command,
-        &root.join("logs").join(format!("{}.log", app.id)),
-        None,
-    )
+    Ok(command)
 }
 
 /// Read only a bounded log tail: one misbehaving installer must not exhaust RAM.

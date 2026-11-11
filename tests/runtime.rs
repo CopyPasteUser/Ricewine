@@ -245,3 +245,176 @@ fn launch_passes_arguments_and_environment_without_shell_evaluation() {
         ]
     );
 }
+
+#[test]
+fn invalid_profile_never_creates_an_orphan_prefix() {
+    let tmp = Temp::new();
+    let store = Store::open_at(tmp.0.join("data")).unwrap();
+    let exe = tmp.0.join("installer.exe");
+    File::create(&exe).unwrap();
+    let invalid_profiles = [
+        PrefixProfile {
+            version: 99,
+            ..Default::default()
+        },
+        PrefixProfile {
+            launch_arguments: vec!["invalid\nargument".into()],
+            ..Default::default()
+        },
+    ];
+    for profile in invalid_profiles {
+        assert!(
+            runtime::install_with_profile(
+                store.root(),
+                None,
+                &profile,
+                "Invalid",
+                &exe,
+                InstallMode::Installer
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        fs::read_dir(store.root().join("prefixes"))
+            .unwrap()
+            .next()
+            .is_none(),
+        "Invalid settings must be rejected before filesystem changes"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn winetricks_component_command_uses_exact_runner_and_prefix() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = Temp::new();
+    let wine = tmp.0.join("wine");
+    File::create(&wine).unwrap();
+    File::create(tmp.0.join("wineboot")).unwrap();
+    let component_tool = tmp.0.join("fake-winetricks");
+    fs::write(
+        &component_tool,
+        "#!/bin/sh\nprintf '%s\\n' \"$WINEPREFIX\" \"$WINE\" \"$1\" \"$2\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&component_tool, fs::Permissions::from_mode(0o700)).unwrap();
+    let prefix = tmp.0.join("prefix with spaces");
+    fs::create_dir(&prefix).unwrap();
+    let app = ricewine::core::Application {
+        id: "test-app".into(),
+        name: "Test".into(),
+        prefix: prefix.clone(),
+        executable: None,
+        installer: None,
+        portable: false,
+    };
+    let profile = PrefixProfile {
+        runner: Runner::CustomWine { wine: wine.clone() },
+        ..Default::default()
+    };
+    for component in ["dxvk", "vkd3d", "corefonts"] {
+        let output = runtime::winetricks_command(&component_tool, &app, &profile, component)
+            .unwrap()
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert_eq!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .lines()
+                .collect::<Vec<_>>(),
+            [
+                prefix.to_str().unwrap(),
+                wine.to_str().unwrap(),
+                "-q",
+                component
+            ]
+        );
+    }
+    assert!(runtime::winetricks_command(&component_tool, &app, &profile, "--help").is_err());
+    let proton_profile = PrefixProfile {
+        runner: Runner::ProtonUmu {
+            proton: tmp.0.join("proton"),
+            game_id: "0".into(),
+        },
+        ..Default::default()
+    };
+    assert!(runtime::winetricks_command(&component_tool, &app, &proton_profile, "dxvk").is_err());
+}
+
+#[cfg(unix)]
+#[test]
+fn proton_cli_launch_passes_exact_umu_environment_and_arguments() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    let tmp = Temp::new();
+    let bin = tmp.0.join("bin");
+    fs::create_dir(&bin).unwrap();
+    let umu = bin.join("umu-run");
+    fs::write(
+        &umu,
+        "#!/bin/sh\nprintf '%s\\n' \"$PROTONPATH\" \"$GAMEID\" \"$WINEPREFIX\" \"$1\" \"$2\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&umu, fs::Permissions::from_mode(0o700)).unwrap();
+    let proton = tmp.0.join("GE Proton with spaces");
+    fs::create_dir(&proton).unwrap();
+    File::create(proton.join("proton")).unwrap();
+
+    let xdg_data = tmp.0.join("share");
+    let mut store = Store::open_at(xdg_data.join("ricewine")).unwrap();
+    let prefix = store.root().join("prefixes/game-1");
+    fs::create_dir(&prefix).unwrap();
+    let exe = tmp.0.join("My Game.exe");
+    File::create(&exe).unwrap();
+    let app = ricewine::core::Application {
+        id: "game-1".into(),
+        name: "Game".into(),
+        prefix: prefix.clone(),
+        executable: Some(exe.clone()),
+        installer: None,
+        portable: true,
+    };
+    store.add(app).unwrap();
+
+    let profile = PrefixProfile {
+        runner: Runner::ProtonUmu {
+            proton: proton.clone(),
+            game_id: "custom-game-42".into(),
+        },
+        launch_arguments: vec!["--windowed".into()],
+        ..Default::default()
+    };
+    // The child, not the test runner, gets the fake umu-run in PATH.
+    // Serialize directly so unrelated parallel tests never mutate the host PATH.
+    fs::write(
+        prefix.join(".ricewine.toml"),
+        toml::to_string_pretty(&profile).unwrap(),
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ricewine"))
+        .args(["--launch", "game-1"])
+        .env("XDG_DATA_HOME", xdg_data)
+        .env("PATH", bin)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let log = fs::read_to_string(store.root().join("logs/game-1.log")).unwrap();
+    assert_eq!(
+        log.lines().collect::<Vec<_>>(),
+        [
+            proton.to_str().unwrap(),
+            "custom-game-42",
+            prefix.to_str().unwrap(),
+            exe.to_str().unwrap(),
+            "--windowed"
+        ]
+    );
+}

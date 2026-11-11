@@ -2,6 +2,8 @@
 
 These are **manual tests to run on a real Linux desktop**, not tests that CI claims to have completed. Run on both X11 and Wayland, then repeat essential paths in the Windows 10 and XP Luna styles. Note the distro, Wine/Proton versions, display server and graphics driver for every failure.
 
+The maintainer will perform the **manual user acceptance at the 1.0 gate**, not after each development milestone. Automated unit/integration/security checks remain required during development; no untested desktop behavior is marked as accepted.
+
 1. **Startup and availability:** Start RiceWine with system Wine installed and without it. Verify the missing-runtime diagnostic, button states, keyboard navigation and safe exit.
 2. **EXE install:** Install a known trustworthy Windows EXE in a new prefix. Confirm the installer opens, logs are written, Choose launch EXE works, and Play actually starts the application.
 3. **MSI install:** Install a compatible MSI and confirm its parameters arrive intact without a shell. Launch its resulting application.

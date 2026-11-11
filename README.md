@@ -24,6 +24,7 @@ RiceWine helps you install and run Windows applications and games with isolated 
 - Apply selected Winetricks components (`corefonts`, `vcrun2022`, `dotnet48`, `d3dx9`, `dxvk`, `vkd3d`, `xact`) with output appended to the program log. Actual component availability depends on the installed Winetricks version.
 - See detected compatibility tools and a bounded recent log preview in **Runners**.
 - Keep installation and compatibility actions off the GUI thread.
+- **0.3 hardening:** validate a full runner profile before creating any prefix, and test the exact command arguments and environment passed to custom Wine, Proton/umu and Winetricks (including DXVK/VKD3D verbs) using disposable fake executables. These tests do not claim to verify real Windows software.
 
 **Runner prerequisites:** For custom Wine, choose the `wine` executable next to `wineboot`. For Proton, install [`umu-launcher`](https://github.com/Open-Wine-Components/umu-launcher) and choose an extracted Proton directory containing `proton`. Proton runner configuration is local; RiceWine does not download arbitrary runtime builds. Proton MSI installation and Winetricks-on-Proton are intentionally unavailable until they can be verified safely.
 

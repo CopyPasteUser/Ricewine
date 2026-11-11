@@ -1,0 +1,22 @@
+# RiceWine design
+
+## Product
+
+Native Linux tool for people who want to install and launch Windows software without configuring Wine commands by hand. The main action is **Install program**, followed by selecting the installed EXE and **Play**.
+
+## Visual directions
+
+- **Windows 10:** clean flat controls, Segoe-like sans-serif, square geometry, white surface, gray navigation, accent `#0078D7`.
+- **XP Luna:** classic Tahoma-like sans-serif, blue task pane, warm content background, accent `#204CB8`; eventually add Luna window chrome and glossy controls when the functionality is validated.
+- Current 0.1 UI applies these as lightweight selectable styles using the same navigation and interaction flow. Full fidelity to the approved mockups is a later design pass.
+
+## Interaction contracts
+
+- Keep a single visible primary action on Library: install an application.
+- Empty library explains the next action; missing Wine disables installation with a clear diagnostic.
+- Windows setup runs in a worker thread so the interface remains responsive.
+- Launching a registered app requires an explicit target EXE, never re-runs the setup file by accident.
+- Removing an entry must warn that its prefix stays on disk; no automatic destructive cleanup in 0.1.
+- Show errors in text, including the path to logs for process errors.
+- Maintain keyboard focus visibility and non-color-only feedback, and keep all functionality available without drag-and-drop.
+

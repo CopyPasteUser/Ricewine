@@ -1,0 +1,17 @@
+[package]
+name = "ricewine"
+version = "0.1.0"
+edition = "2024"
+description = "A lightweight Wine manager for Linux"
+repository = "https://github.com/CopyPasteUser/Ricewine"
+
+[dependencies]
+eframe = { version = "0.37.0", default-features = false, features = ["default_fonts", "system_fonts", "glow", "x11", "wayland", "accesskit"] }
+rfd = "0.18.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+strip = true
+lto = "thin"
+

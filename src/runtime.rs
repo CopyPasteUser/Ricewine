@@ -45,6 +45,26 @@ impl Runner {
 pub struct PrefixProfile {
     pub version: u32,
     pub runner: Runner,
+    pub template: Template,
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Template {
+    #[default]
+    Standard,
+    Games,
+    Legacy32,
+}
+
+impl Template {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Standard => "Standard (64-bit)",
+            Self::Games => "Games (64-bit)",
+            Self::Legacy32 => "Legacy 32-bit",
+        }
+    }
 }
 
 impl Default for PrefixProfile {
@@ -52,6 +72,7 @@ impl Default for PrefixProfile {
         Self {
             version: PROFILE_VERSION,
             runner: Runner::SystemWine,
+            template: Template::Standard,
         }
     }
 }
@@ -86,6 +107,10 @@ pub fn save_profile(prefix: &Path, profile: &PrefixProfile) -> Result<(), String
         return Err("Cannot save an unsupported profile version".into());
     }
     validate_runner(&profile.runner)?;
+    if profile.template == Template::Legacy32 && matches!(profile.runner, Runner::ProtonUmu { .. })
+    {
+        return Err("Legacy 32-bit prefixes require Wine, not Proton".into());
+    }
     let contents = toml::to_string_pretty(profile).map_err(|e| e.to_string())?;
     let final_path = profile_path(prefix);
     let temp_path = prefix.join(format!(
@@ -196,13 +221,18 @@ pub fn install_with_profile(
     mode: InstallMode,
 ) -> Result<Application, String> {
     validate_runner(&profile.runner)?;
+    if profile.template == Template::Legacy32 && matches!(profile.runner, Runner::ProtonUmu { .. })
+    {
+        return Err("Legacy 32-bit prefixes require Wine, not Proton".into());
+    }
     let app = match &profile.runner {
-        Runner::SystemWine => core::install(
+        Runner::SystemWine => core::install_with_arch(
             root,
             system.ok_or("System Wine is not installed")?,
             name,
             file,
             mode,
+            profile.template == Template::Legacy32,
         )?,
         Runner::CustomWine { wine } => {
             let custom = WineTools {
@@ -210,7 +240,14 @@ pub fn install_with_profile(
                 wineboot: wine.with_file_name("wineboot"),
                 version: "Custom Wine".into(),
             };
-            core::install(root, &custom, name, file, mode)?
+            core::install_with_arch(
+                root,
+                &custom,
+                name,
+                file,
+                mode,
+                profile.template == Template::Legacy32,
+            )?
         }
         Runner::ProtonUmu { .. } => {
             core::validate_name(name)?;

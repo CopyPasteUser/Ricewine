@@ -90,6 +90,28 @@ impl Store {
         })
     }
 
+    /// Shortcut invocations are read-only and must work while the GUI holds
+    /// its exclusive writer lock. Atomic catalog replacement makes this safe.
+    pub fn load_for_launch(id: &str) -> Result<(PathBuf, Application), String> {
+        let root = data_directory()?;
+        let path = root.join("applications.json");
+        let content = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let catalog: Catalog = serde_json::from_slice(&content)
+            .map_err(|e| format!("Invalid application catalog: {e}"))?;
+        if catalog.schema != SCHEMA {
+            return Err(format!(
+                "Unsupported application catalog schema {}",
+                catalog.schema
+            ));
+        }
+        catalog
+            .applications
+            .into_iter()
+            .find(|app| app.id == id)
+            .map(|app| (root, app))
+            .ok_or("Application not found in RiceWine library".into())
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -195,6 +217,19 @@ pub fn install(
     file: &Path,
     mode: InstallMode,
 ) -> Result<Application, String> {
+    install_with_arch(root, wine, name, file, mode, false)
+}
+
+/// `win32` architecture must be set before the first wineboot; changing an
+/// existing prefix architecture is not supported.
+pub fn install_with_arch(
+    root: &Path,
+    wine: &WineTools,
+    name: &str,
+    file: &Path,
+    mode: InstallMode,
+    win32: bool,
+) -> Result<Application, String> {
     validate_name(name)?;
     validate_installer(file, matches!(mode, InstallMode::Portable))?;
     let file = fs::canonicalize(file).map_err(|e| e.to_string())?;
@@ -205,6 +240,9 @@ pub fn install(
 
     let mut boot = Command::new(&wine.wineboot);
     boot.arg("-u").env("WINEPREFIX", &prefix);
+    if win32 {
+        boot.env("WINEARCH", "win32");
+    }
     run_logged(&mut boot, &log, Some(Duration::from_secs(120))).map_err(|e| {
         format!(
             "Wine prefix setup failed ({e}); retained at {}",
@@ -295,6 +333,31 @@ pub fn validate_installer(path: &Path, portable: bool) -> Result<(), String> {
         .into());
     }
     Ok(())
+}
+
+/// Registers an existing Wine installation without modifying any of its files.
+/// Deletion from the library must never remove externally owned prefixes.
+pub fn imported_application(
+    name: &str,
+    prefix: &Path,
+    executable: &Path,
+) -> Result<Application, String> {
+    validate_name(name)?;
+    if !prefix.is_dir() || !prefix.join("drive_c").is_dir() || !prefix.join("system.reg").is_file()
+    {
+        return Err("Choose an initialized Wine prefix containing drive_c and system.reg".into());
+    }
+    validate_executable(executable)?;
+    let prefix = fs::canonicalize(prefix).map_err(|e| e.to_string())?;
+    let executable = fs::canonicalize(executable).map_err(|e| e.to_string())?;
+    Ok(Application {
+        id: new_id(name),
+        name: name.trim().into(),
+        prefix,
+        executable: Some(executable),
+        installer: None,
+        portable: false,
+    })
 }
 
 fn extension_is(path: &Path, ext: &str) -> bool {

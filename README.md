@@ -4,7 +4,7 @@
 
 RiceWine helps you install and run Windows applications and games with isolated Wine prefixes. It works independently of RiceBowl and is designed to fit both Windows 10 and XP Luna desktop themes.
 
-> **0.3 alpha** — the Wine foundation plus per-program runners and compatibility tools. Real applications still need desktop testing before a stable release.
+> **0.6 alpha** — Wine/Proton runners, compatibility tools, program imports, application-menu shortcuts and non-destructive snapshots.
 
 ## Features in 0.1
 
@@ -26,6 +26,16 @@ RiceWine helps you install and run Windows applications and games with isolated 
 - Keep installation and compatibility actions off the GUI thread.
 
 **Runner prerequisites:** For custom Wine, choose the `wine` executable next to `wineboot`. For Proton, install [`umu-launcher`](https://github.com/Open-Wine-Components/umu-launcher) and choose an extracted Proton directory containing `proton`. Proton runner configuration is local; RiceWine does not download arbitrary runtime builds. Proton MSI installation and Winetricks-on-Proton are intentionally unavailable until they can be verified safely.
+
+## New in 0.6
+
+- **Installation templates:** standard 64-bit, a 64-bit games guidance preset, and a genuinely initialized 32-bit Wine prefix for older programs. The Games template does not silently install DXVK or tweak system settings: choose compatibility components explicitly in **Runners**.
+- **Import existing prefixes:** point RiceWine at an initialized Wine prefix and its launch EXE. Import only adds a library entry; original files stay where they are.
+- **Backups:** copy a prefix into `backups/` without following symlinks. A snapshot saves the application metadata and prefix content. **Restore always creates a separate prefix and library entry**, leaving the original untouched.
+- **Linux application-menu shortcuts:** creates a user-local `.desktop` entry using the RiceWine executable that created it; removing the library entry cleans up that generated shortcut when safe.
+- **CLI launch:** `ricewine --launch APPLICATION_ID`, so shortcuts do not need a second GUI instance.
+
+Backups are user-triggered, disk-consuming snapshots, not automatic consistency guarantees. Close the Windows application and other Wine processes before taking a snapshot. Symlinks are copied as symlinks; files outside the prefix they point to are **not** included. Importing a prefix does not move it, but later changing its runner may add `.ricewine.toml` inside that prefix.
 
 ## Requirements
 
@@ -51,6 +61,7 @@ ricewine/
 ├── catalog.lock         # prevents concurrent writers
 ├── prefixes/            # one isolated Wine environment per app
 │   └── <app-id>/.ricewine.toml # runner profile (added in 0.3)
+├── backups/             # independent non-destructive prefix snapshots
 └── logs/                # Wine output per app
 ```
 
@@ -61,13 +72,13 @@ Existing Wine prefixes are not modified or imported. Removing a library entry in
 | Version | Focus |
 | --- | --- |
 | 0.1 | Wine detection, isolated prefixes, EXE/MSI installation, portable programs, library and native GUI |
-| **0.3** | Per-program Wine and Proton/umu runner selection, Winetricks, DXVK/VKD3D via installed Winetricks, diagnostics |
-| 0.6 | Templates, imports, desktop shortcuts, enhanced diagnostics and backup/restore |
+| 0.3 | Per-program Wine and Proton/umu runner selection, Winetricks, DXVK/VKD3D via installed Winetricks, diagnostics |
+| **0.6** | Templates, prefix import, desktop shortcuts, bounded logs and backup/restore |
 | 0.9 | RicePack theme integration, desktop file associations and optional storefront integrations |
 | 1.0 | Reproducible installs, restore validation, Linux desktop acceptance, accessibility, packaging |
 | 2.0 | Target: mature library management, safe upgrade/migration flows, predictable Wine/Proton lifecycle and release-quality UX |
 
-0.3 is implemented but hardware acceptance is outstanding. Later milestones are plans rather than shipped capabilities.
+0.6 is implemented but Linux desktop acceptance is outstanding. Later milestones are plans rather than shipped capabilities.
 
 ## Development
 

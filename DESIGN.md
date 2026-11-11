@@ -19,4 +19,8 @@ Native Linux tool for people who want to install and launch Windows software wit
 - Removing an entry must warn that its prefix stays on disk; no automatic destructive cleanup in 0.1.
 - Show errors in text, including the path to logs for process errors.
 - Maintain keyboard focus visibility and non-color-only feedback, and keep all functionality available without drag-and-drop.
+- Import is additive: registering an existing prefix must never move files. Show the source path so users recognize external ownership.
+- Backups live in Prefixes and are explicitly initiated; a restore creates a new library entry rather than overwriting an existing configuration.
+- Runner changes and compatibility component installation are explicit actions with status feedback; never claim success before the subprocess exits successfully.
+- Prefer native egui controls, keyboard-focusable buttons, and compact lists. Keep the two approved theme directions independent from Wine/Proton behavior.
 

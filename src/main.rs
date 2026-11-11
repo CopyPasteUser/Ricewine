@@ -1,6 +1,8 @@
 use eframe::egui::{self, Color32, RichText};
+use ricewine::backup::{self, BackupEntry};
 use ricewine::core::{self, Application, InstallMode, Store, WineTools};
-use ricewine::runtime::{self, PrefixProfile, Runner};
+use ricewine::integration;
+use ricewine::runtime::{self, PrefixProfile, Runner, Template};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -85,6 +87,14 @@ struct InstallDraft {
     custom_wine: String,
     proton_dir: String,
     game_id: String,
+    template: Template,
+}
+
+#[derive(Default)]
+struct ImportDraft {
+    name: String,
+    prefix: String,
+    executable: String,
 }
 
 impl InstallDraft {
@@ -111,6 +121,8 @@ enum Event {
     Started(String, Result<u32, String>),
     Exited(String, Result<String, String>),
     CompatibilityFinished(String, String, Result<(), String>),
+    BackupCreated(Result<BackupEntry, String>),
+    Restored(Result<Application, String>),
 }
 
 struct RiceWineApp {
@@ -120,10 +132,13 @@ struct RiceWineApp {
     page: Page,
     selected: Option<String>,
     install: Option<InstallDraft>,
+    import: Option<ImportDraft>,
     remove_confirmation: Option<String>,
     busy: bool,
     running: HashSet<String>,
     compatibility_busy: HashSet<String>,
+    backup_busy: bool,
+    backups: Vec<BackupEntry>,
     runner_draft: InstallDraft,
     winetricks_verb: usize,
     log_preview: String,
@@ -152,6 +167,11 @@ impl RiceWineApp {
             .as_ref()
             .ok()
             .and_then(|store| store.applications().first().map(|app| app.id.clone()));
+        let backups = store
+            .as_ref()
+            .ok()
+            .and_then(|store| backup::list_backups(store.root()).ok())
+            .unwrap_or_default();
         Self {
             store: store.ok(),
             wine: wine.ok(),
@@ -159,10 +179,13 @@ impl RiceWineApp {
             page: Page::Library,
             selected,
             install: None,
+            import: None,
             remove_confirmation: None,
             busy: false,
             running: HashSet::new(),
             compatibility_busy: HashSet::new(),
+            backup_busy: false,
+            backups,
             runner_draft: InstallDraft::default(),
             winetricks_verb: 0,
             log_preview: String::new(),
@@ -225,9 +248,43 @@ impl RiceWineApp {
                         Err(error) => (true, format!("Winetricks {verb} failed: {error}")),
                     });
                 }
+                Event::BackupCreated(result) => {
+                    self.backup_busy = false;
+                    match result {
+                        Ok(entry) => {
+                            self.notice =
+                                Some((false, format!("Backup created for {}", entry.app_name)));
+                            self.backups.insert(0, entry);
+                        }
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::Restored(result) => {
+                    self.backup_busy = false;
+                    match result {
+                        Ok(app) => {
+                            let id = app.id.clone();
+                            if let Some(store) = self.store.as_mut() {
+                                match store.add(app) {
+                                    Ok(()) => {
+                                        self.selected = Some(id);
+                                        self.sync_runner_draft();
+                                        self.notice = Some((false, "Backup restored as a separate program; the original was preserved".into()));
+                                    }
+                                    Err(error) => self.notice = Some((true, error)),
+                                }
+                            }
+                        }
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
             }
         }
-        if self.busy || !self.running.is_empty() || !self.compatibility_busy.is_empty() {
+        if self.busy
+            || self.backup_busy
+            || !self.running.is_empty()
+            || !self.compatibility_busy.is_empty()
+        {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
     }
@@ -238,6 +295,7 @@ impl RiceWineApp {
         };
         let profile = PrefixProfile {
             runner: draft.runner(),
+            template: draft.template,
             ..Default::default()
         };
         if let Err(error) = runtime::validate_runner(&profile.runner) {
@@ -368,6 +426,54 @@ impl RiceWineApp {
         });
     }
 
+    fn backup_async(&mut self, app: Application) {
+        let Some(store) = self.store.as_ref() else {
+            return;
+        };
+        if self.backup_busy
+            || self.busy
+            || self.running.contains(&app.id)
+            || self.compatibility_busy.contains(&app.id)
+        {
+            return;
+        }
+        self.backup_busy = true;
+        self.notice = Some((
+            false,
+            format!(
+                "Backing up {}; close other processes using its prefix",
+                app.name
+            ),
+        ));
+        let root = store.root().to_path_buf();
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let _ = sender.send(Event::BackupCreated(backup::create_backup(&root, &app)));
+        });
+    }
+
+    fn restore_async(&mut self, entry: BackupEntry) {
+        let Some(store) = self.store.as_ref() else {
+            return;
+        };
+        if self.backup_busy || self.busy || !self.running.is_empty() {
+            return;
+        }
+        self.backup_busy = true;
+        self.notice = Some((
+            false,
+            format!("Restoring {} into a new prefix…", entry.app_name),
+        ));
+        let root = store.root().to_path_buf();
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let _ = sender.send(Event::Restored(backup::restore_backup(
+                &root,
+                &entry.folder,
+            )));
+        });
+    }
+
     fn sidebar(&mut self, ui: &mut egui::Ui) {
         egui::Frame::new()
             .fill(self.theme.sidebar())
@@ -424,6 +530,12 @@ impl RiceWineApp {
                 .clicked()
             {
                 self.install = Some(InstallDraft::default());
+            }
+            if ui
+                .add_enabled(!self.busy, egui::Button::new("Import existing prefix…"))
+                .clicked()
+            {
+                self.import = Some(ImportDraft::default());
             }
             if self.busy {
                 ui.spinner();
@@ -535,6 +647,15 @@ impl RiceWineApp {
                             self.notice = Some((false, "Launch executable saved".into()));
                         }
                     }
+                    if ui.button("Add application-menu shortcut").clicked() {
+                        let outcome = std::env::current_exe()
+                            .map_err(|e| e.to_string())
+                            .and_then(|bin| integration::install_shortcut(&app, &bin));
+                        self.notice = Some(match outcome {
+                            Ok(file) => (false, format!("Shortcut created: {}", file.display())),
+                            Err(error) => (true, error),
+                        });
+                    }
                     ui.add_space(18.0);
                     if ui.button("Remove from library…").clicked() {
                         self.remove_confirmation = Some(app.id);
@@ -547,18 +668,68 @@ impl RiceWineApp {
         });
     }
 
-    fn prefixes(&self, ui: &mut egui::Ui) {
+    fn prefixes(&mut self, ui: &mut egui::Ui) {
         ui.heading("Wine prefixes");
-        ui.label("Every program has an isolated Windows environment.");
+        ui.label(
+            "Create a backup before runner changes. Restoring never overwrites a live prefix.",
+        );
         ui.add_space(12.0);
-        if let Some(store) = &self.store {
-            for app in store.applications() {
+        let apps = self
+            .store
+            .as_ref()
+            .map(|s| s.applications().to_vec())
+            .unwrap_or_default();
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            for app in apps {
                 ui.group(|ui| {
                     ui.label(RichText::new(&app.name).strong());
                     ui.small(core::readable_path(&app.prefix));
+                    if ui
+                        .add_enabled(
+                            !self.backup_busy
+                                && !self.running.contains(&app.id)
+                                && !self.compatibility_busy.contains(&app.id)
+                                && !self.busy,
+                            egui::Button::new("Back up this prefix"),
+                        )
+                        .clicked()
+                    {
+                        self.backup_async(app.clone());
+                    }
                 });
             }
-        }
+            ui.add_space(12.0);
+            ui.heading("Backups");
+            if ui.button("Refresh backup list").clicked()
+                && let Some(store) = &self.store
+            {
+                match backup::list_backups(store.root()) {
+                    Ok(items) => self.backups = items,
+                    Err(error) => self.notice = Some((true, error)),
+                }
+            }
+            if self.backup_busy {
+                ui.spinner();
+                ui.label("Copying prefix files…");
+            }
+            if self.backups.is_empty() {
+                ui.label("No backup snapshots yet.");
+            }
+            for entry in self.backups.clone() {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{} — {}", entry.app_name, entry.created_unix));
+                    if ui
+                        .add_enabled(
+                            !self.backup_busy && !self.busy && self.running.is_empty(),
+                            egui::Button::new("Restore as new program"),
+                        )
+                        .clicked()
+                    {
+                        self.restore_async(entry.clone());
+                    }
+                });
+            }
+        });
     }
 
     fn runners(&mut self, ui: &mut egui::Ui) {
@@ -597,11 +768,11 @@ impl RiceWineApp {
                 .add_enabled(!working, egui::Button::new("Save runner for program"))
                 .clicked()
             {
-                let profile = PrefixProfile {
-                    runner: self.runner_draft.runner(),
-                    ..Default::default()
-                };
-                match runtime::save_profile(&app.prefix, &profile) {
+                let result = runtime::load_profile(&app.prefix).and_then(|mut profile| {
+                    profile.runner = self.runner_draft.runner();
+                    runtime::save_profile(&app.prefix, &profile)
+                });
+                match result {
                     Ok(()) => self.notice = Some((false, format!("Runner saved for {}", app.name))),
                     Err(error) => self.notice = Some((true, error)),
                 }
@@ -737,6 +908,20 @@ impl RiceWineApp {
                     });
                     ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
                     ui.add_space(10.0);
+                    ui.label("Installation template");
+                    egui::ComboBox::from_id_salt("installation_template")
+                        .selected_text(draft.template.label())
+                        .show_ui(ui, |ui| {
+                            for template in [Template::Standard, Template::Games, Template::Legacy32] {
+                                ui.selectable_value(&mut draft.template, template, template.label());
+                            }
+                        });
+                    if draft.template == Template::Legacy32 {
+                        ui.small("Creates a 32-bit Wine prefix. Requires 32-bit Wine support. Cannot be changed later.");
+                    }
+                    if draft.template == Template::Games {
+                        ui.small("Games preset. DXVK/VKD3D can be added from Runners as needed.");
+                    }
                     ui.label("Runner for this program");
                     ui.horizontal_wrapped(|ui| {
                         for (index, label) in ["System Wine", "Custom Wine", "Proton / umu"].iter().enumerate() {
@@ -751,6 +936,7 @@ impl RiceWineApp {
                             name: draft.name.clone(), file: draft.file.clone(), portable: draft.portable,
                             runner_kind: draft.runner_kind, custom_wine: draft.custom_wine.clone(),
                             proton_dir: draft.proton_dir.clone(), game_id: draft.game_id.clone(),
+                            template: draft.template,
                         });
                     }
                 });
@@ -761,6 +947,70 @@ impl RiceWineApp {
         if let Some(draft) = submit {
             self.install = None;
             self.install_async(draft);
+        }
+    }
+
+    fn import_dialog(&mut self, ctx: &egui::Context) {
+        let mut keep_open = true;
+        let mut imported = None;
+        if let Some(draft) = &mut self.import {
+            egui::Window::new("Import existing Wine prefix")
+                .collapsible(false).resizable(false).open(&mut keep_open)
+                .show(ctx, |ui| {
+                    ui.set_min_width(450.0);
+                    ui.label("Program name");
+                    ui.text_edit_singleline(&mut draft.name);
+                    ui.label("Existing Wine prefix directory");
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut draft.prefix);
+                        if ui.button("Browse…").clicked()
+                            && let Some(path) = rfd::FileDialog::new().pick_folder()
+                        {
+                            draft.prefix = core::readable_path(&path);
+                        }
+                    });
+                    ui.label("Existing launch EXE");
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut draft.executable);
+                        if ui.button("Browse…").clicked()
+                            && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
+                        {
+                            draft.executable = core::readable_path(&path);
+                        }
+                    });
+                    ui.small("Import only registers an existing prefix. Its files are never moved or deleted.");
+                    if ui.button("Import prefix").clicked() {
+                        imported = Some(core::imported_application(
+                            &draft.name,
+                            &PathBuf::from(draft.prefix.trim()),
+                            &PathBuf::from(draft.executable.trim()),
+                        ));
+                    }
+                });
+        }
+        if !keep_open {
+            self.import = None;
+        }
+        if let Some(result) = imported {
+            match result.and_then(|app| {
+                let id = app.id.clone();
+                self.store
+                    .as_mut()
+                    .ok_or("Catalog is unavailable")?
+                    .add(app)?;
+                Ok(id)
+            }) {
+                Ok(id) => {
+                    self.selected = Some(id);
+                    self.sync_runner_draft();
+                    self.notice = Some((
+                        false,
+                        "Existing prefix imported. Original files were preserved.".into(),
+                    ));
+                    self.import = None;
+                }
+                Err(error) => self.notice = Some((true, error)),
+            }
         }
     }
 
@@ -777,7 +1027,10 @@ impl RiceWineApp {
                         match store.remove_from_library(&id) {
                             Ok(()) => {
                                 self.selected = store.applications().first().map(|app| app.id.clone());
-                                self.notice = Some((false, "Removed from library. Prefix preserved.".into()));
+                                self.notice = Some(match integration::remove_shortcut(&id) {
+                                    Ok(()) => (false, "Removed from library. Prefix preserved.".into()),
+                                    Err(error) => (true, format!("Entry removed, but shortcut cleanup failed: {error}")),
+                                });
                             }
                             Err(error) => self.notice = Some((true, error)),
                         }
@@ -825,11 +1078,48 @@ impl eframe::App for RiceWineApp {
             });
         });
         self.install_dialog(ui.ctx());
+        self.import_dialog(ui.ctx());
         self.remove_dialog(ui.ctx());
     }
 }
 
 fn main() -> eframe::Result {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if !args.is_empty() {
+        let outcome = match args.as_slice() {
+            [flag] if flag == "--help" => {
+                println!(
+                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID]",
+                    env!("CARGO_PKG_VERSION")
+                );
+                Ok(())
+            }
+            [flag] if flag == "--version" => {
+                println!("RiceWine {}", env!("CARGO_PKG_VERSION"));
+                Ok(())
+            }
+            [flag, id] if flag == "--launch" => {
+                core::Store::load_for_launch(id).and_then(|(root, app)| {
+                    let profile = runtime::load_profile(&app.prefix)?;
+                    let system = WineTools::detect().ok();
+                    let mut child = runtime::launch(&root, system.as_ref(), &app, &profile)?;
+                    child.wait().map_err(|e| e.to_string()).and_then(|status| {
+                        if status.success() {
+                            Ok(())
+                        } else {
+                            Err(format!("Program exited with {status}"))
+                        }
+                    })
+                })
+            }
+            _ => Err("Unsupported arguments. Run ricewine --help".into()),
+        };
+        if let Err(error) = outcome {
+            eprintln!("RiceWine: {error}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,
         viewport: egui::ViewportBuilder::default()

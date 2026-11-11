@@ -41,6 +41,9 @@ fn catalog_round_trip_and_safe_removal() {
     };
     fs::create_dir(&app.prefix).unwrap();
     store.add(app.clone()).unwrap();
+    assert_eq!(Store::read_only_at(store.root()).unwrap().len(), 1);
+    store.rename(&app.id, "Renamed game").unwrap();
+    assert_eq!(store.get(&app.id).unwrap().name, "Renamed game");
     assert!(Store::open_at(tmp.0.join("data")).is_err());
     drop(store);
     let probe = fs::OpenOptions::new()
@@ -54,7 +57,8 @@ fn catalog_round_trip_and_safe_removal() {
     );
     drop(probe);
     let mut reloaded = Store::open_at(tmp.0.join("data")).unwrap();
-    assert_eq!(reloaded.applications(), std::slice::from_ref(&app));
+    assert_eq!(reloaded.applications().len(), 1);
+    assert_eq!(reloaded.applications()[0].name, "Renamed game");
     reloaded.remove_from_library(&app.id).unwrap();
     assert!(reloaded.applications().is_empty());
     assert!(

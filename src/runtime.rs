@@ -5,6 +5,7 @@
 
 use crate::core::{self, Application, InstallMode, WineTools};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -46,6 +47,8 @@ pub struct PrefixProfile {
     pub version: u32,
     pub runner: Runner,
     pub template: Template,
+    pub launch_arguments: Vec<String>,
+    pub launch_environment: BTreeMap<String, String>,
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -73,6 +76,8 @@ impl Default for PrefixProfile {
             version: PROFILE_VERSION,
             runner: Runner::SystemWine,
             template: Template::Standard,
+            launch_arguments: Vec::new(),
+            launch_environment: BTreeMap::new(),
         }
     }
 }
@@ -107,6 +112,7 @@ pub fn save_profile(prefix: &Path, profile: &PrefixProfile) -> Result<(), String
         return Err("Cannot save an unsupported profile version".into());
     }
     validate_runner(&profile.runner)?;
+    validate_launch_options(profile)?;
     if profile.template == Template::Legacy32 && matches!(profile.runner, Runner::ProtonUmu { .. })
     {
         return Err("Legacy 32-bit prefixes require Wine, not Proton".into());
@@ -164,6 +170,68 @@ pub fn validate_runner(runner: &Runner) -> Result<(), String> {
             Ok(())
         }
     }
+}
+
+pub const ALLOWED_ENVIRONMENT: &[&str] = &[
+    "WINEDEBUG",
+    "WINEESYNC",
+    "WINEFSYNC",
+    "DXVK_HUD",
+    "DXVK_LOG_LEVEL",
+    "VKD3D_DEBUG",
+    "MESA_GLTHREAD",
+    "PULSE_LATENCY_MSEC",
+];
+
+pub fn validate_launch_options(profile: &PrefixProfile) -> Result<(), String> {
+    if profile.launch_arguments.len() > 32
+        || profile
+            .launch_arguments
+            .iter()
+            .any(|arg| arg.len() > 1024 || arg.contains('\0') || arg.contains('\n'))
+    {
+        return Err("Use up to 32 launch arguments, each at most 1024 bytes".into());
+    }
+    if profile.launch_environment.len() > ALLOWED_ENVIRONMENT.len() {
+        return Err("Too many environment overrides".into());
+    }
+    for (key, value) in &profile.launch_environment {
+        if !ALLOWED_ENVIRONMENT.contains(&key.as_str())
+            || value.len() > 2048
+            || value.contains('\0')
+        {
+            return Err(format!("Invalid environment override: {key}"));
+        }
+    }
+    Ok(())
+}
+
+pub fn parse_launch_configuration(
+    arguments: &str,
+    variables: &str,
+    profile: &mut PrefixProfile,
+) -> Result<(), String> {
+    let args = arguments
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    let mut env = BTreeMap::new();
+    for line in variables.lines().filter(|line| !line.trim().is_empty()) {
+        let (key, value) = line
+            .split_once('=')
+            .ok_or("Each environment line must be KEY=value")?;
+        let key = key.trim();
+        if env.insert(key.to_owned(), value.to_owned()).is_some() {
+            return Err(format!("Duplicate environment override: {key}"));
+        }
+    }
+    let mut candidate = profile.clone();
+    candidate.launch_arguments = args;
+    candidate.launch_environment = env;
+    validate_launch_options(&candidate)?;
+    *profile = candidate;
+    Ok(())
 }
 
 pub fn executable_on_path(name: &str) -> Option<PathBuf> {
@@ -296,6 +364,9 @@ pub fn launch(
         return Err("The program's prefix is missing".into());
     }
     let mut command = runner_command(profile, system, &app.prefix, exe)?;
+    validate_launch_options(profile)?;
+    command.args(&profile.launch_arguments);
+    command.envs(&profile.launch_environment);
     let log = OpenOptions::new()
         .create(true)
         .append(true)
@@ -383,6 +454,51 @@ pub fn diagnostics(system: Option<&WineTools>) -> Vec<String> {
         });
     }
     rows
+}
+
+#[derive(Clone, Debug)]
+pub struct DetectedProton {
+    pub path: PathBuf,
+    pub name: String,
+}
+
+pub fn discover_proton(home: &Path) -> Vec<DetectedProton> {
+    let parents = [
+        home.join(".steam/root/compatibilitytools.d"),
+        home.join(".local/share/Steam/compatibilitytools.d"),
+        home.join(".steam/steam/steamapps/common"),
+        home.join(".local/share/Steam/steamapps/common"),
+    ];
+    let mut candidates = Vec::new();
+    let mut unique = std::collections::HashSet::new();
+    for directory in parents {
+        let Ok(entries) = fs::read_dir(directory) else {
+            continue;
+        };
+        for entry in entries.flatten().take(200) {
+            let path = entry.path();
+            if !path.join("proton").is_file() {
+                continue;
+            }
+            let Ok(canonical) = fs::canonicalize(&path) else {
+                continue;
+            };
+            if !unique.insert(canonical.clone()) {
+                continue;
+            }
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            candidates.push(DetectedProton {
+                path: canonical,
+                name,
+            });
+        }
+    }
+    candidates.sort_by_key(|candidate| candidate.name.to_lowercase());
+    candidates
 }
 
 pub fn timestamp_slug() -> String {

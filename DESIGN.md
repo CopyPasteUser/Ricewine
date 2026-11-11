@@ -8,7 +8,7 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 - **Windows 10:** clean flat controls, Segoe-like sans-serif, square geometry, white surface, gray navigation, accent `#0078D7`.
 - **XP Luna:** classic Tahoma-like sans-serif, blue task pane, warm content background, accent `#204CB8`; eventually add Luna window chrome and glossy controls when the functionality is validated.
-- Current 0.1 UI applies these as lightweight selectable styles using the same navigation and interaction flow. Full fidelity to the approved mockups is a later design pass.
+- The current 2.0 alpha retains these lightweight selectable styles with shared navigation and interactions. Full fidelity to the approved mockups requires a separate visual and hardware acceptance pass; it is not yet implemented.
 
 ## Interaction contracts
 

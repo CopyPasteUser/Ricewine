@@ -107,7 +107,23 @@ impl Store {
     /// its exclusive writer lock. Atomic catalog replacement makes this safe.
     pub fn load_for_launch(id: &str) -> Result<(PathBuf, Application), String> {
         let root = data_directory()?;
+        Self::read_only_at(&root)?
+            .into_iter()
+            .find(|app| app.id == id)
+            .map(|app| (root, app))
+            .ok_or("Application not found in RiceWine library".into())
+    }
+
+    pub fn list_for_cli() -> Result<(PathBuf, Vec<Application>), String> {
+        let root = data_directory()?;
+        Ok((root.clone(), Self::read_only_at(&root)?))
+    }
+
+    pub fn read_only_at(root: &Path) -> Result<Vec<Application>, String> {
         let path = root.join("applications.json");
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
         if fs::metadata(&path).map_err(|e| e.to_string())?.len() > MAX_CATALOG_SIZE {
             return Err("Application catalog exceeds the 4 MiB safety limit".into());
         }
@@ -121,12 +137,7 @@ impl Store {
             ));
         }
         validate_catalog(&catalog)?;
-        catalog
-            .applications
-            .into_iter()
-            .find(|app| app.id == id)
-            .map(|app| (root, app))
-            .ok_or("Application not found in RiceWine library".into())
+        Ok(catalog.applications)
     }
 
     pub fn root(&self) -> &Path {
@@ -165,6 +176,18 @@ impl Store {
             .find(|app| app.id == id)
             .ok_or("Application not found")?;
         app.executable = Some(path);
+        self.commit(next)
+    }
+
+    pub fn rename(&mut self, id: &str, name: &str) -> Result<(), String> {
+        validate_name(name)?;
+        let mut next = self.catalog.clone();
+        let app = next
+            .applications
+            .iter_mut()
+            .find(|app| app.id == id)
+            .ok_or("Application not found")?;
+        app.name = name.trim().into();
         self.commit(next)
     }
 

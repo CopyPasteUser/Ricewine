@@ -154,3 +154,94 @@ fn custom_runner_installs_without_system_wine() {
     assert!(app.executable.is_none());
     assert!(app.prefix.exists());
 }
+
+#[test]
+fn launch_options_validate_without_partially_overwriting_profile() {
+    let mut profile = PrefixProfile::default();
+    runtime::parse_launch_configuration(
+        "--windowed\n--title=Hello World",
+        "WINEESYNC=1\nDXVK_HUD=fps",
+        &mut profile,
+    )
+    .unwrap();
+    assert_eq!(
+        profile.launch_arguments,
+        ["--windowed", "--title=Hello World"]
+    );
+    assert_eq!(profile.launch_environment.get("DXVK_HUD").unwrap(), "fps");
+    let original = profile.clone();
+    assert!(
+        runtime::parse_launch_configuration("--other", "LD_PRELOAD=/tmp/bad.so", &mut profile)
+            .is_err()
+    );
+    assert_eq!(profile, original);
+    assert!(
+        runtime::parse_launch_configuration("", "WINEPREFIX=/tmp/other", &mut profile).is_err()
+    );
+    assert_eq!(profile, original);
+    assert!(
+        runtime::parse_launch_configuration("", "DXVK_HUD=one\nDXVK_HUD=two", &mut profile)
+            .is_err()
+    );
+    assert_eq!(profile, original);
+}
+
+#[test]
+fn proton_discovery_checks_only_known_locations_and_deduplicates() {
+    let tmp = Temp::new();
+    let build = tmp
+        .0
+        .join(".steam/root/compatibilitytools.d/GE-Proton-test");
+    fs::create_dir_all(&build).unwrap();
+    File::create(build.join("proton")).unwrap();
+    fs::create_dir_all(tmp.0.join("unknown/proton")).unwrap();
+    let found = runtime::discover_proton(&tmp.0);
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].name, "GE-Proton-test");
+}
+
+#[cfg(unix)]
+#[test]
+fn launch_passes_arguments_and_environment_without_shell_evaluation() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = Temp::new();
+    let store = Store::open_at(tmp.0.join("data")).unwrap();
+    let wine = tmp.0.join("wine");
+    fs::write(
+        &wine,
+        "#!/bin/sh\nprintf '%s\n' \"$WINEPREFIX\" \"$WINEESYNC\" \"$@\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&wine, fs::Permissions::from_mode(0o700)).unwrap();
+    File::create(tmp.0.join("wineboot")).unwrap();
+    let prefix = store.root().join("prefixes/game-one");
+    fs::create_dir_all(&prefix).unwrap();
+    let exe = tmp.0.join("app with spaces.exe");
+    File::create(&exe).unwrap();
+    let app = ricewine::core::Application {
+        id: "game-one".into(),
+        name: "Test".into(),
+        prefix: prefix.clone(),
+        executable: Some(exe.clone()),
+        installer: None,
+        portable: true,
+    };
+    let mut profile = PrefixProfile {
+        runner: Runner::CustomWine { wine },
+        ..Default::default()
+    };
+    runtime::parse_launch_configuration("--caption=two words", "WINEESYNC=1", &mut profile)
+        .unwrap();
+    let mut child = runtime::launch(store.root(), None, &app, &profile).unwrap();
+    assert!(child.wait().unwrap().success());
+    let log = fs::read_to_string(store.root().join("logs/game-one.log")).unwrap();
+    assert_eq!(
+        log.lines().collect::<Vec<_>>(),
+        [
+            prefix.to_str().unwrap(),
+            "1",
+            exe.to_str().unwrap(),
+            "--caption=two words"
+        ]
+    );
+}

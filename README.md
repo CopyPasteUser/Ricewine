@@ -4,7 +4,7 @@
 
 RiceWine helps you install and run Windows applications and games with isolated Wine prefixes. It works independently of RiceBowl and is designed to fit both Windows 10 and XP Luna desktop themes.
 
-> **1.0 release candidate** — the core software feature set is implemented, but real Wine/Proton and desktop acceptance is required before a stable 1.0 tag.
+> **2.0 alpha** — the planned 2.0 management and diagnostics features are under development. Real Wine/Proton and desktop acceptance remains required before any stable release.
 
 ## Features in 0.1
 
@@ -45,6 +45,28 @@ Backups are user-triggered, disk-consuming snapshots, not automatic consistency 
 - **Optional RiceBowl app menus:** RiceWine's generated XDG `.desktop` shortcuts can be used by desktop application launchers; RiceBowl's separate legacy `wine_apps` catalog and prefix store are not rewritten.
 
 No automatic game-store account login, downloads or library ownership changes are performed. Steam Proton prefixes can be imported manually after selecting their `pfx` directory and executable, then choosing Proton/umu under Runners.
+
+## New in the 2.0 alpha
+
+- **Library management:** search by name, rename program entries, keep owned XDG menu shortcuts synchronized, and efficiently browse larger libraries.
+- **Launch controls:** configure up to 32 per-program command arguments (one complete argument per line) and a restricted set of troubleshooting environment variables. There is no shell evaluation. Existing `.ricewine.toml` files remain readable and default to no overrides.
+- **Local Proton discovery:** identify installed Proton distributions in common Steam locations and select one from Runners. Downloads and updates are still managed by Steam or the user, not RiceWine.
+- **Diagnostics:** `ricewine --list`, `--diagnose`, and `--verify-library` inspect the catalog and individual Wine prefixes without launching Windows programs. The Settings panel also has a **Verify library** action.
+- **Upgrade safety:** `ricewine --snapshot-library` or the Settings action stores an independent, non-destructive copy of `applications.json` and optional `preferences.json` in `backups/library/`. It does **not** back up Wine prefixes, logs or installed programs. Use the Prefixes panel for full snapshots; restoring library metadata is a deliberate manual recovery operation, not an automatic merge or overwrite.
+
+Sample advanced options in Runners:
+
+```text
+Launch arguments:
+--windowed
+--resolution=1280x720
+
+Environment overrides:
+WINEDEBUG=-all
+DXVK_HUD=fps
+```
+
+These examples are not applied automatically. Custom environment keys such as `WINEPREFIX`, `PATH` or `LD_PRELOAD` cannot be set through this UI.
 
 ## Requirements
 
@@ -93,9 +115,10 @@ Existing Wine prefixes are not modified or imported. Removing a library entry in
 | **0.6** | Templates, prefix import, desktop shortcuts, bounded logs and backup/restore |
 | **0.9** | Persistent XP/Win10 appearance, read-only RiceBowl theme detection, opt-in Open With and XDG integration |
 | **1.0 RC** | Validated catalog and private data directories, backup/restore tests, per-user install, CI binary artifact and acceptance checklist |
-| 2.0 | Target: mature library management, safe upgrade/migration flows, predictable Wine/Proton lifecycle and release-quality UX |
+| **2.0 alpha** | Search, rename, launch arguments, allowlisted environment, installed Proton discovery, metadata snapshots, library verification and CLI diagnostics |
+| 2.0 stable | Pending: actual Wine/Proton install-and-play tests, X11/Wayland keyboard/visual acceptance, verified recovery procedures, performance baselines and release signoff |
 
-The software and packaging portions of 1.0 are implemented; **real desktop acceptance is pending**. See [ACCEPTANCE.md](ACCEPTANCE.md) for test cases. Do not claim stable 1.0 or full 2.0 compatibility on the basis of CI alone.
+The software and packaging portions of 1.0 and the current 2.0 alpha are implemented; **real desktop acceptance is pending**. See [ACCEPTANCE.md](ACCEPTANCE.md) for test cases. Do not claim stable 1.0 or full 2.0 compatibility on the basis of CI alone.
 
 ## Development
 
@@ -105,7 +128,7 @@ cargo test --all-targets
 cargo clippy --all-targets -- -D warnings
 ```
 
-RiceWine is currently an early alpha, not a drop-in replacement for Bottles or Lutris. Actual Wine/Proton install, launch and graphics compatibility must be verified on a Linux desktop. Prefix switching between Wine and Proton may have compatibility consequences: back up important data before changing a working setup.
+RiceWine is currently a 2.0 alpha, not a drop-in replacement for Bottles or Lutris. Actual Wine/Proton install, launch and graphics compatibility must be verified on a Linux desktop. Prefix switching between Wine and Proton may have compatibility consequences: back up important data before changing a working setup.
 
 **Security:** Wine prefixes separate Windows configuration, **not** Linux permissions. Windows programs run with your user's file access. Install only software you trust, and keep RiceWine open until an installer completes.
 

@@ -2,6 +2,7 @@ use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
 use ricewine::core::{self, Application, InstallMode, Store, WineTools};
 use ricewine::integration;
+use ricewine::library;
 use ricewine::preferences::{self, Appearance, Preferences};
 use ricewine::runtime::{self, PrefixProfile, Runner, Template};
 use std::collections::HashSet;
@@ -151,6 +152,11 @@ struct RiceWineApp {
     preferences: Preferences,
     page: Page,
     selected: Option<String>,
+    search: String,
+    name_edit: String,
+    launch_args_text: String,
+    launch_env_text: String,
+    detected_proton: Vec<runtime::DetectedProton>,
     install: Option<InstallDraft>,
     import: Option<ImportDraft>,
     remove_confirmation: Option<String>,
@@ -162,6 +168,7 @@ struct RiceWineApp {
     runner_draft: InstallDraft,
     winetricks_verb: usize,
     log_preview: String,
+    library_report: String,
     notice: Option<(bool, String)>,
     sender: Sender<Event>,
     receiver: Receiver<Event>,
@@ -207,13 +214,18 @@ impl RiceWineApp {
             .ok()
             .and_then(|store| backup::list_backups(store.root()).ok())
             .unwrap_or_default();
-        Self {
+        let mut app = Self {
             store: store.ok(),
             wine: wine.ok(),
             theme,
             preferences,
             page: Page::Library,
             selected,
+            search: String::new(),
+            name_edit: String::new(),
+            launch_args_text: String::new(),
+            launch_env_text: String::new(),
+            detected_proton: Vec::new(),
             install: initial_install.map(|path| InstallDraft {
                 name: path
                     .file_stem()
@@ -233,10 +245,13 @@ impl RiceWineApp {
             runner_draft: InstallDraft::default(),
             winetricks_verb: 0,
             log_preview: String::new(),
+            library_report: String::new(),
             notice,
             sender,
             receiver,
-        }
+        };
+        app.sync_runner_draft();
+        app
     }
 
     fn poll(&mut self, ctx: &egui::Context) {
@@ -441,6 +456,9 @@ impl RiceWineApp {
 
     fn sync_runner_draft(&mut self) {
         self.runner_draft = InstallDraft::default();
+        self.launch_args_text.clear();
+        self.launch_env_text.clear();
+        self.name_edit.clear();
         let Some(app) = self
             .selected
             .as_ref()
@@ -448,19 +466,29 @@ impl RiceWineApp {
         else {
             return;
         };
+        self.name_edit = app.name.clone();
         match runtime::load_profile(&app.prefix) {
-            Ok(profile) => match profile.runner {
-                Runner::SystemWine => {}
-                Runner::CustomWine { wine } => {
-                    self.runner_draft.runner_kind = 1;
-                    self.runner_draft.custom_wine = core::readable_path(&wine);
+            Ok(profile) => {
+                self.launch_args_text = profile.launch_arguments.join("\n");
+                self.launch_env_text = profile
+                    .launch_environment
+                    .iter()
+                    .map(|(key, value)| format!("{key}={value}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                match profile.runner {
+                    Runner::SystemWine => {}
+                    Runner::CustomWine { wine } => {
+                        self.runner_draft.runner_kind = 1;
+                        self.runner_draft.custom_wine = core::readable_path(&wine);
+                    }
+                    Runner::ProtonUmu { proton, game_id } => {
+                        self.runner_draft.runner_kind = 2;
+                        self.runner_draft.proton_dir = core::readable_path(&proton);
+                        self.runner_draft.game_id = game_id;
+                    }
                 }
-                Runner::ProtonUmu { proton, game_id } => {
-                    self.runner_draft.runner_kind = 2;
-                    self.runner_draft.proton_dir = core::readable_path(&proton);
-                    self.runner_draft.game_id = game_id;
-                }
-            },
+            }
             Err(error) => self.notice = Some((true, error)),
         }
     }
@@ -602,15 +630,36 @@ impl RiceWineApp {
             }
         });
         ui.add_space(10.0);
-        let applications = self
+        ui.horizontal(|ui| {
+            ui.label("Search");
+            ui.add(
+                egui::TextEdit::singleline(&mut self.search)
+                    .hint_text("Filter installed programs…")
+                    .desired_width(210.0),
+            );
+            if !self.search.is_empty() && ui.button("Clear search").clicked() {
+                self.search.clear();
+            }
+        });
+        let all = self
             .store
             .as_ref()
             .map(|s| s.applications().to_vec())
             .unwrap_or_default();
-        if applications.is_empty() {
+        if all.is_empty() {
             ui.add_space(45.0);
             ui.heading("Your library is empty");
             ui.label("Install a Windows program or add a portable EXE to get started.");
+            return;
+        }
+        let term = self.search.trim().to_lowercase();
+        let applications: Vec<Application> = all
+            .into_iter()
+            .filter(|app| term.is_empty() || app.name.to_lowercase().contains(&term))
+            .collect();
+        ui.small(format!("{} matching program(s)", applications.len()));
+        if applications.is_empty() {
+            ui.label("No matching programs. Clear the search to show the library.");
             return;
         }
         let width = (ui.available_width() - 280.0).max(260.0);
@@ -629,28 +678,33 @@ impl RiceWineApp {
                                 ui.label(RichText::new("Runner").strong());
                             });
                         });
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for app in &applications {
-                            let selected = self.selected.as_deref() == Some(&app.id);
-                            ui.horizontal(|ui| {
-                                if ui
-                                    .add_sized(
-                                        [width - 112.0, 36.0],
-                                        egui::Button::selectable(selected, &app.name),
-                                    )
-                                    .clicked()
-                                {
-                                    self.selected = Some(app.id.clone());
-                                    self.sync_runner_draft();
-                                }
-                                let label = runtime::load_profile(&app.prefix)
-                                    .map(|profile| profile.runner.label())
-                                    .unwrap_or("Invalid profile");
-                                ui.label(label);
-                            });
-                            ui.separator();
-                        }
-                    });
+                    egui::ScrollArea::vertical().show_rows(
+                        ui,
+                        42.0,
+                        applications.len(),
+                        |ui, range| {
+                            for index in range {
+                                let app = &applications[index];
+                                let selected = self.selected.as_deref() == Some(&app.id);
+                                ui.horizontal(|ui| {
+                                    if ui
+                                        .add_sized(
+                                            [width - 112.0, 42.0],
+                                            egui::Button::selectable(selected, &app.name),
+                                        )
+                                        .clicked()
+                                    {
+                                        self.selected = Some(app.id.clone());
+                                        self.sync_runner_draft();
+                                    }
+                                    let label = runtime::load_profile(&app.prefix)
+                                        .map(|profile| profile.runner.label())
+                                        .unwrap_or("Invalid profile");
+                                    ui.label(label);
+                                });
+                            }
+                        },
+                    );
                 },
             );
             ui.separator();
@@ -663,6 +717,36 @@ impl RiceWineApp {
                     .cloned();
                 if let Some(app) = selected {
                     ui.heading(&app.name);
+                    ui.label("Display name");
+                    ui.text_edit_singleline(&mut self.name_edit);
+                    if ui
+                        .add_enabled(
+                            !self.busy && !self.running.contains(&app.id),
+                            egui::Button::new("Save name"),
+                        )
+                        .clicked()
+                        && let Some(store) = &mut self.store
+                    {
+                        match store.rename(&app.id, &self.name_edit) {
+                            Ok(()) => {
+                                self.notice = Some((false, "Program name updated".into()));
+                                let updated = store.get(&app.id).cloned();
+                                if let Some(updated) = updated
+                                    && let Ok(path) = integration::application_directory()
+                                    && path.join(format!("ricewine-{}.desktop", app.id)).exists()
+                                    && let Ok(binary) = std::env::current_exe()
+                                    && let Err(error) =
+                                        integration::install_shortcut(&updated, &binary)
+                                {
+                                    self.notice = Some((
+                                        true,
+                                        format!("Name saved, shortcut update failed: {error}"),
+                                    ));
+                                }
+                            }
+                            Err(error) => self.notice = Some((true, error)),
+                        }
+                    }
                     ui.add_space(8.0);
                     ui.label(RichText::new("Runner").small().strong());
                     let selected_profile = runtime::load_profile(&app.prefix);
@@ -798,6 +882,32 @@ impl RiceWineApp {
         for line in runtime::diagnostics(self.wine.as_ref()) {
             ui.small(line);
         }
+        if ui
+            .button("Find locally installed Proton versions")
+            .clicked()
+        {
+            self.detected_proton = std::env::var_os("HOME")
+                .map(|home| runtime::discover_proton(&PathBuf::from(home)))
+                .unwrap_or_default();
+            if self.detected_proton.is_empty() {
+                self.notice = Some((
+                    false,
+                    "No extracted Proton builds found in common Steam locations".into(),
+                ));
+            }
+        }
+        for candidate in &self.detected_proton {
+            ui.horizontal(|ui| {
+                ui.label(&candidate.name);
+                if ui.button("Use for selected program").clicked() {
+                    self.runner_draft.runner_kind = 2;
+                    self.runner_draft.proton_dir = core::readable_path(&candidate.path);
+                    if self.runner_draft.game_id.trim().is_empty() {
+                        self.runner_draft.game_id = "0".into();
+                    }
+                }
+            });
+        }
         ui.separator();
         let Some(app) = self
             .selected
@@ -819,6 +929,22 @@ impl RiceWineApp {
             }
         });
         Self::runner_fields(ui, &mut self.runner_draft);
+        ui.label("Launch arguments (one complete argument per line)");
+        ui.add(
+            egui::TextEdit::multiline(&mut self.launch_args_text)
+                .desired_rows(2)
+                .desired_width(400.0),
+        );
+        ui.label("Optional environment overrides (KEY=value, one per line)");
+        ui.add(
+            egui::TextEdit::multiline(&mut self.launch_env_text)
+                .desired_rows(2)
+                .desired_width(400.0),
+        );
+        ui.small(format!(
+            "Allowed keys: {}",
+            runtime::ALLOWED_ENVIRONMENT.join(", ")
+        ));
         let working = self.running.contains(&app.id)
             || self.compatibility_busy.contains(&app.id)
             || self.busy;
@@ -829,6 +955,11 @@ impl RiceWineApp {
             {
                 let result = runtime::load_profile(&app.prefix).and_then(|mut profile| {
                     profile.runner = self.runner_draft.runner();
+                    runtime::parse_launch_configuration(
+                        &self.launch_args_text,
+                        &self.launch_env_text,
+                        &mut profile,
+                    )?;
                     runtime::save_profile(&app.prefix, &profile)
                 });
                 match result {
@@ -935,7 +1066,7 @@ impl RiceWineApp {
             });
         let mut follow = self.preferences.follow_desktop;
         if ui
-            .checkbox(&mut follow, "Follow recognizable RiceBowl desktop theme")
+            .checkbox(&mut follow, "Match recognized RiceBowl theme at startup")
             .changed()
         {
             self.preferences.follow_desktop = follow;
@@ -985,6 +1116,30 @@ impl RiceWineApp {
             ui.label("Application data");
             ui.small(core::readable_path(store.root()));
             ui.small("Catalog changes are saved atomically. Removing a program from the library preserves its files.");
+            ui.add_space(12.0);
+            ui.horizontal_wrapped(|ui| {
+                if ui.button("Verify library").clicked() {
+                    self.library_report = library::check(store.applications()).lines().join("\n");
+                }
+                if ui.button("Snapshot library metadata").clicked() {
+                    match library::snapshot_metadata(store.root()) {
+                        Ok(path) => {
+                            self.notice =
+                                Some((false, format!("Metadata saved in {}", path.display())))
+                        }
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+            });
+            ui.small("Snapshots preserve the catalog and appearance settings only; use Prefixes for full Wine backups. Verification never changes files.");
+            if !self.library_report.is_empty() {
+                ui.add(
+                    egui::TextEdit::multiline(&mut self.library_report)
+                        .desired_rows(8)
+                        .desired_width(f32::INFINITY)
+                        .interactive(false),
+                );
+            }
         }
     }
 
@@ -1178,7 +1333,9 @@ impl eframe::App for RiceWineApp {
                 match self.page {
                     Page::Library => self.library(ui),
                     Page::Prefixes => self.prefixes(ui),
-                    Page::Runners => self.runners(ui),
+                    Page::Runners => {
+                        egui::ScrollArea::vertical().show(ui, |ui| self.runners(ui));
+                    }
                     Page::Settings => self.settings(ui),
                 }
             });
@@ -1202,7 +1359,7 @@ fn main() -> eframe::Result {
         let outcome = match args.as_slice() {
             [flag] if flag == "--help" => {
                 println!(
-                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE]",
+                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE | --list | --diagnose | --verify-library | --snapshot-library | --register-menu | --version | --help]",
                     env!("CARGO_PKG_VERSION")
                 );
                 Ok(())
@@ -1215,6 +1372,50 @@ fn main() -> eframe::Result {
                 .map_err(|e| e.to_string())
                 .and_then(|path| integration::install_main_menu(&path))
                 .map(|path| println!("Application menu entry created: {}", path.display())),
+            [flag] if flag == "--list" => core::Store::list_for_cli().map(|(_, apps)| {
+                for app in apps {
+                    println!("{}\t{}", app.id, app.name);
+                }
+            }),
+            [flag] if flag == "--snapshot-library" => {
+                core::Store::list_for_cli().and_then(|(root, _)| {
+                    library::snapshot_metadata(&root).map(|path| {
+                        println!("Library metadata snapshot: {}", path.display());
+                        println!("Wine prefixes are NOT included; use per-prefix backups.");
+                    })
+                })
+            }
+            [flag] if flag == "--verify-library" => {
+                core::Store::list_for_cli().and_then(|(_, apps)| {
+                    let report = library::check(&apps);
+                    for row in report.lines() {
+                        println!("{row}");
+                    }
+                    if report.is_healthy() {
+                        Ok(())
+                    } else {
+                        Err("Library verification found errors".into())
+                    }
+                })
+            }
+            [flag] if flag == "--diagnose" => {
+                let system = WineTools::detect().ok();
+                for row in runtime::diagnostics(system.as_ref()) {
+                    println!("{row}");
+                }
+                core::Store::list_for_cli().map(|(_, apps)| {
+                    println!("Library: {} program(s)", apps.len());
+                    for app in &apps {
+                        match runtime::load_profile(&app.prefix) {
+                            Ok(profile) => println!("{}: {}", app.name, profile.runner.label()),
+                            Err(error) => println!("{}: PROFILE ERROR: {error}", app.name),
+                        }
+                    }
+                    for row in library::check(&apps).lines() {
+                        println!("{row}");
+                    }
+                })
+            }
             [flag, id] if flag == "--launch" => {
                 core::Store::load_for_launch(id).and_then(|(root, app)| {
                     let profile = runtime::load_profile(&app.prefix)?;

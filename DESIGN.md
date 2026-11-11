@@ -23,4 +23,6 @@ Native Linux tool for people who want to install and launch Windows software wit
 - Backups live in Prefixes and are explicitly initiated; a restore creates a new library entry rather than overwriting an existing configuration.
 - Runner changes and compatibility component installation are explicit actions with status feedback; never claim success before the subprocess exits successfully.
 - Prefer native egui controls, keyboard-focusable buttons, and compact lists. Keep the two approved theme directions independent from Wine/Proton behavior.
+- Settings owns the optional desktop-theme follower. Manual theme selection disables following; unknown desktop styles must never trigger a guessed appearance.
+- File association is opt-in and opens the installation dialog with the selected file; no EXE is run automatically and system MIME defaults are preserved.
 

@@ -2,6 +2,7 @@ use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
 use ricewine::core::{self, Application, InstallMode, Store, WineTools};
 use ricewine::integration;
+use ricewine::preferences::{self, Appearance, Preferences};
 use ricewine::runtime::{self, PrefixProfile, Runner, Template};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -56,6 +57,24 @@ impl Theme {
             style.spacing.item_spacing = egui::vec2(8.0, 10.0);
             style.spacing.button_padding = egui::vec2(12.0, 7.0);
         });
+    }
+}
+
+impl From<Appearance> for Theme {
+    fn from(value: Appearance) -> Self {
+        match value {
+            Appearance::Windows10 => Self::Windows10,
+            Appearance::Luna => Self::Luna,
+        }
+    }
+}
+
+impl From<Theme> for Appearance {
+    fn from(value: Theme) -> Self {
+        match value {
+            Theme::Windows10 => Self::Windows10,
+            Theme::Luna => Self::Luna,
+        }
     }
 }
 
@@ -129,6 +148,7 @@ struct RiceWineApp {
     store: Option<Store>,
     wine: Option<WineTools>,
     theme: Theme,
+    preferences: Preferences,
     page: Page,
     selected: Option<String>,
     install: Option<InstallDraft>,
@@ -148,7 +168,7 @@ struct RiceWineApp {
 }
 
 impl RiceWineApp {
-    fn new(ctx: &eframe::CreationContext<'_>) -> Self {
+    fn new(ctx: &eframe::CreationContext<'_>, initial_install: Option<PathBuf>) -> Self {
         let (sender, receiver) = mpsc::channel();
         let store = Store::open_default();
         let wine = WineTools::detect();
@@ -161,7 +181,22 @@ impl RiceWineApp {
                 format!("{error}. Install Wine to enable setup and launch."),
             ));
         }
-        let theme = Theme::Windows10;
+        let preferences_result = store
+            .as_ref()
+            .ok()
+            .map(|s| preferences::load(s.root()))
+            .unwrap_or(Ok(Preferences::default()));
+        if let Err(error) = &preferences_result {
+            notice = Some((true, error.clone()));
+        }
+        let preferences = preferences_result.unwrap_or_default();
+        let theme: Theme = if preferences.follow_desktop {
+            preferences::detect_desktop_appearance()
+                .unwrap_or(preferences.appearance)
+                .into()
+        } else {
+            preferences.appearance.into()
+        };
         theme.apply(&ctx.egui_ctx);
         let selected = store
             .as_ref()
@@ -176,9 +211,18 @@ impl RiceWineApp {
             store: store.ok(),
             wine: wine.ok(),
             theme,
+            preferences,
             page: Page::Library,
             selected,
-            install: None,
+            install: initial_install.map(|path| InstallDraft {
+                name: path
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned(),
+                file: core::readable_path(&path),
+                ..Default::default()
+            }),
             import: None,
             remove_confirmation: None,
             busy: false,
@@ -287,6 +331,22 @@ impl RiceWineApp {
         {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
+    }
+
+    fn persist_preferences(&mut self) {
+        if let Some(store) = &self.store
+            && let Err(error) = preferences::save(store.root(), &self.preferences)
+        {
+            self.notice = Some((true, format!("Could not save appearance: {error}")));
+        }
+    }
+
+    fn set_theme(&mut self, theme: Theme, ctx: &egui::Context) {
+        self.theme = theme;
+        self.preferences.appearance = theme.into();
+        self.preferences.follow_desktop = false;
+        self.theme.apply(ctx);
+        self.persist_preferences();
     }
 
     fn install_async(&mut self, draft: InstallDraft) {
@@ -511,8 +571,7 @@ impl RiceWineApp {
                 ui.label(RichText::new("APPEARANCE").small().strong());
                 for theme in [Theme::Windows10, Theme::Luna] {
                     if ui.radio(self.theme == theme, theme.label()).clicked() {
-                        self.theme = theme;
-                        theme.apply(ui.ctx());
+                        self.set_theme(theme, ui.ctx());
                     }
                 }
             });
@@ -867,13 +926,60 @@ impl RiceWineApp {
             .show_ui(ui, |ui| {
                 for theme in [Theme::Windows10, Theme::Luna] {
                     if ui
-                        .selectable_value(&mut self.theme, theme, theme.label())
+                        .selectable_label(self.theme == theme, theme.label())
                         .clicked()
                     {
-                        theme.apply(ui.ctx());
+                        self.set_theme(theme, ui.ctx());
                     }
                 }
             });
+        let mut follow = self.preferences.follow_desktop;
+        if ui
+            .checkbox(&mut follow, "Follow recognizable RiceBowl desktop theme")
+            .changed()
+        {
+            self.preferences.follow_desktop = follow;
+            if follow {
+                if let Some(appearance) = preferences::detect_desktop_appearance() {
+                    self.theme = appearance.into();
+                    self.theme.apply(ui.ctx());
+                } else {
+                    self.notice = Some((
+                        false,
+                        "No supported RiceBowl theme detected; keeping current style".into(),
+                    ));
+                }
+            }
+            self.persist_preferences();
+        }
+        if self.preferences.follow_desktop && ui.button("Check desktop appearance again").clicked()
+        {
+            if let Some(appearance) = preferences::detect_desktop_appearance() {
+                self.theme = appearance.into();
+                self.theme.apply(ui.ctx());
+                self.notice = Some((false, "Desktop appearance refreshed".into()));
+            } else {
+                self.notice = Some((
+                    false,
+                    "Desktop theme not recognized; appearance unchanged".into(),
+                ));
+            }
+        }
+        ui.add_space(16.0);
+        ui.label("Desktop integration");
+        if ui.button("Add RiceWine to Open With menu").clicked() {
+            let result = std::env::current_exe()
+                .map_err(|e| e.to_string())
+                .and_then(|path| integration::install_open_with(&path));
+            self.notice = Some(match result {
+                Ok(path) => (
+                    false,
+                    format!("Open With entry created: {}", path.display()),
+                ),
+                Err(error) => (true, error),
+            });
+        }
+        ui.small("Does not replace system file associations or change your default app.");
         ui.add_space(18.0);
         if let Some(store) = &self.store {
             ui.label("Application data");
@@ -1085,11 +1191,18 @@ impl eframe::App for RiceWineApp {
 
 fn main() -> eframe::Result {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if !args.is_empty() {
+    let initial_install = if let [flag, file] = args.as_slice()
+        && flag == "--install-file"
+    {
+        Some(PathBuf::from(file))
+    } else {
+        None
+    };
+    if !args.is_empty() && initial_install.is_none() {
         let outcome = match args.as_slice() {
             [flag] if flag == "--help" => {
                 println!(
-                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID]",
+                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE]",
                     env!("CARGO_PKG_VERSION")
                 );
                 Ok(())
@@ -1130,6 +1243,6 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "RiceWine",
         options,
-        Box::new(|ctx| Ok(Box::new(RiceWineApp::new(ctx)))),
+        Box::new(move |ctx| Ok(Box::new(RiceWineApp::new(ctx, initial_install.clone())))),
     )
 }

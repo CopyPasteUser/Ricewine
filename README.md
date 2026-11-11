@@ -4,7 +4,7 @@
 
 RiceWine helps you install and run Windows applications and games with isolated Wine prefixes. It works independently of RiceBowl and is designed to fit both Windows 10 and XP Luna desktop themes.
 
-> **0.6 alpha** — Wine/Proton runners, compatibility tools, program imports, application-menu shortcuts and non-destructive snapshots.
+> **0.9 alpha** — native Linux Wine/Proton manager with safe installation, snapshots, XDG shortcuts, optional file opening and RiceBowl-aware appearance.
 
 ## Features in 0.1
 
@@ -36,6 +36,15 @@ RiceWine helps you install and run Windows applications and games with isolated 
 - **CLI launch:** `ricewine --launch APPLICATION_ID`, so shortcuts do not need a second GUI instance.
 
 Backups are user-triggered, disk-consuming snapshots, not automatic consistency guarantees. Close the Windows application and other Wine processes before taking a snapshot. Symlinks are copied as symlinks; files outside the prefix they point to are **not** included. Importing a prefix does not move it, but later changing its runner may add `.ricewine.toml` inside that prefix.
+
+## New in 0.9
+
+- **Persisted Windows 10 / XP Luna appearance** across sessions.
+- **Optional RiceBowl appearance following:** when the installed desktop theme is recognizable (for example `RiceHub-Luna` or `RiceHub-Ten`), RiceWine selects the matching presentation. Unknown themes are left alone. No desktop settings are modified.
+- **Open With RiceWine:** in Settings, explicitly register a `.desktop` MIME handler for Windows EXE/MSI files. `ricewine --install-file /path/to/setup.exe` opens a **pre-filled install dialog**, never silently executes the file.
+- **Optional RiceBowl app menus:** RiceWine's generated XDG `.desktop` shortcuts can be used by desktop application launchers; RiceBowl's separate legacy `wine_apps` catalog and prefix store are not rewritten.
+
+No automatic game-store account login, downloads or library ownership changes are performed. Steam Proton prefixes can be imported manually after selecting their `pfx` directory and executable, then choosing Proton/umu under Runners.
 
 ## Requirements
 
@@ -74,11 +83,11 @@ Existing Wine prefixes are not modified or imported. Removing a library entry in
 | 0.1 | Wine detection, isolated prefixes, EXE/MSI installation, portable programs, library and native GUI |
 | 0.3 | Per-program Wine and Proton/umu runner selection, Winetricks, DXVK/VKD3D via installed Winetricks, diagnostics |
 | **0.6** | Templates, prefix import, desktop shortcuts, bounded logs and backup/restore |
-| 0.9 | RicePack theme integration, desktop file associations and optional storefront integrations |
+| **0.9** | Persistent XP/Win10 appearance, read-only RiceBowl theme detection, opt-in Open With and XDG integration |
 | 1.0 | Reproducible installs, restore validation, Linux desktop acceptance, accessibility, packaging |
 | 2.0 | Target: mature library management, safe upgrade/migration flows, predictable Wine/Proton lifecycle and release-quality UX |
 
-0.6 is implemented but Linux desktop acceptance is outstanding. Later milestones are plans rather than shipped capabilities.
+0.9 is implemented but Linux desktop acceptance is outstanding. The 1.0 and 2.0 milestones still require verification and work.
 
 ## Development
 

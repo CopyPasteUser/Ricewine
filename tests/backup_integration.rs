@@ -120,4 +120,9 @@ fn desktop_launcher_quotes_program_paths_and_rejects_unsafe_ids() {
     assert!(entry.contains("Exec=\"/home/user/My App/ricewine\" --launch app-123"));
     assert!(entry.contains("X-RiceWine-ID=app-123"));
     assert!(integration::shortcut_file_name("../../oops").is_err());
+    let open_with =
+        integration::open_with_entry(&PathBuf::from("/home/user/My App/ricewine")).unwrap();
+    assert!(open_with.contains(" --install-file %f"));
+    assert!(open_with.contains("MimeType=application/x-ms-dos-executable;"));
+    assert!(!open_with.contains("x-scheme-handler"));
 }

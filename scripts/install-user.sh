@@ -2,6 +2,11 @@
 # Installs only for the current user. No sudo and no Wine prefixes are touched.
 set -eu
 
+case "${HOME:-}" in
+    /*) ;;
+    *) echo "HOME must be a nonempty absolute path for user-local installation" >&2; exit 1 ;;
+esac
+
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 if ! command -v cargo >/dev/null 2>&1; then

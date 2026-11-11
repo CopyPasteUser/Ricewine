@@ -151,6 +151,21 @@ fn installer_refuses_to_overwrite_unrelated_regular_file() {
 }
 
 #[test]
+fn installer_rejects_empty_home_before_creating_files() {
+    let temp = Temp::new();
+    let (project, fake_bin) = fixture(&temp);
+    let output = Command::new("sh")
+        .arg(project.join("scripts/install-user.sh"))
+        .env("HOME", "")
+        .env("PATH", format!("{}:/usr/bin:/bin", fake_bin.display()))
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("HOME must"));
+    assert!(!temp.0.join(".local").exists());
+}
+
+#[test]
 fn uninstaller_rejects_binary_not_identified_as_ricewine() {
     let temp = Temp::new();
     let (project, fake_bin) = fixture(&temp);

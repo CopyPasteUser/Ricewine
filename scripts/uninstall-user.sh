@@ -3,10 +3,10 @@
 # Program data, Wine prefixes, backups and logs are always preserved.
 set -eu
 
-if [ -z "${HOME:-}" ]; then
-    echo "HOME must be set" >&2
-    exit 1
-fi
+case "${HOME:-}" in
+    /*) ;;
+    *) echo "HOME must be a nonempty absolute path for user-local removal" >&2; exit 1 ;;
+esac
 
 binary="$HOME/.local/bin/ricewine"
 if [ -L "$binary" ]; then

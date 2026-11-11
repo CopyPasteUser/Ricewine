@@ -7,7 +7,7 @@ Native Linux tool for people who want to install and launch Windows software wit
 ## Visual directions
 
 - **Windows 10:** clean flat controls, Segoe-like sans-serif, square geometry, white surface, gray navigation, accent `#0078D7`.
-- **XP Luna Blue:** a dedicated XP-inspired application shell, rather than a color-only variation. Saturated blue gradient title bar with RiceWine branding, grouped Explorer task panes, warmer document surface, folder-heading treatment, Explorer-style empty library and green primary install action. The layout reuses the same functional workflows, persistence and dialogs as the other Rices.
+- **XP Luna Blue:** a dedicated Windows XP Explorer-inspired application surface, not a color-only variation. The *native window title bar and borders stay entirely under the desktop compositor/RiceBowl*. Within the application: compact pale toolbar, blue-gradient Explorer task groups, warm document surface and folder headings, bordered classic controls, Explorer-style library and green primary install action. Dialogs are shared with other Rices and remain functional when Luna is selected.
 - **XP Luna Olive and Silver:** retain the lightweight shared shell for now. They are intentionally *not* reskinned to the blue layout until that design has been accepted.
 - The five styles remain selectable. Windows 10 Light/Dark and Luna Olive/Silver are unchanged in this visual sprint. The Luna Blue shell is visually tested in a desktop preview; real Wine/Proton and X11/Wayland acceptance remains outstanding before 1.0 stable.
 

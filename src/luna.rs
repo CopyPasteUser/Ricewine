@@ -1,10 +1,8 @@
-//! XP Luna Blue chrome. Visual-only helpers; application behavior stays in main.rs.
+//! XP Luna Blue application surfaces. Window decorations belong to the compositor.
 
 use eframe::egui::{self, Align2, Color32, FontId, Painter, Rect, RichText, Sense, Stroke};
 
 const NAV_BLUE: Color32 = Color32::from_rgb(18, 66, 163);
-const HEADER_LIGHT: Color32 = Color32::from_rgb(75, 151, 249);
-const HEADER_DARK: Color32 = Color32::from_rgb(8, 62, 181);
 
 fn gradient(painter: &Painter, rect: Rect, top: Color32, bottom: Color32) {
     let mut mesh = egui::Mesh::default();
@@ -17,45 +15,39 @@ fn gradient(painter: &Painter, rect: Rect, top: Color32, bottom: Color32) {
     painter.add(egui::Shape::mesh(mesh));
 }
 
-pub fn title_bar(ui: &mut egui::Ui) {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 58.0), Sense::hover());
+/// Explorer-era application toolbar, deliberately not an in-app title bar.
+pub fn application_toolbar(ui: &mut egui::Ui, section: &str) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 42.0), Sense::hover());
     let painter = ui.painter_at(rect);
-    gradient(&painter, rect, HEADER_LIGHT, HEADER_DARK);
+    gradient(&painter, rect, Color32::from_rgb(255, 255, 255), Color32::from_rgb(226, 232, 243));
     painter.line_segment(
         [
             rect.left_top() + egui::vec2(0.0, 1.0),
             rect.right_top() + egui::vec2(0.0, 1.0),
         ],
-        Stroke::new(2.0, Color32::from_rgb(162, 207, 255)),
+        Stroke::new(1.0, Color32::WHITE),
     );
     painter.line_segment(
         [
             rect.left_bottom() - egui::vec2(0.0, 2.0),
             rect.right_bottom() - egui::vec2(0.0, 2.0),
         ],
-        Stroke::new(2.0, Color32::from_rgb(7, 40, 128)),
+        Stroke::new(1.0, Color32::from_rgb(153, 167, 189)),
     );
-    wine_icon(&painter, rect.left_top() + egui::vec2(20.0, 10.0));
+    wine_icon(&painter, rect.left_top() + egui::vec2(11.0, 3.0));
     painter.text(
-        rect.left_top() + egui::vec2(56.0, 10.0),
-        Align2::LEFT_TOP,
+        rect.left_center() + egui::vec2(49.0, -1.0),
+        Align2::LEFT_CENTER,
         "RiceWine",
-        FontId::proportional(25.0),
-        Color32::WHITE,
+        FontId::proportional(17.0),
+        Color32::from_rgb(32, 55, 95),
     );
     painter.text(
-        rect.left_top() + egui::vec2(57.0, 39.0),
-        Align2::LEFT_TOP,
-        "WINDOWS APPLICATION MANAGER",
-        FontId::proportional(10.0),
-        Color32::from_rgb(221, 234, 255),
-    );
-    painter.text(
-        rect.right_top() + egui::vec2(-22.0, 20.0),
-        Align2::RIGHT_TOP,
-        "XP LUNA  •  BLUE",
+        rect.right_center() + egui::vec2(-14.0, 0.0),
+        Align2::RIGHT_CENTER,
+        section,
         FontId::proportional(12.0),
-        Color32::WHITE,
+        Color32::from_rgb(94, 105, 124),
     );
 }
 
@@ -64,7 +56,7 @@ fn wine_icon(painter: &Painter, origin: egui::Pos2) {
     painter.rect_filled(
         bowl,
         egui::CornerRadius::same(7),
-        Color32::from_rgb(245, 249, 255),
+        Color32::from_rgb(240, 244, 255),
     );
     painter.rect_filled(
         Rect::from_min_size(origin + egui::vec2(6.0, 10.0), egui::vec2(19.0, 10.0)),
@@ -74,7 +66,7 @@ fn wine_icon(painter: &Painter, origin: egui::Pos2) {
     painter.rect_stroke(
         bowl,
         egui::CornerRadius::same(7),
-        Stroke::new(1.5, Color32::from_rgb(218, 231, 255)),
+        Stroke::new(1.5, Color32::from_rgb(122, 146, 189)),
         egui::StrokeKind::Inside,
     );
     painter.line_segment(
@@ -82,14 +74,14 @@ fn wine_icon(painter: &Painter, origin: egui::Pos2) {
             origin + egui::vec2(15.5, 22.0),
             origin + egui::vec2(15.5, 34.0),
         ],
-        Stroke::new(2.0, Color32::WHITE),
+        Stroke::new(2.0, Color32::from_rgb(92, 112, 150)),
     );
     painter.line_segment(
         [
             origin + egui::vec2(8.0, 34.0),
             origin + egui::vec2(23.0, 34.0),
         ],
-        Stroke::new(2.0, Color32::WHITE),
+        Stroke::new(2.0, Color32::from_rgb(92, 112, 150)),
     );
 }
 
@@ -101,7 +93,7 @@ pub fn task_header(ui: &mut egui::Ui, heading: &str) {
         rect.left_center() + egui::vec2(11.0, 0.0),
         Align2::LEFT_CENTER,
         heading,
-        FontId::proportional(15.0),
+        FontId::proportional(13.0),
         Color32::WHITE,
     );
 }
@@ -110,7 +102,7 @@ pub fn task_panel(ui: &mut egui::Ui, add_contents: impl FnOnce(&mut egui::Ui)) {
     egui::Frame::new()
         .fill(Color32::from_rgb(246, 249, 255))
         .stroke(Stroke::new(1.0, Color32::from_rgb(113, 153, 216)))
-        .corner_radius(egui::CornerRadius::same(7))
+        .corner_radius(egui::CornerRadius::same(5))
         .show(ui, |ui| {
             ui.set_min_width(ui.available_width());
             add_contents(ui);
@@ -118,23 +110,13 @@ pub fn task_panel(ui: &mut egui::Ui, add_contents: impl FnOnce(&mut egui::Ui)) {
 }
 
 pub fn brand(ui: &mut egui::Ui) {
-    ui.add_space(9.0);
-    ui.label(
-        RichText::new("RiceWine")
-            .size(29.0)
-            .strong()
-            .color(NAV_BLUE),
-    );
-    ui.label(
-        RichText::new("YOUR WINDOWS PROGRAMS")
-            .size(10.0)
-            .color(Color32::from_rgb(57, 86, 139)),
-    );
-    ui.add_space(14.0);
+    ui.add_space(3.0);
+    ui.label(RichText::new("Tasks").size(12.0).strong().color(NAV_BLUE));
+    ui.add_space(7.0);
 }
 
 pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 76.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 65.0), Sense::hover());
     let painter = ui.painter_at(rect);
     gradient(
         &painter,
@@ -149,7 +131,7 @@ pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
         egui::StrokeKind::Inside,
     );
     let icon = Rect::from_min_size(
-        rect.left_top() + egui::vec2(16.0, 23.0),
+        rect.left_top() + egui::vec2(16.0, 18.0),
         egui::vec2(27.0, 22.0),
     );
     painter.rect_filled(
@@ -164,14 +146,14 @@ pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
         egui::StrokeKind::Inside,
     );
     painter.text(
-        rect.left_top() + egui::vec2(57.0, 13.0),
+        rect.left_top() + egui::vec2(57.0, 8.0),
         Align2::LEFT_TOP,
         title,
-        FontId::proportional(24.0),
+        FontId::proportional(21.0),
         NAV_BLUE,
     );
     painter.text(
-        rect.left_top() + egui::vec2(58.0, 47.0),
+        rect.left_top() + egui::vec2(58.0, 39.0),
         Align2::LEFT_TOP,
         subtitle,
         FontId::proportional(12.0),

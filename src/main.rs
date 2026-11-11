@@ -199,12 +199,19 @@ impl Theme {
             widget.corner_radius = egui::CornerRadius::same(palette.corner_radius);
             widget.bg_stroke = egui::Stroke::new(1.0, palette.border);
         }
+        if self == Self::Luna {
+            // Style application controls, not the native compositor title bar.
+            let border = egui::Stroke::new(1.0, Color32::from_rgb(118, 148, 194));
+            visuals.widgets.inactive.bg_stroke = border;
+            visuals.widgets.hovered.bg_stroke = border;
+            visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, palette.accent);
+        }
         visuals.window_corner_radius = egui::CornerRadius::same(palette.corner_radius);
         visuals.menu_corner_radius = egui::CornerRadius::same(palette.corner_radius);
         ctx.set_visuals(visuals);
         ctx.global_style_mut(|style| {
-            style.spacing.item_spacing = egui::vec2(8.0, 10.0);
-            style.spacing.button_padding = egui::vec2(12.0, 7.0);
+            style.spacing.item_spacing = if self == Self::Luna { egui::vec2(6.0, 7.0) } else { egui::vec2(8.0, 10.0) };
+            style.spacing.button_padding = if self == Self::Luna { egui::vec2(10.0, 5.0) } else { egui::vec2(12.0, 7.0) };
         });
     }
 }
@@ -1289,8 +1296,8 @@ impl RiceWineApp {
     }
 
     fn luna_shell(&mut self, ui: &mut egui::Ui) {
-        luna::title_bar(ui);
-        ui.add_space(7.0);
+        luna::application_toolbar(ui, self.page.label());
+        ui.add_space(5.0);
         let available_height = ui.available_height();
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(
@@ -1308,7 +1315,7 @@ impl RiceWineApp {
                         .fill(Color32::from_rgb(255, 255, 252))
                         .stroke(egui::Stroke::new(1.0, Color32::from_rgb(104, 148, 218)))
                         .inner_margin(13.0)
-                        .corner_radius(egui::CornerRadius::same(6))
+                        .corner_radius(egui::CornerRadius::same(2))
                         .show(ui, |ui| {
                             ui.set_min_height((available_height - 28.0).max(380.0));
                             let (title, subtitle) = match self.page {
@@ -2460,21 +2467,21 @@ impl eframe::App for RiceWineApp {
         panel.show(ui, |ui| {
             if self.theme == Theme::Luna {
                 self.luna_shell(ui);
-                return;
-            }
-            let height = ui.available_height();
-            ui.horizontal_top(|ui| {
-                ui.allocate_ui_with_layout(
-                    egui::vec2(200.0, height),
-                    egui::Layout::top_down(egui::Align::Min),
-                    |ui| self.sidebar(ui),
-                );
-                ui.separator();
-                ui.vertical(|ui| {
-                    ui.add_space(10.0);
-                    self.page_body(ui);
+            } else {
+                let height = ui.available_height();
+                ui.horizontal_top(|ui| {
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(200.0, height),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| self.sidebar(ui),
+                    );
+                    ui.separator();
+                    ui.vertical(|ui| {
+                        ui.add_space(10.0);
+                        self.page_body(ui);
+                    });
                 });
-            });
+            }
         });
         self.install_dialog(ui.ctx());
         self.import_dialog(ui.ctx());

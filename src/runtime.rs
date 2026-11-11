@@ -465,9 +465,12 @@ pub struct DetectedProton {
 pub fn discover_proton(home: &Path) -> Vec<DetectedProton> {
     let parents = [
         home.join(".steam/root/compatibilitytools.d"),
+        home.join(".steam/debian-installation/compatibilitytools.d"),
         home.join(".local/share/Steam/compatibilitytools.d"),
         home.join(".steam/steam/steamapps/common"),
         home.join(".local/share/Steam/steamapps/common"),
+        home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam/compatibilitytools.d"),
+        home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common"),
     ];
     let mut candidates = Vec::new();
     let mut unique = std::collections::HashSet::new();

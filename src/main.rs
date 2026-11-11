@@ -641,28 +641,39 @@ impl RiceWineApp {
                 self.search.clear();
             }
         });
-        let all = self
+        if self
             .store
             .as_ref()
-            .map(|s| s.applications().to_vec())
-            .unwrap_or_default();
-        if all.is_empty() {
+            .is_none_or(|s| s.applications().is_empty())
+        {
             ui.add_space(45.0);
             ui.heading("Your library is empty");
             ui.label("Install a Windows program or add a portable EXE to get started.");
             return;
         }
         let term = self.search.trim().to_lowercase();
-        let applications: Vec<Application> = all
-            .into_iter()
-            .filter(|app| term.is_empty() || app.name.to_lowercase().contains(&term))
-            .collect();
-        ui.small(format!("{} matching program(s)", applications.len()));
-        if applications.is_empty() {
+        // Only lightweight indexes are allocated per frame. Full Application
+        // objects (with multiple paths/strings) are not cloned for the list.
+        let matching_indices: Vec<usize> = self
+            .store
+            .as_ref()
+            .map(|store| {
+                store
+                    .applications()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, app)| term.is_empty() || app.name.to_lowercase().contains(&term))
+                    .map(|(index, _)| index)
+                    .collect()
+            })
+            .unwrap_or_default();
+        ui.small(format!("{} matching program(s)", matching_indices.len()));
+        if matching_indices.is_empty() {
             ui.label("No matching programs. Clear the search to show the library.");
             return;
         }
         let width = (ui.available_width() - 280.0).max(260.0);
+        let mut next_selected: Option<String> = None;
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(
                 egui::vec2(width, ui.available_height()),
@@ -681,10 +692,14 @@ impl RiceWineApp {
                     egui::ScrollArea::vertical().show_rows(
                         ui,
                         42.0,
-                        applications.len(),
+                        matching_indices.len(),
                         |ui, range| {
                             for index in range {
-                                let app = &applications[index];
+                                let app = &self
+                                    .store
+                                    .as_ref()
+                                    .expect("library is available while displaying rows")
+                                    .applications()[matching_indices[index]];
                                 let selected = self.selected.as_deref() == Some(&app.id);
                                 ui.horizontal(|ui| {
                                     if ui
@@ -694,8 +709,7 @@ impl RiceWineApp {
                                         )
                                         .clicked()
                                     {
-                                        self.selected = Some(app.id.clone());
-                                        self.sync_runner_draft();
+                                        next_selected = Some(app.id.clone());
                                     }
                                     let label = runtime::load_profile(&app.prefix)
                                         .map(|profile| profile.runner.label())
@@ -713,7 +727,7 @@ impl RiceWineApp {
                 let selected = self
                     .selected
                     .as_ref()
-                    .and_then(|id| applications.iter().find(|app| &app.id == id))
+                    .and_then(|id| self.store.as_ref()?.get(id))
                     .cloned();
                 if let Some(app) = selected {
                     ui.heading(&app.name);
@@ -809,6 +823,10 @@ impl RiceWineApp {
                 }
             });
         });
+        if let Some(id) = next_selected {
+            self.selected = Some(id);
+            self.sync_runner_draft();
+        }
     }
 
     fn prefixes(&mut self, ui: &mut egui::Ui) {

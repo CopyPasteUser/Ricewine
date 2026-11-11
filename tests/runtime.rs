@@ -1,10 +1,130 @@
 use ricewine::core::{InstallMode, Store};
-use ricewine::runtime::{self, PrefixProfile, Runner};
+use ricewine::runtime::{self, CompatibilityPreset, PrefixProfile, Runner};
 use std::fs::{self, File};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static SERIAL: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn launch_presets_are_allowlisted_and_preserve_arguments() {
+    let mut profile = PrefixProfile {
+        launch_arguments: vec!["two words".into()],
+        ..Default::default()
+    };
+    for preset in CompatibilityPreset::ALL {
+        profile.launch_environment = preset.environment();
+        runtime::validate_launch_options(&profile).unwrap();
+        assert_eq!(profile.launch_arguments, ["two words"]);
+    }
+}
+
+#[test]
+fn update_source_validation_does_not_change_saved_profile() {
+    let temp = Temp::new();
+    let mut profile = PrefixProfile {
+        update_repository: Some("Bad/../../escape".into()),
+        ..Default::default()
+    };
+    assert!(runtime::save_profile(&temp.0, &profile).is_err());
+    assert!(!runtime::profile_path(&temp.0).exists());
+    profile.update_repository = Some("SomeOrg/some-repo".into());
+    profile.installed_version = "v1.2.3".into();
+    runtime::save_profile(&temp.0, &profile).unwrap();
+    assert_eq!(runtime::load_profile(&temp.0).unwrap(), profile);
+}
+
+#[cfg(unix)]
+#[test]
+fn installer_cancellation_stops_worker_and_retains_partial_prefix() {
+    use ricewine::core::OperationControl;
+    use std::os::unix::fs::PermissionsExt;
+    use std::time::Duration;
+
+    let temp = Temp::new();
+    let executable = temp.0.join("portable.exe");
+    fs::write(&executable, b"exe").unwrap();
+    let wine = temp.0.join("wine");
+    let boot = temp.0.join("wineboot");
+    fs::write(&wine, "#!/bin/sh\nexit 0\n").unwrap();
+    fs::write(&boot, "#!/bin/sh\nsleep 4\n").unwrap();
+    fs::set_permissions(&wine, fs::Permissions::from_mode(0o700)).unwrap();
+    fs::set_permissions(&boot, fs::Permissions::from_mode(0o700)).unwrap();
+    let store = Store::open_at(temp.0.join("data")).unwrap();
+    let control = OperationControl::default();
+    let worker_control = control.clone();
+    let root = store.root().to_path_buf();
+    let handle = std::thread::spawn(move || {
+        runtime::install_with_profile_control(
+            &root,
+            None,
+            &PrefixProfile {
+                runner: Runner::CustomWine { wine },
+                ..Default::default()
+            },
+            "Cancel test",
+            &executable,
+            ricewine::core::InstallMode::Portable,
+            &worker_control,
+        )
+    });
+    std::thread::sleep(Duration::from_millis(200));
+    control.cancel();
+    let result = handle.join().unwrap();
+    assert!(result.unwrap_err().contains("cancelled"));
+    assert_eq!(
+        fs::read_dir(store.root().join("prefixes")).unwrap().count(),
+        1
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn updates_use_same_existing_prefix_and_preserve_installer_boundaries() {
+    use ricewine::core::{Application, OperationControl};
+    use std::os::unix::fs::PermissionsExt;
+    let temp = Temp::new();
+    let store = Store::open_at(temp.0.join("data")).unwrap();
+    let wine = temp.0.join("wine");
+    fs::write(&wine, "#!/bin/sh\nprintf '%s\\n' \"$WINEPREFIX\" \"$@\"\n").unwrap();
+    fs::write(temp.0.join("wineboot"), "#!/bin/sh\nexit 0\n").unwrap();
+    fs::set_permissions(&wine, fs::Permissions::from_mode(0o700)).unwrap();
+    let prefix = temp.0.join("prefix with space");
+    fs::create_dir_all(&prefix).unwrap();
+    let installer = temp.0.join("update with space.msi");
+    fs::write(&installer, b"dummy").unwrap();
+    let app = Application {
+        id: "app-1".into(),
+        name: "Test".into(),
+        prefix: prefix.clone(),
+        executable: None,
+        installer: None,
+        portable: false,
+    };
+    runtime::run_update_installer(
+        store.root(),
+        None,
+        &app,
+        &PrefixProfile {
+            runner: Runner::CustomWine { wine },
+            ..Default::default()
+        },
+        &installer,
+        &OperationControl::default(),
+    )
+    .unwrap();
+    let log = fs::read_to_string(store.root().join("logs/app-1.log")).unwrap();
+    assert_eq!(
+        log.lines().collect::<Vec<_>>(),
+        [
+            prefix.to_str().unwrap(),
+            "msiexec",
+            "/i",
+            installer.to_str().unwrap()
+        ]
+    );
+    assert!(prefix.exists());
+}
 
 struct Temp(PathBuf);
 

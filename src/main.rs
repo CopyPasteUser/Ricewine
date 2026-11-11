@@ -4,14 +4,17 @@ mod luna;
 
 use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
-use ricewine::core::{self, Application, InstallMode, Store, WineTools};
+use ricewine::core::{self, Application, InstallMode, OperationControl, Store, WineTools};
+use ricewine::discovery::{self, LaunchCandidate};
 use ricewine::integration;
 #[cfg(unix)]
 use ricewine::ipc;
 use ricewine::library;
 use ricewine::preferences::{self, Appearance, Preferences};
-use ricewine::runtime::{self, PrefixProfile, Runner, Template};
-use std::collections::{HashSet, VecDeque};
+use ricewine::runtime::{self, CompatibilityPreset, PrefixProfile, Runner, Template};
+use ricewine::storage::{self, CleanupPreview, DiskUsage};
+use ricewine::updates::{self, Release};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -288,12 +291,20 @@ impl InstallDraft {
 }
 
 enum Event {
-    Installed(Result<Application, String>),
+    Installed(Result<(Application, bool), String>),
     Started(String, Result<u32, String>),
     Exited(String, Result<String, String>),
     CompatibilityFinished(String, String, Result<(), String>),
     BackupCreated(Result<BackupEntry, String>),
     Restored(Result<Application, String>),
+    UsageMeasured(String, Result<DiskUsage, String>),
+    CleanupScanned(String, Result<CleanupPreview, String>),
+    Cleaned(String, Result<DiskUsage, String>),
+    GeReleaseChecked(Result<Release, String>),
+    GeInstalled(Result<PathBuf, String>),
+    GeRemoved(PathBuf, Result<(), String>),
+    AppReleaseChecked(String, Result<Release, String>),
+    AppUpdated(String, Result<(), String>),
 }
 
 struct RiceWineApp {
@@ -307,20 +318,40 @@ struct RiceWineApp {
     name_edit: String,
     launch_args_text: String,
     launch_env_text: String,
+    update_repo_text: String,
+    installed_version_text: String,
+    latest_app_releases: HashMap<String, Release>,
+    update_install_confirmation: Option<(String, PathBuf)>,
+    update_controls: HashMap<String, OperationControl>,
     detected_proton: Vec<runtime::DetectedProton>,
+    ge_release: Option<Release>,
+    ge_busy: bool,
+    ge_control: Option<OperationControl>,
+    ge_install_confirmation: bool,
+    ge_remove_confirmation: Option<PathBuf>,
     install: Option<InstallDraft>,
     queued_install_files: VecDeque<PathBuf>,
     #[cfg(unix)]
     ipc: Option<ipc::Server>,
     import: Option<ImportDraft>,
     remove_confirmation: Option<String>,
+    cancel_install_confirmation: bool,
+    stop_confirmation: Option<String>,
     busy: bool,
+    install_control: Option<OperationControl>,
     running: HashSet<String>,
+    running_controls: HashMap<String, OperationControl>,
+    exe_candidates: Vec<LaunchCandidate>,
+    exe_candidate_for: Option<String>,
     compatibility_busy: HashSet<String>,
     backup_busy: bool,
     backups: Vec<BackupEntry>,
+    disk_usage: HashMap<String, DiskUsage>,
+    cleanup_preview: Option<(String, CleanupPreview)>,
+    storage_busy: HashSet<String>,
     runner_draft: InstallDraft,
     winetricks_verb: usize,
+    preset_choice: usize,
     log_preview: String,
     library_report: String,
     notice: Option<(bool, String)>,
@@ -402,20 +433,40 @@ impl RiceWineApp {
             name_edit: String::new(),
             launch_args_text: String::new(),
             launch_env_text: String::new(),
+            update_repo_text: String::new(),
+            installed_version_text: String::new(),
+            latest_app_releases: HashMap::new(),
+            update_install_confirmation: None,
+            update_controls: HashMap::new(),
             detected_proton: Vec::new(),
+            ge_release: None,
+            ge_busy: false,
+            ge_control: None,
+            ge_install_confirmation: false,
+            ge_remove_confirmation: None,
             install: initial_install.map(Self::install_draft_for_file),
             queued_install_files: VecDeque::new(),
             #[cfg(unix)]
             ipc,
             import: None,
             remove_confirmation: None,
+            cancel_install_confirmation: false,
+            stop_confirmation: None,
             busy: false,
+            install_control: None,
             running: HashSet::new(),
+            running_controls: HashMap::new(),
+            exe_candidates: Vec::new(),
+            exe_candidate_for: None,
             compatibility_busy: HashSet::new(),
             backup_busy: false,
             backups,
+            disk_usage: HashMap::new(),
+            cleanup_preview: None,
+            storage_busy: HashSet::new(),
             runner_draft: InstallDraft::default(),
             winetricks_verb: 0,
+            preset_choice: 0,
             log_preview: String::new(),
             library_report: String::new(),
             notice,
@@ -441,8 +492,9 @@ impl RiceWineApp {
             match event {
                 Event::Installed(result) => {
                     self.busy = false;
+                    self.install_control = None;
                     match result {
-                        Ok(app) => {
+                        Ok((app, autodetected)) => {
                             self.selected = Some(app.id.clone());
                             let name = app.name.clone();
                             match self
@@ -455,9 +507,15 @@ impl RiceWineApp {
                                     self.sync_runner_draft();
                                     self.notice = Some((
                                         false,
-                                        format!(
-                                            "{name} added. Select its installed EXE to enable Play."
-                                        ),
+                                        if autodetected {
+                                            format!(
+                                                "{name} added; launch EXE detected automatically. Check it before Play."
+                                            )
+                                        } else {
+                                            format!(
+                                                "{name} added. Scan or choose its launch EXE to enable Play."
+                                            )
+                                        },
                                     ))
                                 }
                                 Err(error) => self.notice = Some((true, error)),
@@ -473,11 +531,13 @@ impl RiceWineApp {
                     }
                     Err(error) => {
                         self.running.remove(&id);
+                        self.running_controls.remove(&id);
                         self.notice = Some((true, error));
                     }
                 },
                 Event::Exited(id, result) => {
                     self.running.remove(&id);
+                    self.running_controls.remove(&id);
                     if let Err(error) = result {
                         self.notice = Some((true, error));
                     }
@@ -519,6 +579,99 @@ impl RiceWineApp {
                         Err(error) => self.notice = Some((true, error)),
                     }
                 }
+                Event::UsageMeasured(id, result) => {
+                    self.storage_busy.remove(&id);
+                    match result {
+                        Ok(usage) => {
+                            self.disk_usage.insert(id, usage);
+                        }
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::CleanupScanned(id, result) => {
+                    self.storage_busy.remove(&id);
+                    match result {
+                        Ok(preview) => self.cleanup_preview = Some((id, preview)),
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::Cleaned(id, result) => {
+                    self.storage_busy.remove(&id);
+                    self.disk_usage.remove(&id);
+                    self.notice = Some(match result {
+                        Ok(usage) => (
+                            false,
+                            format!(
+                                "Removed {} old temporary files ({})",
+                                usage.files,
+                                storage::human_size(usage.bytes)
+                            ),
+                        ),
+                        Err(error) => (true, error),
+                    });
+                }
+                Event::GeReleaseChecked(result) => {
+                    self.ge_busy = false;
+                    match result {
+                        Ok(release) => self.ge_release = Some(release),
+                        Err(error) => {
+                            self.notice = Some((true, format!("GE-Proton release check: {error}")))
+                        }
+                    }
+                }
+                Event::GeInstalled(result) => {
+                    self.ge_busy = false;
+                    self.ge_control = None;
+                    match result {
+                        Ok(path) => {
+                            let name = path
+                                .file_name()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .into_owned();
+                            self.detected_proton.push(runtime::DetectedProton {
+                                path: path.clone(),
+                                name,
+                            });
+                            self.detected_proton.sort_by(|a, b| a.name.cmp(&b.name));
+                            self.notice = Some((
+                                false,
+                                format!("Verified GE-Proton installed at {}", path.display()),
+                            ));
+                        }
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::GeRemoved(path, result) => {
+                    self.ge_busy = false;
+                    match result {
+                        Ok(()) => {
+                            self.detected_proton.retain(|item| item.path != path);
+                            self.notice =
+                                Some((false, "Managed runner removed; prefixes preserved".into()));
+                        }
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::AppReleaseChecked(id, result) => {
+                    self.compatibility_busy.remove(&id);
+                    match result {
+                        Ok(release) => {
+                            self.notice =
+                                Some((false, format!("Latest publisher release: {}", release.tag)));
+                            self.latest_app_releases.insert(id, release);
+                        }
+                        Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::AppUpdated(id, result) => {
+                    self.compatibility_busy.remove(&id);
+                    self.update_controls.remove(&id);
+                    self.notice = Some(match result {
+                        Ok(()) => (false, "Update installer completed. Verify the application and update its version label if needed.".into()),
+                        Err(error) => (true, format!("Update installer: {error}")),
+                    });
+                }
             }
         }
         if self.install.is_none()
@@ -538,6 +691,8 @@ impl RiceWineApp {
             || self.backup_busy
             || !self.running.is_empty()
             || !self.compatibility_busy.is_empty()
+            || !self.storage_busy.is_empty()
+            || self.ge_busy
         {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
@@ -584,6 +739,8 @@ impl RiceWineApp {
             return;
         }
         self.busy = true;
+        let control = OperationControl::default();
+        self.install_control = Some(control.clone());
         self.notice = Some((
             false,
             format!(
@@ -600,14 +757,29 @@ impl RiceWineApp {
             } else {
                 InstallMode::Installer
             };
-            let result = runtime::install_with_profile(
+            let result = runtime::install_with_profile_control(
                 &root,
                 wine.as_ref(),
                 &profile,
                 &draft.name,
                 &file,
                 mode,
-            );
+                &control,
+            )
+            .map(|mut app| {
+                let autodetected = if app.executable.is_none() {
+                    discovery::scan_executables(&app.prefix, &app.name)
+                        .ok()
+                        .and_then(|candidates| discovery::confident_executable(&candidates))
+                        .map(|exe| {
+                            app.executable = Some(exe);
+                        })
+                        .is_some()
+                } else {
+                    false
+                };
+                (app, autodetected)
+            });
             let _ = tx.send(Event::Installed(result));
         });
     }
@@ -631,15 +803,26 @@ impl RiceWineApp {
         let root = store.root().to_path_buf();
         let wine = self.wine.clone();
         self.running.insert(app.id.clone());
+        let control = OperationControl::default();
+        self.running_controls
+            .insert(app.id.clone(), control.clone());
         thread::spawn(move || {
             let id = app.id.clone();
             match runtime::launch(&root, wine.as_ref(), &app, &profile) {
                 Ok(mut child) => {
                     let _ = tx.send(Event::Started(id.clone(), Ok(child.id())));
-                    let outcome = child
-                        .wait()
-                        .map(|status| format!("Exit status {status}"))
-                        .map_err(|e| e.to_string());
+                    let outcome = loop {
+                        match child.try_wait() {
+                            Ok(Some(status)) => break Ok(format!("Exit status {status}")),
+                            Ok(None) if control.is_cancelled() => {
+                                core::terminate_child(&mut child);
+                                let _ = child.wait();
+                                break Ok("Program stopped by user".into());
+                            }
+                            Ok(None) => thread::sleep(Duration::from_millis(100)),
+                            Err(error) => break Err(error.to_string()),
+                        }
+                    };
                     let _ = tx.send(Event::Exited(id, outcome));
                 }
                 Err(error) => {
@@ -653,6 +836,8 @@ impl RiceWineApp {
         self.runner_draft = InstallDraft::default();
         self.launch_args_text.clear();
         self.launch_env_text.clear();
+        self.update_repo_text.clear();
+        self.installed_version_text.clear();
         self.name_edit.clear();
         let Some(app) = self
             .selected
@@ -664,6 +849,8 @@ impl RiceWineApp {
         self.name_edit = app.name.clone();
         match runtime::load_profile(&app.prefix) {
             Ok(profile) => {
+                self.update_repo_text = profile.update_repository.clone().unwrap_or_default();
+                self.installed_version_text = profile.installed_version.clone();
                 self.launch_args_text = profile.launch_arguments.join("\n");
                 self.launch_env_text = profile
                     .launch_environment
@@ -717,6 +904,7 @@ impl RiceWineApp {
             || self.busy
             || self.running.contains(&app.id)
             || self.compatibility_busy.contains(&app.id)
+            || self.storage_busy.contains(&app.id)
         {
             return;
         }
@@ -754,6 +942,190 @@ impl RiceWineApp {
                 &root,
                 &entry.folder,
             )));
+        });
+    }
+
+    fn measure_storage(&mut self, app: Application, cleanup: bool) {
+        let Some(root) = self.store.as_ref().map(|store| store.root().to_path_buf()) else {
+            return;
+        };
+        if self.storage_busy.contains(&app.id)
+            || self.running.contains(&app.id)
+            || self.compatibility_busy.contains(&app.id)
+            || self.backup_busy
+            || self.busy
+        {
+            return;
+        }
+        let id = app.id.clone();
+        self.storage_busy.insert(id.clone());
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            if cleanup {
+                let _ = sender.send(Event::CleanupScanned(
+                    id,
+                    storage::preview_cleanup(&root, &app),
+                ));
+            } else {
+                let _ = sender.send(Event::UsageMeasured(id, storage::disk_usage(&app.prefix)));
+            }
+        });
+    }
+
+    fn check_ge_release(&mut self) {
+        if self.ge_busy {
+            return;
+        }
+        self.ge_busy = true;
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let _ = sender.send(Event::GeReleaseChecked(updates::latest_ge_proton()));
+        });
+    }
+
+    fn check_app_release(&mut self, app: &Application) {
+        let profile = match runtime::load_profile(&app.prefix) {
+            Ok(value) => value,
+            Err(error) => {
+                self.notice = Some((true, error));
+                return;
+            }
+        };
+        let Some(repository) = profile.update_repository else {
+            self.notice = Some((
+                true,
+                "Save an owner/repo update source in Runners first".into(),
+            ));
+            return;
+        };
+        self.compatibility_busy.insert(app.id.clone());
+        let sender = self.sender.clone();
+        let id = app.id.clone();
+        thread::spawn(move || {
+            let _ = sender.send(Event::AppReleaseChecked(
+                id,
+                updates::latest_release(&repository),
+            ));
+        });
+    }
+
+    fn update_app_async(&mut self, app: Application, installer: PathBuf) {
+        let Some(root) = self.store.as_ref().map(|store| store.root().to_path_buf()) else {
+            return;
+        };
+        if self.compatibility_busy.contains(&app.id)
+            || self.running.contains(&app.id)
+            || self.backup_busy
+            || self.busy
+        {
+            return;
+        }
+        let profile = match runtime::load_profile(&app.prefix) {
+            Ok(value) => value,
+            Err(error) => {
+                self.notice = Some((true, error));
+                return;
+            }
+        };
+        let id = app.id.clone();
+        self.compatibility_busy.insert(id.clone());
+        let control = OperationControl::default();
+        self.update_controls.insert(id.clone(), control.clone());
+        let sender = self.sender.clone();
+        let wine = self.wine.clone();
+        self.notice = Some((
+            false,
+            format!("Updating {} in its existing Wine prefix…", app.name),
+        ));
+        thread::spawn(move || {
+            let result = runtime::run_update_installer(
+                &root,
+                wine.as_ref(),
+                &app,
+                &profile,
+                &installer,
+                &control,
+            );
+            let _ = sender.send(Event::AppUpdated(id, result));
+        });
+    }
+
+    fn install_ge_async(&mut self, release: Release) {
+        let Some(root) = self.store.as_ref().map(|store| store.root().to_path_buf()) else {
+            return;
+        };
+        if self.ge_busy {
+            return;
+        }
+        self.ge_busy = true;
+        let control = OperationControl::default();
+        self.ge_control = Some(control.clone());
+        self.notice = Some((false, format!("Downloading and verifying {}…", release.tag)));
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let _ = sender.send(Event::GeInstalled(updates::install_ge_proton(
+                &root, &release, &control,
+            )));
+        });
+    }
+
+    fn runner_in_use(&self, path: &std::path::Path) -> bool {
+        let canonical_runner = std::fs::canonicalize(path).ok();
+        self.store.as_ref().is_some_and(|store| {
+            store.applications().iter().any(|app| {
+                match runtime::load_profile(&app.prefix) {
+                    Ok(profile) => match profile.runner {
+                        Runner::ProtonUmu { proton, .. } => {
+                            std::fs::canonicalize(&proton).ok() == canonical_runner
+                        }
+                        Runner::CustomWine { wine } => {
+                            std::fs::canonicalize(wine).ok().is_some_and(|binary| {
+                                canonical_runner
+                                    .as_ref()
+                                    .is_some_and(|root| binary.starts_with(root))
+                            })
+                        }
+                        _ => false,
+                    },
+                    // Corrupt profiles must not lead to deleting an in-use runner.
+                    Err(_) => true,
+                }
+            })
+        })
+    }
+
+    fn remove_managed_runner_async(&mut self, path: PathBuf) {
+        let Some(root) = self.store.as_ref().map(|store| store.root().to_path_buf()) else {
+            return;
+        };
+        if self.ge_busy || self.runner_in_use(&path) || !updates::is_managed_runner(&root, &path) {
+            return;
+        }
+        self.ge_busy = true;
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let result = updates::remove_managed_runner(&root, &path);
+            let _ = sender.send(Event::GeRemoved(path, result));
+        });
+    }
+
+    fn cleanup_async(&mut self, app: Application) {
+        let Some(root) = self.store.as_ref().map(|store| store.root().to_path_buf()) else {
+            return;
+        };
+        if self.storage_busy.contains(&app.id)
+            || self.running.contains(&app.id)
+            || self.compatibility_busy.contains(&app.id)
+            || self.backup_busy
+            || self.busy
+        {
+            return;
+        }
+        let id = app.id.clone();
+        self.storage_busy.insert(id.clone());
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let _ = sender.send(Event::Cleaned(id, storage::cleanup_old_temp(&root, &app)));
         });
     }
 
@@ -990,6 +1362,9 @@ impl RiceWineApp {
             if self.busy {
                 ui.spinner();
                 ui.label("Installing…");
+                if ui.button("Cancel installation…").clicked() {
+                    self.cancel_install_confirmation = true;
+                }
             }
         });
         ui.add_space(10.0);
@@ -1188,9 +1563,45 @@ impl RiceWineApp {
                     }
                     if self.running.contains(&app.id) {
                         ui.label("● Running");
+                        if ui.button("■ Stop program…").clicked() {
+                            self.stop_confirmation = Some(app.id.clone());
+                        }
                     }
                     if app.executable.is_none() {
-                        ui.small("Choose the installed EXE to enable Play.");
+                        ui.small("Find or choose the installed EXE to enable Play.");
+                    }
+                    if ui.button("Scan installed EXEs").clicked() {
+                        match discovery::scan_executables(&app.prefix, &app.name) {
+                            Ok(candidates) => {
+                                self.exe_candidates = candidates;
+                                self.exe_candidate_for = Some(app.id.clone());
+                                if self.exe_candidates.is_empty() {
+                                    self.notice = Some((
+                                        false,
+                                        "No program executables detected; choose a file manually"
+                                            .into(),
+                                    ));
+                                }
+                            }
+                            Err(error) => self.notice = Some((true, error)),
+                        }
+                    }
+                    if self.exe_candidate_for.as_deref() == Some(&app.id) {
+                        for candidate in self.exe_candidates.iter().take(12) {
+                            let chosen = candidate.path.clone();
+                            let label = chosen.file_name().unwrap_or_default().to_string_lossy();
+                            if ui
+                                .button(format!("Use {label}"))
+                                .on_hover_text(core::readable_path(&chosen))
+                                .clicked()
+                                && let Some(store) = self.store.as_mut()
+                            {
+                                self.notice = Some(match store.set_executable(&app.id, chosen) {
+                                    Ok(()) => (false, "Launch EXE selected".into()),
+                                    Err(error) => (true, error),
+                                });
+                            }
+                        }
                     }
                     if ui.button("Choose launch EXE…").clicked()
                         && let Some(path) = rfd::FileDialog::new()
@@ -1225,6 +1636,8 @@ impl RiceWineApp {
         });
         if let Some(id) = next_selected {
             self.selected = Some(id);
+            self.exe_candidates.clear();
+            self.exe_candidate_for = None;
             self.sync_runner_draft();
         }
     }
@@ -1251,6 +1664,36 @@ impl RiceWineApp {
                             .color(self.theme.palette().text),
                     );
                     ui.small(core::readable_path(&app.prefix));
+                    if let Some(usage) = self.disk_usage.get(&app.id) {
+                        ui.label(format!(
+                            "Disk usage: {} across {} files",
+                            storage::human_size(usage.bytes),
+                            usage.files
+                        ));
+                    }
+                    if self.storage_busy.contains(&app.id) {
+                        ui.spinner();
+                        ui.small("Checking files…");
+                    }
+                    let idle = !self.busy
+                        && !self.backup_busy
+                        && !self.running.contains(&app.id)
+                        && !self.compatibility_busy.contains(&app.id)
+                        && !self.storage_busy.contains(&app.id);
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add_enabled(idle, egui::Button::new("Calculate size"))
+                            .clicked()
+                        {
+                            self.measure_storage(app.clone(), false);
+                        }
+                        if ui
+                            .add_enabled(idle, egui::Button::new("Preview temp cleanup…"))
+                            .clicked()
+                        {
+                            self.measure_storage(app.clone(), true);
+                        }
+                    });
                     if ui
                         .add_enabled(
                             !self.backup_busy
@@ -1308,6 +1751,43 @@ impl RiceWineApp {
         for line in runtime::diagnostics(self.wine.as_ref()) {
             ui.small(line);
         }
+        ui.add_space(8.0);
+        ui.label(
+            RichText::new("GE-Proton manager")
+                .strong()
+                .color(self.theme.palette().text),
+        );
+        ui.small("Opt-in official GE-Proton releases. Downloads are SHA512-verified and installed only under RiceWine's data directory; no sudo or Steam changes.");
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(!self.ge_busy, egui::Button::new("Check latest GE-Proton"))
+                .clicked()
+            {
+                self.check_ge_release();
+            }
+            if let Some(release) = &self.ge_release {
+                ui.label(format!("Latest: {}", release.tag));
+                if ui
+                    .add_enabled(
+                        !self.ge_busy,
+                        egui::Button::new("Install verified release…"),
+                    )
+                    .clicked()
+                {
+                    self.ge_install_confirmation = true;
+                }
+            }
+            if self.ge_busy {
+                ui.spinner();
+                ui.label("Checking or downloading…");
+                if let Some(control) = &self.ge_control
+                    && ui.button("Cancel download").clicked()
+                {
+                    control.cancel();
+                }
+            }
+        });
+        ui.small("Requires curl, tar, sha512sum and (for launching) umu-run. Existing installations are not overwritten.");
         if ui
             .button("Find locally installed Proton versions")
             .clicked()
@@ -1315,6 +1795,20 @@ impl RiceWineApp {
             self.detected_proton = std::env::var_os("HOME")
                 .map(|home| runtime::discover_proton(&PathBuf::from(home)))
                 .unwrap_or_default();
+            if let Some(store) = &self.store {
+                for path in updates::managed_proton(store.root()) {
+                    if !self.detected_proton.iter().any(|item| item.path == path) {
+                        self.detected_proton.push(runtime::DetectedProton {
+                            name: path
+                                .file_name()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .into_owned(),
+                            path,
+                        });
+                    }
+                }
+            }
             if self.detected_proton.is_empty() {
                 self.notice = Some((
                     false,
@@ -1323,6 +1817,11 @@ impl RiceWineApp {
             }
         }
         for candidate in &self.detected_proton {
+            let managed = self
+                .store
+                .as_ref()
+                .is_some_and(|store| updates::is_managed_runner(store.root(), &candidate.path));
+            let removable = managed && !self.runner_in_use(&candidate.path);
             ui.horizontal(|ui| {
                 ui.label(&candidate.name);
                 if ui.button("Use for selected program").clicked() {
@@ -1331,6 +1830,16 @@ impl RiceWineApp {
                     if self.runner_draft.game_id.trim().is_empty() {
                         self.runner_draft.game_id = "0".into();
                     }
+                }
+                if managed
+                    && ui
+                        .add_enabled(
+                            !self.ge_busy && removable,
+                            egui::Button::new("Remove managed runner…"),
+                        )
+                        .clicked()
+                {
+                    self.ge_remove_confirmation = Some(candidate.path.clone());
                 }
             });
         }
@@ -1362,6 +1871,35 @@ impl RiceWineApp {
                 .desired_width(400.0),
         );
         ui.label("Optional environment overrides (KEY=value, one per line)");
+        ui.horizontal(|ui| {
+            egui::ComboBox::from_id_salt("compatibility_presets")
+                .selected_text(CompatibilityPreset::ALL[self.preset_choice].label())
+                .show_ui(ui, |ui| {
+                    for (index, preset) in CompatibilityPreset::ALL.iter().enumerate() {
+                        ui.selectable_value(&mut self.preset_choice, index, preset.label());
+                    }
+                });
+            if ui
+                .add_enabled(
+                    !self.running.contains(&app.id) && !self.busy,
+                    egui::Button::new("Apply preset to draft"),
+                )
+                .clicked()
+            {
+                let preset = CompatibilityPreset::ALL[self.preset_choice];
+                self.launch_env_text = preset
+                    .environment()
+                    .iter()
+                    .map(|(k, v)| format!("{k}={v}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                self.notice = Some((
+                    false,
+                    "Preset loaded into draft; click Save runner to persist".into(),
+                ));
+            }
+        });
+        ui.small(CompatibilityPreset::ALL[self.preset_choice].description());
         ui.add(
             egui::TextEdit::multiline(&mut self.launch_env_text)
                 .desired_rows(2)
@@ -1371,8 +1909,29 @@ impl RiceWineApp {
             "Allowed keys: {}",
             runtime::ALLOWED_ENVIRONMENT.join(", ")
         ));
+        ui.add_space(14.0);
+        ui.label(
+            RichText::new("Application updates")
+                .strong()
+                .color(self.theme.palette().text),
+        );
+        ui.small("Optional release notices for apps published on GitHub. RiceWine never downloads or runs a publisher EXE without your explicit selection.");
+        ui.label("GitHub repository (owner/repo)");
+        ui.add(
+            egui::TextEdit::singleline(&mut self.update_repo_text)
+                .desired_width(350.0)
+                .hint_text("owner/repository (optional)"),
+        );
+        ui.label("Currently installed version (manual label)");
+        ui.add(
+            egui::TextEdit::singleline(&mut self.installed_version_text)
+                .desired_width(250.0)
+                .hint_text("e.g. v1.2.3"),
+        );
         let working = self.running.contains(&app.id)
             || self.compatibility_busy.contains(&app.id)
+            || self.storage_busy.contains(&app.id)
+            || self.backup_busy
             || self.busy;
         ui.horizontal(|ui| {
             if ui
@@ -1381,6 +1940,9 @@ impl RiceWineApp {
             {
                 let result = runtime::load_profile(&app.prefix).and_then(|mut profile| {
                     profile.runner = self.runner_draft.runner();
+                    profile.update_repository = (!self.update_repo_text.trim().is_empty())
+                        .then(|| self.update_repo_text.trim().to_owned());
+                    profile.installed_version = self.installed_version_text.trim().to_owned();
                     runtime::parse_launch_configuration(
                         &self.launch_args_text,
                         &self.launch_env_text,
@@ -1389,7 +1951,10 @@ impl RiceWineApp {
                     runtime::save_profile(&app.prefix, &profile)
                 });
                 match result {
-                    Ok(()) => self.notice = Some((false, format!("Runner saved for {}", app.name))),
+                    Ok(()) => {
+                        self.latest_app_releases.remove(&app.id);
+                        self.notice = Some((false, format!("Runner saved for {}", app.name)));
+                    }
                     Err(error) => self.notice = Some((true, error)),
                 }
             }
@@ -1397,6 +1962,46 @@ impl RiceWineApp {
                 self.sync_runner_draft();
             }
         });
+        ui.add_space(12.0);
+        ui.separator();
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .add_enabled(!working, egui::Button::new("Check saved GitHub release"))
+                .clicked()
+            {
+                self.check_app_release(&app);
+            }
+            if let Some(release) = self.latest_app_releases.get(&app.id) {
+                ui.label(format!("Latest: {}", release.tag));
+                if ui.button("Open release page").clicked()
+                    && let Err(error) = std::process::Command::new("xdg-open")
+                        .arg(&release.url)
+                        .spawn()
+                {
+                    self.notice = Some((true, format!("Opening release page failed: {error}")));
+                }
+            }
+        });
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(
+                    !working,
+                    egui::Button::new("Run update installer in this prefix…"),
+                )
+                .clicked()
+                && let Some(path) = rfd::FileDialog::new()
+                    .add_filter("Windows installer", &["exe", "msi"])
+                    .pick_file()
+            {
+                self.update_install_confirmation = Some((app.id.clone(), path));
+            }
+            if let Some(control) = self.update_controls.get(&app.id)
+                && ui.button("Cancel running update").clicked()
+            {
+                control.cancel();
+            }
+        });
+        ui.small("A publisher update can overwrite installed app files. Back up the prefix first. Successful setup does not prove the app version changed.");
         ui.add_space(12.0);
         ui.separator();
         ui.label(
@@ -1747,6 +2352,97 @@ impl RiceWineApp {
             });
         });
     }
+
+    fn process_dialogs(&mut self, ctx: &egui::Context) {
+        if let Some(path) = self.ge_remove_confirmation.clone() {
+            egui::Window::new("Remove managed GE-Proton runner?")
+                .collapsible(false).resizable(false).show(ctx, |ui| {
+                    ui.label(core::readable_path(&path));
+                    ui.label("Only this RiceWine-downloaded runner will be deleted permanently. Prefixes stay intact, but removed runner files cannot be restored automatically.");
+                    ui.horizontal(|ui| {
+                        if ui.button("Keep runner").clicked() { self.ge_remove_confirmation = None; }
+                        if ui.add_enabled(!self.runner_in_use(&path), egui::Button::new("Delete managed runner")).clicked() {
+                            self.ge_remove_confirmation = None;
+                            self.remove_managed_runner_async(path);
+                        }
+                    });
+                });
+        }
+        if let Some((id, installer)) = self.update_install_confirmation.clone() {
+            egui::Window::new("Run Windows update installer?").collapsible(false).resizable(false).show(ctx, |ui| {
+                ui.label(core::readable_path(&installer));
+                ui.label("The installer runs with the existing application's runner and prefix. Back up the prefix first; only install updates from trusted publishers.");
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() { self.update_install_confirmation = None; }
+                    if ui.button("Run update now").clicked() {
+                        self.update_install_confirmation = None;
+                        if let Some(app) = self.store.as_ref().and_then(|store| store.get(&id)).cloned() {
+                            self.update_app_async(app, installer);
+                        }
+                    }
+                });
+            });
+        }
+        if self.ge_install_confirmation {
+            egui::Window::new("Download GE-Proton?").collapsible(false).resizable(false).show(ctx, |ui| {
+                ui.label("The official release archive can be large. RiceWine verifies SHA512 before extraction and never overwrites an existing runner.");
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() { self.ge_install_confirmation = false; }
+                    if ui.button("Download and install").clicked() {
+                        self.ge_install_confirmation = false;
+                        if let Some(release) = self.ge_release.clone() { self.install_ge_async(release); }
+                    }
+                });
+            });
+        }
+        if let Some((id, preview)) = self.cleanup_preview.clone() {
+            egui::Window::new("Clean old temporary files?").collapsible(false).resizable(false).show(ctx, |ui| {
+                ui.label(format!("{} files / {} eligible (older than 7 days)", preview.files.len(), storage::human_size(preview.bytes)));
+                ui.label("Only regular files inside temporary folders of a RiceWine-owned prefix. No program files, prefixes, directories or links are removed.");
+                ui.horizontal(|ui| {
+                    if ui.button("Keep files").clicked() { self.cleanup_preview = None; }
+                    let app = self.store.as_ref().and_then(|store| store.get(&id)).cloned();
+                    if ui.add_enabled(!preview.files.is_empty() && app.is_some() && !self.running.contains(&id), egui::Button::new("Delete listed temp files")).clicked() {
+                        self.cleanup_preview = None;
+                        if let Some(app) = app { self.cleanup_async(app); }
+                    }
+                });
+            });
+        }
+        if self.cancel_install_confirmation {
+            egui::Window::new("Cancel installation?").collapsible(false).resizable(false).show(ctx, |ui| {
+                ui.label("Stop the installer and its process group. Partial Wine prefix data will be kept for recovery.");
+                ui.horizontal(|ui| {
+                    if ui.button("Keep installing").clicked() { self.cancel_install_confirmation = false; }
+                    if ui.button("Stop installer").clicked() {
+                        if let Some(control) = &self.install_control { control.cancel(); }
+                        self.cancel_install_confirmation = false;
+                        self.notice = Some((false, "Stopping installer…".into()));
+                    }
+                });
+            });
+        }
+        if let Some(id) = self.stop_confirmation.clone() {
+            egui::Window::new("Stop Windows program?")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label("Unsaved changes in the Windows program may be lost.");
+                    ui.horizontal(|ui| {
+                        if ui.button("Keep running").clicked() {
+                            self.stop_confirmation = None;
+                        }
+                        if ui.button("Stop program").clicked() {
+                            if let Some(control) = self.running_controls.get(&id) {
+                                control.cancel();
+                                self.notice = Some((false, "Stopping program…".into()));
+                            }
+                            self.stop_confirmation = None;
+                        }
+                    });
+                });
+        }
+    }
 }
 
 impl eframe::App for RiceWineApp {
@@ -1783,6 +2479,7 @@ impl eframe::App for RiceWineApp {
         self.install_dialog(ui.ctx());
         self.import_dialog(ui.ctx());
         self.remove_dialog(ui.ctx());
+        self.process_dialogs(ui.ctx());
     }
 }
 

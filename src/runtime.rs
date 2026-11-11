@@ -3,7 +3,8 @@
 //! The catalog is deliberately independent of this file: existing 0.1 libraries
 //! stay readable and a missing profile means system Wine.
 
-use crate::core::{self, Application, InstallMode, WineTools};
+use crate::core::{self, Application, InstallMode, OperationControl, WineTools};
+use crate::updates;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::env;
@@ -49,6 +50,10 @@ pub struct PrefixProfile {
     pub template: Template,
     pub launch_arguments: Vec<String>,
     pub launch_environment: BTreeMap<String, String>,
+    /// Optional GitHub repository (owner/repo) for opt-in release checks.
+    pub update_repository: Option<String>,
+    /// User-maintained version; Windows binaries have no portable version API.
+    pub installed_version: String,
 }
 
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -78,6 +83,8 @@ impl Default for PrefixProfile {
             template: Template::Standard,
             launch_arguments: Vec::new(),
             launch_environment: BTreeMap::new(),
+            update_repository: None,
+            installed_version: String::new(),
         }
     }
 }
@@ -141,6 +148,14 @@ pub fn validate_profile(profile: &PrefixProfile) -> Result<(), String> {
     }
     validate_runner(&profile.runner)?;
     validate_launch_options(profile)?;
+    if let Some(repository) = &profile.update_repository {
+        updates::parse_repository(repository)?;
+    }
+    if profile.installed_version.len() > 128
+        || profile.installed_version.chars().any(|c| c.is_control())
+    {
+        return Err("Installed version is too long or contains control characters".into());
+    }
     if profile.template == Template::Legacy32 && matches!(profile.runner, Runner::ProtonUmu { .. })
     {
         return Err("Legacy 32-bit prefixes require Wine, not Proton".into());
@@ -189,6 +204,71 @@ pub const ALLOWED_ENVIRONMENT: &[&str] = &[
     "MESA_GLTHREAD",
     "PULSE_LATENCY_MSEC",
 ];
+
+/// Launch presets only touch allowlisted environment overrides. They do not
+/// modify the prefix, reinstall components or overwrite launch arguments.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompatibilityPreset {
+    Default,
+    Quiet,
+    Esync,
+    Conservative,
+    Debug,
+}
+
+impl CompatibilityPreset {
+    pub const ALL: [Self; 5] = [
+        Self::Default,
+        Self::Quiet,
+        Self::Esync,
+        Self::Conservative,
+        Self::Debug,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Default => "Default (no overrides)",
+            Self::Quiet => "Quiet logs",
+            Self::Esync => "Esync (games)",
+            Self::Conservative => "Conservative (legacy apps)",
+            Self::Debug => "Debug crashes / DLL loading",
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            Self::Default => "Let Wine and the selected runner use their defaults.",
+            Self::Quiet => "Reduce Wine diagnostic spam; useful for normal applications.",
+            Self::Esync => {
+                "Request Esync and threaded Mesa rendering (depends on the installed driver)."
+            }
+            Self::Conservative => {
+                "Disable Esync and Fsync for programs that struggle with synchronization."
+            }
+            Self::Debug => {
+                "Enable detailed exception and DLL loading diagnostics; logs may grow quickly."
+            }
+        }
+    }
+
+    pub fn environment(self) -> BTreeMap<String, String> {
+        let entries: &[(&str, &str)] = match self {
+            Self::Default => &[],
+            Self::Quiet => &[("WINEDEBUG", "-all")],
+            Self::Esync => &[
+                ("WINEESYNC", "1"),
+                ("MESA_GLTHREAD", "true"),
+                ("WINEDEBUG", "-all"),
+            ],
+            Self::Conservative => &[("WINEESYNC", "0"), ("WINEFSYNC", "0")],
+            Self::Debug => &[("WINEDEBUG", "+seh,+loaddll")],
+        };
+        entries
+            .iter()
+            .map(|(key, value)| ((*key).into(), (*value).into()))
+            .collect()
+    }
+}
 
 pub fn validate_launch_options(profile: &PrefixProfile) -> Result<(), String> {
     if profile.launch_arguments.len() > 32
@@ -295,15 +375,39 @@ pub fn install_with_profile(
     file: &Path,
     mode: InstallMode,
 ) -> Result<Application, String> {
+    install_with_profile_control(
+        root,
+        system,
+        profile,
+        name,
+        file,
+        mode,
+        &OperationControl::default(),
+    )
+}
+
+pub fn install_with_profile_control(
+    root: &Path,
+    system: Option<&WineTools>,
+    profile: &PrefixProfile,
+    name: &str,
+    file: &Path,
+    mode: InstallMode,
+    control: &OperationControl,
+) -> Result<Application, String> {
+    if control.is_cancelled() {
+        return Err("Installation cancelled before creating a prefix".into());
+    }
     validate_profile(profile)?;
     let app = match &profile.runner {
-        Runner::SystemWine => core::install_with_arch(
+        Runner::SystemWine => core::install_with_arch_control(
             root,
             system.ok_or("System Wine is not installed")?,
             name,
             file,
             mode,
             profile.template == Template::Legacy32,
+            control,
         )?,
         Runner::CustomWine { wine } => {
             let custom = WineTools {
@@ -311,13 +415,14 @@ pub fn install_with_profile(
                 wineboot: wine.with_file_name("wineboot"),
                 version: "Custom Wine".into(),
             };
-            core::install_with_arch(
+            core::install_with_arch_control(
                 root,
                 &custom,
                 name,
                 file,
                 mode,
                 profile.template == Template::Legacy32,
+                control,
             )?
         }
         Runner::ProtonUmu { .. } => {
@@ -331,10 +436,11 @@ pub fn install_with_profile(
             let portable = matches!(mode, InstallMode::Portable);
             if !portable {
                 let mut command = runner_command(profile, system, &prefix, &file)?;
-                core::run_logged(
+                core::run_logged_controlled(
                     &mut command,
                     &root.join("logs").join(format!("{id}.log")),
                     None,
+                    control,
                 )
                 .map_err(|e| format!("Proton installation failed ({e}); prefix retained"))?;
             }
@@ -348,6 +454,12 @@ pub fn install_with_profile(
             }
         }
     };
+    if control.is_cancelled() {
+        return Err(format!(
+            "Installation cancelled; prefix retained at {}",
+            app.prefix.display()
+        ));
+    }
     save_profile(&app.prefix, profile)?;
     Ok(app)
 }
@@ -375,6 +487,11 @@ pub fn launch(
         .append(true)
         .open(root.join("logs").join(format!("{}.log", app.id)))
         .map_err(|e| e.to_string())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
     command
         .stdout(Stdio::from(log.try_clone().map_err(|e| e.to_string())?))
         .stderr(Stdio::from(log))
@@ -404,6 +521,32 @@ pub fn run_winetricks(
         &mut command,
         &root.join("logs").join(format!("{}.log", app.id)),
         None,
+    )
+}
+
+/// Run a publisher-provided update installer in the *existing* prefix.
+/// The catalog and prefix location are never replaced. Callers should first
+/// offer a backup, because a Windows installer can modify application files.
+pub fn run_update_installer(
+    root: &Path,
+    system: Option<&WineTools>,
+    app: &Application,
+    profile: &PrefixProfile,
+    installer: &Path,
+    control: &OperationControl,
+) -> Result<(), String> {
+    validate_profile(profile)?;
+    core::validate_installer(installer, false)?;
+    if !app.prefix.is_dir() {
+        return Err("Wine prefix is missing".into());
+    }
+    let installer = fs::canonicalize(installer).map_err(|e| e.to_string())?;
+    let mut command = runner_command(profile, system, &app.prefix, &installer)?;
+    core::run_logged_controlled(
+        &mut command,
+        &root.join("logs").join(format!("{}.log", app.id)),
+        None,
+        control,
     )
 }
 

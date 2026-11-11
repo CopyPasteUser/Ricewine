@@ -4,9 +4,12 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -14,6 +17,20 @@ const SCHEMA: u32 = 1;
 const MAX_CATALOG_SIZE: u64 = 4 * 1024 * 1024;
 const MAX_APPS: usize = 10_000;
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+
+/// Cooperative cancellation shared between the UI and a Wine worker.
+#[derive(Clone, Default)]
+pub struct OperationControl(Arc<AtomicBool>);
+
+impl OperationControl {
+    pub fn cancel(&self) {
+        self.0.store(true, Ordering::Release);
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Application {
@@ -286,6 +303,29 @@ pub fn install_with_arch(
     mode: InstallMode,
     win32: bool,
 ) -> Result<Application, String> {
+    install_with_arch_control(
+        root,
+        wine,
+        name,
+        file,
+        mode,
+        win32,
+        &OperationControl::default(),
+    )
+}
+
+pub fn install_with_arch_control(
+    root: &Path,
+    wine: &WineTools,
+    name: &str,
+    file: &Path,
+    mode: InstallMode,
+    win32: bool,
+    control: &OperationControl,
+) -> Result<Application, String> {
+    if control.is_cancelled() {
+        return Err("Installation cancelled before creating a prefix".into());
+    }
     validate_name(name)?;
     validate_installer(file, matches!(mode, InstallMode::Portable))?;
     let file = fs::canonicalize(file).map_err(|e| e.to_string())?;
@@ -300,17 +340,19 @@ pub fn install_with_arch(
     if win32 {
         boot.env("WINEARCH", "win32");
     }
-    run_logged(&mut boot, &log, Some(Duration::from_secs(120))).map_err(|e| {
-        format!(
-            "Wine prefix setup failed ({e}); retained at {}",
-            prefix.display()
-        )
-    })?;
+    run_logged_controlled(&mut boot, &log, Some(Duration::from_secs(120)), control).map_err(
+        |e| {
+            format!(
+                "Wine prefix setup failed ({e}); retained at {}",
+                prefix.display()
+            )
+        },
+    )?;
 
     let portable = matches!(mode, InstallMode::Portable);
     if !portable {
         let mut command = install_command(wine, &prefix, &file);
-        run_logged(&mut command, &log, None).map_err(|e| {
+        run_logged_controlled(&mut command, &log, None, control).map_err(|e| {
             format!(
                 "Installer failed ({e}); prefix retained at {}",
                 prefix.display()
@@ -498,6 +540,18 @@ pub(crate) fn run_logged(
     log_path: &Path,
     timeout: Option<Duration>,
 ) -> Result<(), String> {
+    run_logged_controlled(command, log_path, timeout, &OperationControl::default())
+}
+
+pub(crate) fn run_logged_controlled(
+    command: &mut Command,
+    log_path: &Path,
+    timeout: Option<Duration>,
+    control: &OperationControl,
+) -> Result<(), String> {
+    if control.is_cancelled() {
+        return Err("Operation cancelled".into());
+    }
     let log = OpenOptions::new()
         .create(true)
         .append(true)
@@ -506,28 +560,48 @@ pub(crate) fn run_logged(
     command
         .stdout(Stdio::from(log.try_clone().map_err(|e| e.to_string())?))
         .stderr(Stdio::from(log));
+    #[cfg(unix)]
+    command.process_group(0);
     let mut child = command.spawn().map_err(|e| e.to_string())?;
-    let status = if let Some(timeout) = timeout {
-        let start = std::time::Instant::now();
-        loop {
-            match child.try_wait().map_err(|e| e.to_string())? {
-                Some(status) => break status,
-                None if start.elapsed() < timeout => thread::sleep(Duration::from_millis(100)),
-                None => {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    return Err(format!("timed out after {} seconds", timeout.as_secs()));
-                }
-            }
+    let start = std::time::Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            break status;
         }
-    } else {
-        child.wait().map_err(|e| e.to_string())?
+        if control.is_cancelled() || timeout.is_some_and(|limit| start.elapsed() >= limit) {
+            let cancelled = control.is_cancelled();
+            terminate_child(&mut child);
+            let _ = child.wait();
+            return Err(if cancelled {
+                "Operation cancelled; any partially created prefix was preserved".into()
+            } else {
+                format!("timed out after {} seconds", timeout.unwrap().as_secs())
+            });
+        }
+        thread::sleep(Duration::from_millis(100));
     };
     if status.success() {
         Ok(())
     } else {
         Err(format!("exit status {status}; see {}", log_path.display()))
     }
+}
+
+/// Best effort: terminate the process group created for this worker, then its
+/// launcher. This never signals a prefix-wide wineserver or unrelated app.
+pub fn terminate_child(child: &mut Child) {
+    #[cfg(unix)]
+    {
+        let kill = if Path::new("/bin/kill").is_file() {
+            "/bin/kill"
+        } else {
+            "/usr/bin/kill"
+        };
+        let _ = Command::new(kill)
+            .args(["-TERM", "--", &format!("-{}", child.id())])
+            .status();
+    }
+    let _ = child.kill();
 }
 
 /// Display-only path, never passed to a shell.

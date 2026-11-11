@@ -41,7 +41,7 @@ sleep 3
 
 # Dismiss the expected 'Wine not found' status notice in the isolated runner.
 # The screenshot remains a genuine app render; no fake programs are created.
-xdotool mousemove 940 224 click 1
+xdotool mousemove 730 245 click 1
 sleep 1
 
 capture() {
@@ -52,12 +52,12 @@ capture() {
 }
 
 capture luna-library
-xdotool mousemove 104 396 click 1
+xdotool mousemove 104 442 click 1
 sleep 1.5
 capture luna-prefixes
-xdotool mousemove 104 446 click 1
+xdotool mousemove 104 490 click 1
 sleep 1.5
 capture luna-runners
-xdotool mousemove 104 491 click 1
+xdotool mousemove 104 537 click 1
 sleep 1.5
 capture luna-settings

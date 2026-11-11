@@ -11,6 +11,11 @@ on:
       - src/luna_icons.rs
   workflow_dispatch:
 
+# Do not publish an older page capture after a newer visual commit.
+concurrency:
+  group: ricewine-luna-capture-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

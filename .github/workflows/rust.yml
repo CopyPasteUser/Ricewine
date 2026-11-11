@@ -4,8 +4,20 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/rust.yml"
   pull_request:
   workflow_dispatch:
+
+# Keep only the latest source check per branch.
+concurrency:
+  group: ricewine-rust-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

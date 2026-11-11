@@ -253,12 +253,14 @@ pub fn option_group(
         paint_icon(ui.painter(), rect.min, icon, 18.0);
         ui.label(RichText::new(title).size(13.0).strong().color(NAV_BLUE));
     });
+    // Keep a consistent fieldset width without overflowing its 12px margins.
+    let inner_width = (ui.available_width() - 24.0).max(0.0);
     egui::Frame::new()
         .stroke(Stroke::new(1.0, Color32::from_rgb(166, 179, 199)))
         .fill(Color32::from_rgb(255, 255, 254))
         .inner_margin(egui::Margin::same(12))
         .show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
+            ui.set_min_width(inner_width);
             add(ui);
         });
     ui.add_space(12.0);

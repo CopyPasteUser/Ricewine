@@ -17,13 +17,15 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 
 ## Built-in Rices
 
-| Rice | Look |
-| --- | --- |
-| Windows 10 Light | Clean white and blue |
-| Windows 10 Dark | Charcoal and bright blue |
-| XP Luna Blue | Classic blue with warm surfaces |
-| XP Luna Olive | Olive green and cream |
-| XP Luna Silver | Cool silver and lavender-blue |
+Real screenshots of RiceWine running with its five built-in looks:
+
+| Windows 10 Light | Windows 10 Dark |
+| :---: | :---: |
+| ![RiceWine with Windows 10 Light](docs/screenshots/windows10-light.webp) | ![RiceWine with Windows 10 Dark](docs/screenshots/windows10-dark.webp) |
+| **XP Luna Blue** | **XP Luna Olive** |
+| ![RiceWine with XP Luna Blue](docs/screenshots/xp-luna-blue.webp) | ![RiceWine with XP Luna Olive](docs/screenshots/xp-luna-olive.webp) |
+| **XP Luna Silver** | |
+| ![RiceWine with XP Luna Silver](docs/screenshots/xp-luna-silver.webp) | |
 
 Switch instantly using the sidebar or the previews in **Settings**. Your choice is saved across restarts. Manually selecting a Rice disables optional RiceBowl theme following; switching does not change your desktop or Wine configuration.
 

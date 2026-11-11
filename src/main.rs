@@ -1224,29 +1224,26 @@ impl RiceWineApp {
                 luna::task_panel(ui, |ui| {
                     luna::task_header(ui, "Programs");
                     ui.add_space(7.0);
-                    if ui
-                        .add_sized(
-                            [ui.available_width() - 12.0, 35.0],
-                            egui::Button::selectable(self.page == Page::Library, "▣  Library"),
-                        )
-                        .clicked()
-                    {
+                    if luna::task_link(ui, "Library", self.page == Page::Library).clicked() {
                         self.page = Page::Library;
                     }
                     if ui
-                        .add_enabled(
-                            !self.busy && self.store.is_some(),
-                            egui::Button::new(
-                                RichText::new("＋ Install program")
-                                    .color(Color32::from_rgb(22, 67, 154))
-                                    .strong(),
-                            )
-                            .fill(Color32::from_rgb(230, 239, 255))
-                            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(131, 165, 222))),
-                        )
+                        .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
+                            luna::task_link(ui, "Install a program", false)
+                        })
+                        .inner
                         .clicked()
                     {
                         self.install = Some(InstallDraft::default());
+                    }
+                    if ui
+                        .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
+                            luna::task_link(ui, "Import a Wine prefix", false)
+                        })
+                        .inner
+                        .clicked()
+                    {
+                        self.import = Some(ImportDraft::default());
                     }
                     ui.add_space(7.0);
                 });
@@ -1255,13 +1252,7 @@ impl RiceWineApp {
                     luna::task_header(ui, "Wine Environments");
                     ui.add_space(7.0);
                     for page in [Page::Prefixes, Page::Runners, Page::Settings] {
-                        if ui
-                            .add_sized(
-                                [ui.available_width() - 12.0, 34.0],
-                                egui::Button::selectable(self.page == page, page.label()),
-                            )
-                            .clicked()
-                        {
+                        if luna::task_link(ui, page.label(), self.page == page).clicked() {
                             self.page = page;
                         }
                     }
@@ -1394,23 +1385,25 @@ impl RiceWineApp {
                 ui.heading("Library");
                 ui.add_space(20.0);
             }
-            if ui
-                .add_enabled(
-                    !self.busy && self.store.is_some(),
-                    egui::Button::new("＋ Install program"),
-                )
-                .clicked()
-            {
-                self.install = Some(InstallDraft::default());
-            }
-            if ui
-                .add_enabled(
-                    !self.busy && self.store.is_some(),
-                    egui::Button::new("Import existing prefix…"),
-                )
-                .clicked()
-            {
-                self.import = Some(ImportDraft::default());
+            if self.theme != Theme::Luna {
+                if ui
+                    .add_enabled(
+                        !self.busy && self.store.is_some(),
+                        egui::Button::new("＋ Install program"),
+                    )
+                    .clicked()
+                {
+                    self.install = Some(InstallDraft::default());
+                }
+                if ui
+                    .add_enabled(
+                        !self.busy && self.store.is_some(),
+                        egui::Button::new("Import existing prefix…"),
+                    )
+                    .clicked()
+                {
+                    self.import = Some(ImportDraft::default());
+                }
             }
             if self.busy {
                 ui.spinner();
@@ -1445,15 +1438,7 @@ impl RiceWineApp {
         {
             if self.theme == Theme::Luna {
                 ui.add_space(15.0);
-                match luna::empty_library(ui, !self.busy && self.store.is_some()) {
-                    luna::EmptyLibraryAction::Install => {
-                        self.install = Some(InstallDraft::default());
-                    }
-                    luna::EmptyLibraryAction::Import => {
-                        self.import = Some(ImportDraft::default());
-                    }
-                    luna::EmptyLibraryAction::None => {}
-                }
+                luna::empty_library(ui);
             } else {
                 ui.add_space(45.0);
                 ui.heading("Your library is empty");

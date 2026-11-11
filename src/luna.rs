@@ -121,12 +121,34 @@ pub fn task_header(ui: &mut egui::Ui, heading: &str) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 34.0), Sense::hover());
     let painter = ui.painter_at(rect);
     gradient(&painter, rect, Color32::from_rgb(55, 117, 219), NAV_BLUE);
+    painter.line_segment(
+        [
+            rect.left_top() + egui::vec2(2.0, 2.0),
+            rect.right_top() - egui::vec2(2.0, -2.0),
+        ],
+        Stroke::new(1.0, Color32::from_rgb(139, 185, 255)),
+    );
     painter.text(
         rect.left_center() + egui::vec2(11.0, 0.0),
         Align2::LEFT_CENTER,
         heading,
         FontId::proportional(13.0),
         Color32::WHITE,
+    );
+    let chevron = rect.right_center() - egui::vec2(16.0, 0.0);
+    painter.circle_filled(chevron, 9.0, Color32::from_rgb(218, 232, 255));
+    painter.circle_stroke(
+        chevron,
+        9.0,
+        Stroke::new(1.0, Color32::from_rgb(118, 159, 228)),
+    );
+    painter.line_segment(
+        [chevron + egui::vec2(-3.0, 1.0), chevron + egui::vec2(0.0, -2.0)],
+        Stroke::new(1.5, NAV_BLUE),
+    );
+    painter.line_segment(
+        [chevron + egui::vec2(0.0, -2.0), chevron + egui::vec2(3.0, 1.0)],
+        Stroke::new(1.5, NAV_BLUE),
     );
 }
 
@@ -145,6 +167,23 @@ pub fn brand(ui: &mut egui::Ui) {
     ui.add_space(3.0);
     ui.label(RichText::new("Tasks").size(12.0).strong().color(NAV_BLUE));
     ui.add_space(7.0);
+}
+
+/// XP Explorer task links are compact blue text, not modern filled navigation
+/// buttons. Retaining egui::Button preserves focus and keyboard activation.
+pub fn task_link(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
+    let text = RichText::new(format!("  ›   {label}"))
+        .size(12.0)
+        .color(if selected {
+            Color32::from_rgb(22, 54, 117)
+        } else {
+            NAV_BLUE
+        });
+    let text = if selected { text.strong() } else { text };
+    ui.add_sized(
+        [ui.available_width() - 12.0, 27.0],
+        egui::Button::new(text).frame(false),
+    )
 }
 
 pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
@@ -193,10 +232,9 @@ pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
     );
 }
 
-/// Draws an Explorer-style program list even before the first installation.
-/// The empty state exposes the real install/import actions, never sample data.
-pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> EmptyLibraryAction {
-    let mut action = EmptyLibraryAction::None;
+/// Explorer details pane empty state. The actionable install/import links live
+/// in the task pane and File menu; the list itself stays visually quiet.
+pub fn empty_library(ui: &mut egui::Ui) {
     egui::Frame::new()
         .fill(Color32::WHITE)
         .stroke(Stroke::new(1.0, Color32::from_rgb(146, 164, 183)))
@@ -204,59 +242,24 @@ pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> EmptyLibraryAction {
             ui.set_min_width(ui.available_width());
             ui.set_min_height(ui.available_height().max(310.0));
             program_list_header(ui);
-            ui.add_space(70.0);
-            ui.vertical_centered(|ui| {
-                folder_illustration(ui);
-                ui.add_space(12.0);
-                ui.label(
-                    RichText::new("Your library is ready")
-                        .size(21.0)
-                        .strong()
-                        .color(NAV_BLUE),
-                );
-                ui.add_space(3.0);
-                ui.label(
-                    RichText::new("Install your first Windows app to see it here.")
-                        .size(13.0)
-                        .color(Color32::from_rgb(74, 82, 101)),
-                );
-                ui.add_space(19.0);
-                if ui
-                    .add_enabled(
-                        enabled,
-                        egui::Button::new(
-                            RichText::new("＋  Install a program")
-                                .color(Color32::WHITE)
-                                .strong(),
-                        )
-                        .fill(Color32::from_rgb(64, 148, 41))
-                        .stroke(Stroke::new(1.0, Color32::from_rgb(36, 104, 25)))
-                        .min_size(egui::vec2(200.0, 35.0)),
-                    )
-                    .clicked()
-                {
-                    action = EmptyLibraryAction::Install;
-                }
-                ui.add_space(4.0);
-                if ui
-                    .add_enabled(
-                        enabled,
-                        egui::Button::new("Import an existing Wine prefix…"),
-                    )
-                    .clicked()
-                {
-                    action = EmptyLibraryAction::Import;
-                }
+            ui.add_space(18.0);
+            ui.horizontal(|ui| {
+                ui.add_space(14.0);
+                ui.vertical(|ui| {
+                    ui.label(
+                        RichText::new("There are no Windows programs to display.")
+                            .size(12.0)
+                            .color(Color32::from_rgb(52, 64, 84)),
+                    );
+                    ui.add_space(3.0);
+                    ui.label(
+                        RichText::new("To get started, choose Install a program in the Tasks pane.")
+                            .size(11.0)
+                            .color(Color32::from_rgb(85, 97, 117)),
+                    );
+                });
             });
         });
-    action
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum EmptyLibraryAction {
-    None,
-    Install,
-    Import,
 }
 
 pub fn program_list_header(ui: &mut egui::Ui) {
@@ -284,38 +287,6 @@ pub fn program_list_header(ui: &mut egui::Ui) {
             Color32::from_rgb(50, 61, 82),
         );
     }
-}
-
-fn folder_illustration(ui: &mut egui::Ui) {
-    let available = ui.available_width();
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(available, 64.0), Sense::hover());
-    let center = rect.center();
-    let painter = ui.painter_at(rect);
-    let tab = Rect::from_min_size(center + egui::vec2(-30.0, -23.0), egui::vec2(29.0, 13.0));
-    painter.rect_filled(
-        tab,
-        egui::CornerRadius::same(4),
-        Color32::from_rgb(240, 176, 44),
-    );
-    let folder = Rect::from_min_size(center + egui::vec2(-33.0, -14.0), egui::vec2(67.0, 45.0));
-    painter.rect_filled(
-        folder,
-        egui::CornerRadius::same(5),
-        Color32::from_rgb(255, 206, 78),
-    );
-    painter.rect_stroke(
-        folder,
-        egui::CornerRadius::same(5),
-        Stroke::new(2.0, Color32::from_rgb(185, 129, 30)),
-        egui::StrokeKind::Inside,
-    );
-    painter.line_segment(
-        [
-            folder.left_top() + egui::vec2(5.0, 8.0),
-            folder.right_top() + egui::vec2(-5.0, 8.0),
-        ],
-        Stroke::new(2.0, Color32::from_rgb(255, 242, 178)),
-    );
 }
 
 /// An XP-style status strip, part of the application surface.

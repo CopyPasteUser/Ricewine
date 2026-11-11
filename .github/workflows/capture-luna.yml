@@ -8,6 +8,12 @@ on:
       - scripts/capture-luna.sh
       - src/main.rs
       - src/luna.rs
+  pull_request:
+    paths:
+      - .github/workflows/capture-luna.yml
+      - scripts/capture-luna.sh
+      - src/main.rs
+      - src/luna.rs
   workflow_dispatch:
 
 permissions:
@@ -28,7 +34,15 @@ jobs:
         run: cargo build --release --locked
       - name: Capture real desktop frames
         run: xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh
+      - name: Upload screenshot preview for review
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: luna-blue-ui-preview
+          path: docs/screenshots/luna-*.webp
+          retention-days: 14
       - name: Publish screenshots
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

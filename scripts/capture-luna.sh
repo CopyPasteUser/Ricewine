@@ -39,9 +39,9 @@ xdotool windowmove "$window_id" 0 0
 xdotool windowsize "$window_id" 1080 700
 sleep 3
 
-# Dismiss the expected 'Wine not found' diagnostic in the isolated runner.
-# The screenshot remains a genuine app render; no test programs are fabricated.
-xdotool mousemove 650 200 click 1
+# Dismiss the expected 'Wine not found' status notice in the isolated runner.
+# The screenshot remains a genuine app render; no fake programs are created.
+xdotool mousemove 730 245 click 1
 sleep 1
 
 capture() {
@@ -52,12 +52,12 @@ capture() {
 }
 
 capture luna-library
-xdotool mousemove 104 418 click 1
+xdotool mousemove 104 442 click 1
 sleep 1.5
 capture luna-prefixes
-xdotool mousemove 104 457 click 1
+xdotool mousemove 104 490 click 1
 sleep 1.5
 capture luna-runners
-xdotool mousemove 104 504 click 1
+xdotool mousemove 104 537 click 1
 sleep 1.5
 capture luna-settings

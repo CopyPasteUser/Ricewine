@@ -4,7 +4,7 @@
 
 RiceWine helps you install and run Windows applications and games with isolated Wine prefixes. It works independently of RiceBowl and is designed to fit both Windows 10 and XP Luna desktop themes.
 
-> **0.9 alpha** — native Linux Wine/Proton manager with safe installation, snapshots, XDG shortcuts, optional file opening and RiceBowl-aware appearance.
+> **1.0 release candidate** — the core software feature set is implemented, but real Wine/Proton and desktop acceptance is required before a stable 1.0 tag.
 
 ## Features in 0.1
 
@@ -60,6 +60,14 @@ cd Ricewine
 cargo run --release
 ```
 
+For a per-user installation without root privileges:
+
+```bash
+sh scripts/install-user.sh
+```
+
+This builds with a locked Rust dependency set, installs to `~/.local/bin/ricewine` and creates a RiceWine start-menu entry. If a RiceWine binary already exists, the script first saves a uniquely named backup beside it. This installer does not change Wine prefixes or desktop MIME defaults. CI also builds an x86_64 release binary as a downloadable workflow artifact; system libraries such as OpenGL/X11/Wayland must be available on the target machine.
+
 Choose **Install program** and select an `.exe` or `.msi` installer. After Windows setup completes, use **Choose launch EXE** to select the installed program's executable inside the new prefix. For standalone/portable applications, enable **Portable EXE** instead.
 
 Data is stored under `${XDG_DATA_HOME:-~/.local/share}/ricewine/` (normally `~/.local/share/ricewine/`):
@@ -84,10 +92,10 @@ Existing Wine prefixes are not modified or imported. Removing a library entry in
 | 0.3 | Per-program Wine and Proton/umu runner selection, Winetricks, DXVK/VKD3D via installed Winetricks, diagnostics |
 | **0.6** | Templates, prefix import, desktop shortcuts, bounded logs and backup/restore |
 | **0.9** | Persistent XP/Win10 appearance, read-only RiceBowl theme detection, opt-in Open With and XDG integration |
-| 1.0 | Reproducible installs, restore validation, Linux desktop acceptance, accessibility, packaging |
+| **1.0 RC** | Validated catalog and private data directories, backup/restore tests, per-user install, CI binary artifact and acceptance checklist |
 | 2.0 | Target: mature library management, safe upgrade/migration flows, predictable Wine/Proton lifecycle and release-quality UX |
 
-0.9 is implemented but Linux desktop acceptance is outstanding. The 1.0 and 2.0 milestones still require verification and work.
+The software and packaging portions of 1.0 are implemented; **real desktop acceptance is pending**. See [ACCEPTANCE.md](ACCEPTANCE.md) for test cases. Do not claim stable 1.0 or full 2.0 compatibility on the basis of CI alone.
 
 ## Development
 

@@ -91,6 +91,44 @@ fn invalid_catalog_is_not_overwritten() {
 }
 
 #[test]
+fn oversized_and_duplicate_catalogs_are_rejected_without_changes() {
+    let tmp = TempDir::new();
+    let root = tmp.0.join("data");
+    fs::create_dir(&root).unwrap();
+    let catalog = root.join("applications.json");
+    let too_large = vec![b'0'; 4 * 1024 * 1024 + 1];
+    fs::write(&catalog, &too_large).unwrap();
+    assert!(Store::open_at(root.clone()).is_err());
+    assert_eq!(
+        fs::metadata(&catalog).unwrap().len(),
+        too_large.len() as u64
+    );
+
+    let application = serde_json::json!({
+        "id": "duplicate-1", "name": "Example", "prefix": "/tmp/prefix",
+        "executable": null, "installer": null, "portable": false
+    });
+    let payload =
+        serde_json::json!({"schema": 1, "applications": [application.clone(), application]});
+    fs::write(&catalog, serde_json::to_vec(&payload).unwrap()).unwrap();
+    assert!(Store::open_at(root).is_err());
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&fs::read(catalog).unwrap()).unwrap(),
+        payload
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn new_private_data_root_and_prefix_are_not_world_readable() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = TempDir::new();
+    let store = Store::open_at(tmp.0.join("private-data")).unwrap();
+    let mode = fs::metadata(store.root()).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o700);
+}
+
+#[test]
 fn validation_rejects_invalid_files_and_names() {
     let tmp = TempDir::new();
     let exe = tmp.0.join("game.ExE");

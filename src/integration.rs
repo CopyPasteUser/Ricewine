@@ -2,7 +2,7 @@
 
 use crate::core::{self, Application};
 use std::env;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -62,21 +62,24 @@ pub fn desktop_entry(app: &Application, ricewine_exe: &Path) -> Result<String, S
 }
 
 pub fn install_shortcut(app: &Application, ricewine_exe: &Path) -> Result<PathBuf, String> {
+    write_desktop_file(
+        &shortcut_file_name(&app.id)?,
+        &desktop_entry(app, ricewine_exe)?,
+    )
+}
+
+fn write_desktop_file(name: &str, content: &str) -> Result<PathBuf, String> {
     let directory = application_directory()?;
     fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-    let target = directory.join(shortcut_file_name(&app.id)?);
+    let target = directory.join(name);
     let stage = directory.join(format!(
         ".ricewine-{}-{}-{}.tmp",
-        app.id,
+        name,
         std::process::id(),
         NEXT_STAGE.fetch_add(1, Ordering::Relaxed)
     ));
-    let content = desktop_entry(app, ricewine_exe)?;
     let result = (|| -> std::io::Result<()> {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&stage)?;
+        let mut file = File::create_new(&stage)?;
         file.write_all(content.as_bytes())?;
         file.sync_all()?;
         fs::rename(&stage, &target)?;
@@ -84,7 +87,7 @@ pub fn install_shortcut(app: &Application, ricewine_exe: &Path) -> Result<PathBu
     })();
     if let Err(error) = result {
         let _ = fs::remove_file(&stage);
-        return Err(format!("Could not create application shortcut: {error}"));
+        return Err(format!("Could not create desktop entry: {error}"));
     }
     Ok(target)
 }
@@ -103,31 +106,29 @@ pub fn open_with_entry(ricewine_exe: &Path) -> Result<String, String> {
 
 pub fn install_open_with(ricewine_exe: &Path) -> Result<PathBuf, String> {
     let content = open_with_entry(ricewine_exe)?;
-    let directory = application_directory()?;
-    fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-    let target = directory.join("ricewine-open-with.desktop");
-    let stage = directory.join(format!(
-        ".ricewine-open-with-{}-{}.tmp",
-        std::process::id(),
-        NEXT_STAGE.fetch_add(1, Ordering::Relaxed)
-    ));
-    let result = (|| -> std::io::Result<()> {
-        let mut file = File::create_new(&stage)?;
-        file.write_all(content.as_bytes())?;
-        file.sync_all()?;
-        fs::rename(&stage, &target)?;
-        Ok(())
-    })();
-    if let Err(error) = result {
-        let _ = fs::remove_file(stage);
-        return Err(format!("Creating Open With handler failed: {error}"));
-    }
+    let target = write_desktop_file("ricewine-open-with.desktop", &content)?;
     // The MIME cache is optional; desktop environments can also discover
     // application entries on their next refresh.
     if let Some(updater) = crate::runtime::executable_on_path("update-desktop-database") {
-        let _ = std::process::Command::new(updater).arg(directory).status();
+        let _ = std::process::Command::new(updater)
+            .arg(application_directory()?)
+            .status();
     }
     Ok(target)
+}
+
+pub fn main_menu_entry(ricewine_exe: &Path) -> Result<String, String> {
+    if !ricewine_exe.is_absolute() {
+        return Err("RiceWine executable must have an absolute path".into());
+    }
+    Ok(format!(
+        "[Desktop Entry]\nType=Application\nVersion=1.0\nName=RiceWine\nComment=Manage Windows applications on Linux\nExec={}\nTerminal=false\nStartupNotify=true\nCategories=Utility;Game;\nIcon=wine\nX-RiceWine-Launcher=true\n",
+        escape_exec(ricewine_exe)
+    ))
+}
+
+pub fn install_main_menu(ricewine_exe: &Path) -> Result<PathBuf, String> {
+    write_desktop_file("ricewine.desktop", &main_menu_entry(ricewine_exe)?)
 }
 
 /// Only remove shortcuts carrying our matching custom ID, never an unrelated file.

@@ -1211,6 +1211,10 @@ fn main() -> eframe::Result {
                 println!("RiceWine {}", env!("CARGO_PKG_VERSION"));
                 Ok(())
             }
+            [flag] if flag == "--register-menu" => std::env::current_exe()
+                .map_err(|e| e.to_string())
+                .and_then(|path| integration::install_main_menu(&path))
+                .map(|path| println!("Application menu entry created: {}", path.display())),
             [flag, id] if flag == "--launch" => {
                 core::Store::load_for_launch(id).and_then(|(root, app)| {
                     let profile = runtime::load_profile(&app.prefix)?;

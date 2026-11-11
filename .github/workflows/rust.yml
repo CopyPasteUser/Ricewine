@@ -19,4 +19,13 @@ jobs:
         run: cargo test --all-targets
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
+      - name: Release binary
+        run: cargo build --release --locked
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ricewine-linux-x86_64
+          path: target/release/ricewine
+          retention-days: 14
+          if-no-files-found: error
 

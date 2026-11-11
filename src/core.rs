@@ -11,6 +11,8 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const SCHEMA: u32 = 1;
+const MAX_CATALOG_SIZE: u64 = 4 * 1024 * 1024;
+const MAX_APPS: usize = 10_000;
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -58,8 +60,12 @@ impl Store {
     }
 
     pub fn open_at(root: PathBuf) -> Result<Self, String> {
+        let existed = root.exists();
         fs::create_dir_all(root.join("prefixes")).map_err(|e| e.to_string())?;
         fs::create_dir_all(root.join("logs")).map_err(|e| e.to_string())?;
+        if !existed {
+            private_permissions(&root)?;
+        }
         let lock = OpenOptions::new()
             .create(true)
             .read(true)
@@ -71,6 +77,12 @@ impl Store {
             .map_err(|e| format!("Another RiceWine instance may be using this library: {e}"))?;
         let path = root.join("applications.json");
         let catalog: Catalog = if path.exists() {
+            if fs::metadata(&path).map_err(|e| e.to_string())?.len() > MAX_CATALOG_SIZE {
+                return Err(format!(
+                    "Catalog {} is larger than the 4 MiB limit; no data changed",
+                    path.display()
+                ));
+            }
             let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             serde_json::from_slice(&bytes)
                 .map_err(|e| format!("Invalid catalog {}: {e}", path.display()))?
@@ -83,6 +95,7 @@ impl Store {
                 catalog.schema
             ));
         }
+        validate_catalog(&catalog)?;
         Ok(Self {
             root,
             catalog,
@@ -95,6 +108,9 @@ impl Store {
     pub fn load_for_launch(id: &str) -> Result<(PathBuf, Application), String> {
         let root = data_directory()?;
         let path = root.join("applications.json");
+        if fs::metadata(&path).map_err(|e| e.to_string())?.len() > MAX_CATALOG_SIZE {
+            return Err("Application catalog exceeds the 4 MiB safety limit".into());
+        }
         let content = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let catalog: Catalog = serde_json::from_slice(&content)
             .map_err(|e| format!("Invalid application catalog: {e}"))?;
@@ -104,6 +120,7 @@ impl Store {
                 catalog.schema
             ));
         }
+        validate_catalog(&catalog)?;
         catalog
             .applications
             .into_iter()
@@ -125,6 +142,11 @@ impl Store {
     }
 
     pub fn add(&mut self, app: Application) -> Result<(), String> {
+        validate_name(&app.name)?;
+        validate_id(&app.id)?;
+        if self.catalog.applications.len() >= MAX_APPS {
+            return Err("Library has reached its application limit".into());
+        }
         if self.get(&app.id).is_some() {
             return Err("Application ID already exists".into());
         }
@@ -157,6 +179,7 @@ impl Store {
     }
 
     fn commit(&mut self, next: Catalog) -> Result<(), String> {
+        validate_catalog(&next)?;
         let path = self.root.join("applications.json");
         let tmp = self
             .root
@@ -165,6 +188,9 @@ impl Store {
             let mut file = OpenOptions::new().write(true).create_new(true).open(&tmp)?;
             serde_json::to_writer_pretty(&mut file, &next).map_err(io::Error::other)?;
             file.write_all(b"\n")?;
+            if file.metadata()?.len() > MAX_CATALOG_SIZE {
+                return Err(io::Error::other("Catalog exceeds the 4 MiB safety limit"));
+            }
             file.sync_all()?;
             fs::rename(&tmp, &path)?;
             Ok(())
@@ -236,6 +262,7 @@ pub fn install_with_arch(
     let id = new_id(name);
     let prefix = root.join("prefixes").join(&id);
     fs::create_dir(&prefix).map_err(|e| format!("Could not create prefix: {e}"))?;
+    private_permissions(&prefix)?;
     let log = root.join("logs").join(format!("{id}.log"));
 
     let mut boot = Command::new(&wine.wineboot);
@@ -312,6 +339,39 @@ pub fn validate_name(name: &str) -> Result<(), String> {
     let trimmed = name.trim();
     if trimmed.is_empty() || trimmed.chars().count() > 80 || trimmed.chars().any(char::is_control) {
         return Err("Enter a name between 1 and 80 characters".into());
+    }
+    Ok(())
+}
+
+pub fn validate_id(id: &str) -> Result<(), String> {
+    if id.is_empty() || id.len() > 128 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+    {
+        return Err("Invalid application ID".into());
+    }
+    Ok(())
+}
+
+fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
+    if catalog.applications.len() > MAX_APPS {
+        return Err("Application catalog contains too many entries".into());
+    }
+    let mut seen = std::collections::HashSet::new();
+    for app in &catalog.applications {
+        validate_id(&app.id)?;
+        validate_name(&app.name)?;
+        if !seen.insert(&app.id) {
+            return Err(format!("Duplicate application ID: {}", app.id));
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn private_permissions(path: &Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+            .map_err(|e| format!("Could not secure {}: {e}", path.display()))?;
     }
     Ok(())
 }

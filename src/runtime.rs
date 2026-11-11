@@ -256,6 +256,7 @@ pub fn install_with_profile(
             let id = core::new_id(name);
             let prefix = root.join("prefixes").join(&id);
             fs::create_dir(&prefix).map_err(|e| format!("Creating prefix: {e}"))?;
+            core::private_permissions(&prefix)?;
             let portable = matches!(mode, InstallMode::Portable);
             if !portable {
                 let mut command = runner_command(profile, system, &prefix, &file)?;

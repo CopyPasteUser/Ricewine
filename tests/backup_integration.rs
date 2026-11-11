@@ -125,4 +125,6 @@ fn desktop_launcher_quotes_program_paths_and_rejects_unsafe_ids() {
     assert!(open_with.contains(" --install-file %f"));
     assert!(open_with.contains("MimeType=application/x-ms-dos-executable;"));
     assert!(!open_with.contains("x-scheme-handler"));
+    let main = integration::main_menu_entry(&PathBuf::from("/home/user/My App/ricewine")).unwrap();
+    assert!(main.contains("Exec=\"/home/user/My App/ricewine\"\n"));
 }

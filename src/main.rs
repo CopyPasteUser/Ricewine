@@ -1235,7 +1235,14 @@ impl RiceWineApp {
                 luna::task_panel(ui, |ui| {
                     luna::task_header(ui, "Programs");
                     ui.add_space(7.0);
-                    if luna::task_link(ui, "Library", luna::XpIcon::Programs, self.page == Page::Library).clicked() {
+                    if luna::task_link(
+                        ui,
+                        "Library",
+                        luna::XpIcon::Programs,
+                        self.page == Page::Library,
+                    )
+                    .clicked()
+                    {
                         self.page = Page::Library;
                     }
                     if ui
@@ -2179,7 +2186,9 @@ impl RiceWineApp {
                         });
                 });
                 ui.add_space(5.0);
-                ui.small("Changes affect RiceWine only. The desktop window frame is managed by RiceBowl.");
+                ui.small(
+                    "Changes affect RiceWine only. The desktop window frame is managed by RiceBowl.",
+                );
                 ui.add_space(8.0);
                 let mut follow = self.preferences.follow_desktop;
                 if ui.checkbox(&mut follow, "Follow a recognized RiceBowl desktop style").changed() {
@@ -2435,7 +2444,11 @@ impl RiceWineApp {
                     Self::runner_fields(ui, draft);
                     ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
                     ui.add_space(12.0);
-                    let install_label = if draft.portable { "Add portable program" } else { "Run installer" };
+                    let install_label = if draft.portable {
+                        "Add portable program"
+                    } else {
+                        "Run installer"
+                    };
                     let clicked = if luna_mode {
                         luna::xp_button(ui, install_label, true).clicked()
                     } else {

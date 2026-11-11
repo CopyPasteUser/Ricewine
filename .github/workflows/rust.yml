@@ -2,27 +2,37 @@ name: Rust checks
 
 on:
   push:
+    branches: [main]
+    tags: ["v*"]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - name: Validate installation scripts
+        run: sh -n scripts/install-user.sh scripts/uninstall-user.sh
       - name: Format
         run: cargo fmt --all -- --check
       - name: Test
         run: cargo test --all-targets
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
+      - name: API documentation
+        run: cargo doc --no-deps --locked
       - name: Release binary
         run: cargo build --release --locked
       - name: Upload Linux binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ricewine-linux-x86_64
           path: target/release/ricewine

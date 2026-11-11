@@ -133,16 +133,82 @@ pub fn install_main_menu(ricewine_exe: &Path) -> Result<PathBuf, String> {
 
 /// Only remove shortcuts carrying our matching custom ID, never an unrelated file.
 pub fn remove_shortcut(app_id: &str) -> Result<(), String> {
-    let path = application_directory()?.join(shortcut_file_name(app_id)?);
+    remove_owned_entry(
+        &shortcut_file_name(app_id)?,
+        &format!("X-RiceWine-ID={app_id}"),
+    )
+}
+
+pub fn remove_main_menu() -> Result<(), String> {
+    remove_owned_entry("ricewine.desktop", "X-RiceWine-Launcher=true")
+}
+
+pub fn remove_open_with() -> Result<(), String> {
+    remove_owned_entry("ricewine-open-with.desktop", "X-RiceWine-Handler=true")
+}
+
+/// Remove only RiceWine-generated per-program shortcuts, leaving unrelated
+/// desktop entries and the user's application catalog untouched.
+pub fn remove_all_shortcuts() -> Result<usize, String> {
+    let directory = application_directory()?;
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(error) => return Err(error.to_string()),
+    };
+    let mut removed = 0;
+    for entry in entries {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else { continue };
+        let Some(id) = name
+            .strip_prefix("ricewine-")
+            .and_then(|name| name.strip_suffix(".desktop"))
+        else {
+            continue;
+        };
+        if shortcut_file_name(id).is_err() {
+            continue;
+        }
+        let path = entry.path();
+        if !entry
+            .file_type()
+            .map_err(|error| error.to_string())?
+            .is_file()
+        {
+            continue;
+        }
+        let content = fs::read_to_string(&path).map_err(|error| error.to_string())?;
+        if content
+            .lines()
+            .any(|line| line == format!("X-RiceWine-ID={id}"))
+        {
+            fs::remove_file(&path).map_err(|error| error.to_string())?;
+            removed += 1;
+        }
+    }
+    Ok(removed)
+}
+
+fn remove_owned_entry(name: &str, marker: &str) -> Result<(), String> {
+    let path = application_directory()?.join(name);
+    match fs::symlink_metadata(&path) {
+        Ok(meta) if !meta.file_type().is_file() => {
+            return Err(format!(
+                "Refusing to remove a non-regular shortcut: {}",
+                path.display()
+            ));
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.to_string()),
+    }
     let contents = match fs::read_to_string(&path) {
         Ok(contents) => contents,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(e) => return Err(e.to_string()),
     };
-    if !contents
-        .lines()
-        .any(|line| line == format!("X-RiceWine-ID={app_id}"))
-    {
+    if !contents.lines().any(|line| line == marker) {
         return Err(format!(
             "Refusing to remove an unrecognized shortcut: {}",
             path.display()

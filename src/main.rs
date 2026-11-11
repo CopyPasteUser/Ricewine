@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
 use ricewine::core::{self, Application, InstallMode, Store, WineTools};
@@ -1444,7 +1446,7 @@ fn main() -> eframe::Result {
         let outcome = match args.as_slice() {
             [flag] if flag == "--help" => {
                 println!(
-                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE | --list | --diagnose | --verify-library | --snapshot-library | --register-menu | --version | --help]",
+                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE | --list | --diagnose | --verify-library | --snapshot-library | --register-menu | --unregister-menu | --unregister-open-with | --unregister-shortcuts | --version | --help]",
                     env!("CARGO_PKG_VERSION")
                 );
                 Ok(())
@@ -1457,6 +1459,13 @@ fn main() -> eframe::Result {
                 .map_err(|e| e.to_string())
                 .and_then(|path| integration::install_main_menu(&path))
                 .map(|path| println!("Application menu entry created: {}", path.display())),
+            [flag] if flag == "--unregister-menu" => integration::remove_main_menu(),
+            [flag] if flag == "--unregister-open-with" => integration::remove_open_with(),
+            [flag] if flag == "--unregister-shortcuts" => {
+                integration::remove_all_shortcuts().map(|count| {
+                    println!("Removed {count} RiceWine program shortcuts");
+                })
+            }
             [flag] if flag == "--list" => core::Store::list_for_cli().map(|(_, apps)| {
                 for app in apps {
                     println!("{}\t{}", app.id, app.name);

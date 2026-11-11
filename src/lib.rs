@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 pub mod backup;
 pub mod core;
 pub mod integration;

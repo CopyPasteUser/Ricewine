@@ -132,6 +132,25 @@ fn new_private_data_root_and_prefix_are_not_world_readable() {
     assert_eq!(mode, 0o700);
 }
 
+#[cfg(unix)]
+#[test]
+fn existing_public_data_directory_is_secured_before_catalog_access() {
+    use std::os::unix::fs::PermissionsExt;
+    let temp = TempDir::new();
+    let root = temp.0.join("legacy-ricewine");
+    fs::create_dir(&root).unwrap();
+    fs::set_permissions(&root, fs::Permissions::from_mode(0o755)).unwrap();
+    let store = Store::open_at(root.clone()).unwrap();
+    assert_eq!(
+        fs::metadata(store.root()).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+    drop(store);
+    let link = temp.0.join("symlinked-root");
+    std::os::unix::fs::symlink(root, &link).unwrap();
+    assert!(Store::open_at(link).is_err());
+}
+
 #[test]
 fn validation_rejects_invalid_files_and_names() {
     let tmp = TempDir::new();

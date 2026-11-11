@@ -60,12 +60,19 @@ impl Store {
     }
 
     pub fn open_at(root: PathBuf) -> Result<Self, String> {
-        let existed = root.exists();
+        fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+        if fs::symlink_metadata(&root)
+            .map_err(|e| e.to_string())?
+            .file_type()
+            .is_symlink()
+        {
+            return Err("The RiceWine data directory must not be a symlink".into());
+        }
+        // Previous installations could have a world-readable data root.
+        // Protect it before creating any application metadata below it.
+        private_permissions(&root)?;
         fs::create_dir_all(root.join("prefixes")).map_err(|e| e.to_string())?;
         fs::create_dir_all(root.join("logs")).map_err(|e| e.to_string())?;
-        if !existed {
-            private_permissions(&root)?;
-        }
         let lock = OpenOptions::new()
             .create(true)
             .read(true)

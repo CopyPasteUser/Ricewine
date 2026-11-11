@@ -1,6 +1,8 @@
 //! XP Luna Blue application surfaces. Window decorations belong to the compositor.
 
 use eframe::egui::{self, Align2, Color32, FontId, Painter, Rect, RichText, Sense, Stroke};
+use crate::luna_icons::paint_icon;
+pub use crate::luna_icons::XpIcon;
 
 const NAV_BLUE: Color32 = Color32::from_rgb(18, 66, 163);
 
@@ -177,8 +179,8 @@ pub fn brand(ui: &mut egui::Ui) {
 
 /// XP Explorer task links are compact blue text, not modern filled navigation
 /// buttons. Retaining egui::Button preserves focus and keyboard activation.
-pub fn task_link(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
-    let text = RichText::new(format!("  ›   {label}"))
+pub fn task_link(ui: &mut egui::Ui, label: &str, icon: XpIcon, selected: bool) -> egui::Response {
+    let text = RichText::new(format!("        {label}"))
         .size(12.0)
         .color(if selected {
             Color32::from_rgb(22, 54, 117)
@@ -186,11 +188,101 @@ pub fn task_link(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Respon
             NAV_BLUE
         });
     let text = if selected { text.strong() } else { text };
-    ui.add_sized(
-        [ui.available_width() - 12.0, 27.0],
+    let response = ui.add_sized(
+        [ui.available_width() - 12.0, 26.0],
         egui::Button::new(text).frame(false),
-    )
+    );
+    let origin = response.rect.left_center() + egui::vec2(8.0, -8.0);
+    paint_icon(ui.painter(), origin, icon, 16.0);
+    if response.hovered() {
+        ui.painter().line_segment(
+            [
+                response.rect.left_bottom() + egui::vec2(28.0, -5.0),
+                response.rect.left_bottom() + egui::vec2(response.rect.width() - 8.0, -5.0),
+            ],
+            Stroke::new(0.8, Color32::from_rgb(87, 130, 203)),
+        );
+    }
+    response
 }
+
+/// A classic beveled push-button with native egui focus and keyboard behavior.
+/// The highlight/shadow edges are decorative; button interaction stays native.
+pub fn xp_button(ui: &mut egui::Ui, text: &str, enabled: bool) -> egui::Response {
+    let response = ui.add_enabled(
+        enabled,
+        egui::Button::new(RichText::new(text).size(12.0))
+            .min_size(egui::vec2(98.0, 27.0))
+            .corner_radius(egui::CornerRadius::same(3)),
+    );
+    let r = response.rect.shrink(1.0);
+    if enabled {
+        let pressed = response.is_pointer_button_down_on();
+        let light = if pressed {
+            Color32::from_rgb(126, 150, 190)
+        } else {
+            Color32::WHITE
+        };
+        let dark = if pressed {
+            Color32::WHITE
+        } else {
+            Color32::from_rgb(125, 140, 164)
+        };
+        ui.painter().line_segment(
+            [r.left_top() + egui::vec2(2.0, 1.0), r.right_top() - egui::vec2(2.0, -1.0)],
+            Stroke::new(1.0, light),
+        );
+        ui.painter().line_segment(
+            [r.left_bottom() + egui::vec2(2.0, -1.0), r.right_bottom() - egui::vec2(2.0, 1.0)],
+            Stroke::new(1.0, dark),
+        );
+    }
+    response
+}
+
+/// XP-like bordered option group. Unlike a card, this follows the traditional
+/// Control Panel fieldset hierarchy and leaves all children interactive.
+pub fn option_group(
+    ui: &mut egui::Ui,
+    title: &str,
+    icon: XpIcon,
+    add: impl FnOnce(&mut egui::Ui),
+) {
+    ui.horizontal(|ui| {
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(19.0, 19.0), Sense::hover());
+        paint_icon(ui.painter(), rect.min, icon, 18.0);
+        ui.label(RichText::new(title).size(13.0).strong().color(NAV_BLUE));
+    });
+    egui::Frame::new()
+        .stroke(Stroke::new(1.0, Color32::from_rgb(166, 179, 199)))
+        .fill(Color32::from_rgb(255, 255, 254))
+        .inner_margin(egui::Margin::same(12))
+        .show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            add(ui);
+        });
+    ui.add_space(12.0);
+}
+
+/// Distinct visual hierarchy for older-style modal form content.
+pub fn dialog_intro(ui: &mut egui::Ui, icon: XpIcon, title: &str, subtitle: &str) {
+    egui::Frame::new()
+        .fill(Color32::WHITE)
+        .inner_margin(egui::Margin::symmetric(10, 10))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                let (rect, _) = ui.allocate_exact_size(egui::vec2(36.0, 36.0), Sense::hover());
+                paint_icon(ui.painter(), rect.min, icon, 34.0);
+                ui.vertical(|ui| {
+                    ui.label(RichText::new(title).size(15.0).strong().color(NAV_BLUE));
+                    ui.small(subtitle);
+                });
+            });
+        });
+    ui.separator();
+    ui.add_space(9.0);
+}
+
 
 pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 65.0), Sense::hover());
@@ -207,21 +299,13 @@ pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
         Stroke::new(1.0, Color32::from_rgb(209, 195, 153)),
         egui::StrokeKind::Inside,
     );
-    let icon = Rect::from_min_size(
-        rect.left_top() + egui::vec2(16.0, 18.0),
-        egui::vec2(27.0, 22.0),
-    );
-    painter.rect_filled(
-        icon,
-        egui::CornerRadius::same(3),
-        Color32::from_rgb(250, 188, 54),
-    );
-    painter.rect_stroke(
-        icon,
-        egui::CornerRadius::same(3),
-        Stroke::new(1.5, Color32::from_rgb(174, 112, 18)),
-        egui::StrokeKind::Inside,
-    );
+    let icon = match title {
+        "Program Library" => XpIcon::Programs,
+        "Wine Prefixes" => XpIcon::Prefix,
+        "Compatibility Runners" => XpIcon::Runner,
+        _ => XpIcon::Settings,
+    };
+    paint_icon(&painter, rect.left_top() + egui::vec2(15.0, 16.0), icon, 33.0);
     painter.text(
         rect.left_top() + egui::vec2(57.0, 8.0),
         Align2::LEFT_TOP,

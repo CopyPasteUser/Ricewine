@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod luna;
+mod luna_icons;
 
 use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
@@ -1224,12 +1225,12 @@ impl RiceWineApp {
                 luna::task_panel(ui, |ui| {
                     luna::task_header(ui, "Programs");
                     ui.add_space(7.0);
-                    if luna::task_link(ui, "Library", self.page == Page::Library).clicked() {
+                    if luna::task_link(ui, "Library", luna::XpIcon::Programs, self.page == Page::Library).clicked() {
                         self.page = Page::Library;
                     }
                     if ui
                         .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
-                            luna::task_link(ui, "Install a program", false)
+                            luna::task_link(ui, "Install a program", luna::XpIcon::Install, false)
                         })
                         .inner
                         .clicked()
@@ -1238,7 +1239,7 @@ impl RiceWineApp {
                     }
                     if ui
                         .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
-                            luna::task_link(ui, "Import a Wine prefix", false)
+                            luna::task_link(ui, "Import a Wine prefix", luna::XpIcon::Import, false)
                         })
                         .inner
                         .clicked()
@@ -1252,7 +1253,13 @@ impl RiceWineApp {
                     luna::task_header(ui, "Wine Environments");
                     ui.add_space(7.0);
                     for page in [Page::Prefixes, Page::Runners, Page::Settings] {
-                        if luna::task_link(ui, page.label(), self.page == page).clicked() {
+                        let icon = match page {
+                            Page::Prefixes => luna::XpIcon::Prefix,
+                            Page::Runners => luna::XpIcon::Runner,
+                            Page::Settings => luna::XpIcon::Settings,
+                            Page::Library => luna::XpIcon::Programs,
+                        };
+                        if luna::task_link(ui, page.label(), icon, self.page == page).clicked() {
                             self.page = page;
                         }
                     }
@@ -2126,7 +2133,105 @@ impl RiceWineApp {
         }
     }
 
+    /// XP Luna Control Panel-style settings; other Rices retain their layouts.
+    fn luna_settings(&mut self, ui: &mut egui::Ui) {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            luna::option_group(ui, "Appearance", luna::XpIcon::Settings, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Visual style:");
+                    egui::ComboBox::from_id_salt("luna_settings_theme")
+                        .selected_text(self.theme.label())
+                        .width(195.0)
+                        .show_ui(ui, |ui| {
+                            for theme in Theme::ALL {
+                                if ui.selectable_label(self.theme == theme, theme.label()).clicked() {
+                                    self.set_theme(theme, ui.ctx());
+                                }
+                            }
+                        });
+                });
+                ui.add_space(5.0);
+                ui.small("Changes affect RiceWine only. The desktop window frame is managed by RiceBowl.");
+                ui.add_space(8.0);
+                let mut follow = self.preferences.follow_desktop;
+                if ui.checkbox(&mut follow, "Follow a recognized RiceBowl desktop style").changed() {
+                    self.preferences.follow_desktop = follow;
+                    if follow {
+                        if let Some(appearance) = preferences::detect_desktop_appearance() {
+                            self.theme = appearance.into();
+                            self.theme.apply(ui.ctx());
+                        } else {
+                            self.notice = Some((false, "No supported desktop style detected; appearance unchanged".into()));
+                        }
+                    }
+                    self.persist_preferences();
+                }
+                if self.preferences.follow_desktop
+                    && luna::xp_button(ui, "Detect now", true).clicked()
+                {
+                    if let Some(appearance) = preferences::detect_desktop_appearance() {
+                        self.theme = appearance.into();
+                        self.theme.apply(ui.ctx());
+                        self.notice = Some((false, "Desktop appearance refreshed".into()));
+                    } else {
+                        self.notice = Some((false, "Desktop style not recognized; appearance unchanged".into()));
+                    }
+                }
+            });
+
+            luna::option_group(ui, "Windows program integration", luna::XpIcon::Install, |ui| {
+                ui.label("Add RiceWine to the file manager's Open With menu.");
+                ui.add_space(6.0);
+                if luna::xp_button(ui, "Add Open With entry", true).clicked() {
+                    let result = std::env::current_exe()
+                        .map_err(|error| error.to_string())
+                        .and_then(|binary| integration::install_open_with(&binary));
+                    self.notice = Some(match result {
+                        Ok(path) => (false, format!("Open With entry created: {}", path.display())),
+                        Err(error) => (true, error),
+                    });
+                }
+                ui.small("Existing system defaults and EXE associations are not replaced.");
+            });
+
+            luna::option_group(ui, "Library maintenance", luna::XpIcon::Disk, |ui| {
+                let Some(store) = &self.store else {
+                    ui.label("Catalog unavailable. See the error above.");
+                    return;
+                };
+                ui.label("Application data directory:");
+                ui.small(core::readable_path(store.root()));
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if luna::xp_button(ui, "Verify library", true).clicked() {
+                        self.library_report = library::check(store.applications()).lines().join("\n");
+                    }
+                    if luna::xp_button(ui, "Save metadata snapshot", true).clicked() {
+                        self.notice = Some(match library::snapshot_metadata(store.root()) {
+                            Ok(path) => (false, format!("Metadata saved: {}", path.display())),
+                            Err(error) => (true, error),
+                        });
+                    }
+                });
+                ui.small("Verification does not modify files. Snapshots exclude Wine prefixes.");
+                if !self.library_report.is_empty() {
+                    ui.add_space(5.0);
+                    ui.add(
+                        egui::TextEdit::multiline(&mut self.library_report)
+                            .desired_rows(5)
+                            .desired_width(f32::INFINITY)
+                            .interactive(false),
+                    );
+                }
+            });
+        });
+    }
+
     fn settings(&mut self, ui: &mut egui::Ui) {
+        if self.theme == Theme::Luna {
+            self.luna_settings(ui);
+            return;
+        }
         if self.theme != Theme::Luna {
             ui.heading("Settings");
         }
@@ -2239,6 +2344,7 @@ impl RiceWineApp {
     fn install_dialog(&mut self, ctx: &egui::Context) {
         let mut submit = None;
         let mut keep_open = true;
+        let luna_mode = self.theme == Theme::Luna;
         if let Some(draft) = &mut self.install {
             egui::Window::new("Install Windows program")
                 .collapsible(false)
@@ -2246,6 +2352,14 @@ impl RiceWineApp {
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width(460.0);
+                    if luna_mode {
+                        luna::dialog_intro(
+                            ui,
+                            luna::XpIcon::Install,
+                            "Install a Windows program",
+                            "Choose a setup file and its Wine environment.",
+                        );
+                    }
                     ui.label("Program name");
                     ui.text_edit_singleline(&mut draft.name);
                     ui.label("EXE or MSI file");
@@ -2285,7 +2399,13 @@ impl RiceWineApp {
                     Self::runner_fields(ui, draft);
                     ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
                     ui.add_space(12.0);
-                    if ui.button(if draft.portable { "Add portable program" } else { "Run installer" }).clicked() {
+                    let install_label = if draft.portable { "Add portable program" } else { "Run installer" };
+                    let clicked = if luna_mode {
+                        luna::xp_button(ui, install_label, true).clicked()
+                    } else {
+                        ui.button(install_label).clicked()
+                    };
+                    if clicked {
                         submit = Some(InstallDraft {
                             name: draft.name.clone(), file: draft.file.clone(), portable: draft.portable,
                             runner_kind: draft.runner_kind, custom_wine: draft.custom_wine.clone(),
@@ -2307,11 +2427,20 @@ impl RiceWineApp {
     fn import_dialog(&mut self, ctx: &egui::Context) {
         let mut keep_open = true;
         let mut imported = None;
+        let luna_mode = self.theme == Theme::Luna;
         if let Some(draft) = &mut self.import {
             egui::Window::new("Import existing Wine prefix")
                 .collapsible(false).resizable(false).open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width(450.0);
+                    if luna_mode {
+                        luna::dialog_intro(
+                            ui,
+                            luna::XpIcon::Import,
+                            "Import an existing prefix",
+                            "Register a program without moving any of its files.",
+                        );
+                    }
                     ui.label("Program name");
                     ui.text_edit_singleline(&mut draft.name);
                     ui.label("Existing Wine prefix directory");
@@ -2333,7 +2462,12 @@ impl RiceWineApp {
                         }
                     });
                     ui.small("Import only registers an existing prefix. Its files are never moved or deleted.");
-                    if ui.button("Import prefix").clicked() {
+                    let clicked = if luna_mode {
+                        luna::xp_button(ui, "Import prefix", true).clicked()
+                    } else {
+                        ui.button("Import prefix").clicked()
+                    };
+                    if clicked {
                         imported = Some(core::imported_application(
                             &draft.name,
                             &PathBuf::from(draft.prefix.trim()),

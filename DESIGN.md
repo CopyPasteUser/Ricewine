@@ -41,3 +41,20 @@ Native Linux tool for people who want to install and launch Windows software wit
 The screenshot workflow starts each of four Luna views in an isolated app
 process using RICEWINE_CAPTURE_PAGE. This changes only the initial page and
 does not modify the stored Wine library. Duplicate captures fail the job.
+
+## Luna Blue visual fidelity sprint
+
+- Original, self-rendered 16px-era icon set (programs, setup CD, import folder,
+  Wine prefix, runner disc, settings gear, information, library storage).
+  Icons are drawn with small shaded shapes, not Unicode placeholder glyphs,
+  and do not bundle proprietary Microsoft artwork.
+- Explorer task pane links now have iconography; headings show a matching
+  section symbol rather than a generic yellow rectangle.
+- Native egui push-buttons retain keyboard support, with an additional classic
+  beveled light/shadow border for important Luna-only actions.
+- Luna settings use compact, grouped Control Panel-style sections instead
+  of the modern five-wide palette/button strip. Other Rices remain unchanged.
+- Install and import forms get an era-appropriate icon and header, while all
+  existing validation and process behavior remain intact.
+- No viewport or compositor decoration changes: RiceBowl remains responsible
+  for the native window frame and title bar.

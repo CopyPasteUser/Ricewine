@@ -1,8 +1,9 @@
 //! XP Luna Blue application surfaces. Window decorations belong to the compositor.
 
-use eframe::egui::{self, Align2, Color32, FontId, Painter, Rect, RichText, Sense, Stroke};
 use crate::luna_icons::paint_icon;
 pub use crate::luna_icons::XpIcon;
+
+use eframe::egui::{self, Align2, Color32, FontId, Painter, Rect, RichText, Sense, Stroke};
 
 const NAV_BLUE: Color32 = Color32::from_rgb(18, 66, 163);
 

@@ -55,6 +55,9 @@ capture luna-library
 xdotool mousemove 104 418 click 1
 sleep 1.5
 capture luna-prefixes
+xdotool mousemove 104 457 click 1
+sleep 1.5
+capture luna-runners
 xdotool mousemove 104 504 click 1
 sleep 1.5
 capture luna-settings

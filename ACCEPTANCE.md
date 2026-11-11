@@ -25,4 +25,15 @@ The maintainer will perform the **manual user acceptance at the 1.0 gate**, not 
 19. **1.0 uninstall:** Run `sh scripts/uninstall-user.sh`, confirm only the installed executable and RiceWine-owned desktop entries disappear, then inspect the prefix, settings, logs and backup directories to verify they were preserved. Reinstall and confirm the catalog is intact.
 20. **1.0 candidate checks:** Confirm a clean-clone build, local `cargo fmt/test/clippy/doc`, GitHub Actions checks, dependency/secret review, release notes, correct package version and a maintainer-approved license before creating any stable tag.
 
-Release blockers: crashing/blocked UI, data loss, unsafe prefix removal, failed backup restore, broken launcher integration, an unapproved license, or any confirmed Wine/Proton command that launches the wrong runner. Keep real Windows programs out of CI and never treat a mock Wine binary as hardware acceptance.
+### 2.0 manual acceptance extension
+
+21. **Installation cancellation:** Start a real Windows setup, cancel with confirmation, verify that the installer exits, UI unlocks, logs remain and the partial prefix is preserved. Repeat during Wine prefix initialization.
+22. **Executable discovery:** Install programs with unique, multiple and no launch EXEs; confirm only unambiguous results are selected, uninstallers are excluded and the manual override works.
+23. **Play/Stop:** Start a real graphical EXE, stop it with confirmation, confirm its process closes and other programs/prefixes stay intact. Retest launching afterward.
+24. **Storage:** Compare the displayed disk usage with `du`, create old/new temp files in a disposable owned prefix, preview cleanup and confirm only eligible old files disappear. Imported prefix cleanup must be unavailable.
+25. **Presets:** Apply each of the five profiles, save and relaunch a disposable app. Confirm arguments are preserved and the exact allowlisted environment reaches the runner.
+26. **GE-Proton management:** Fetch latest release metadata, download and verify the official tarball, start a compatible EXE using `umu-run`, cancel an in-progress download, then remove an unused managed build. A build referenced by any app must not be removable.
+27. **Updates:** Configure a genuine public GitHub `owner/repo`, retrieve the latest release, open its upstream page and run a trustworthy publisher update EXE/MSI in the existing prefix. Confirm catalog ID, prefix path and backups are preserved. Invalid repositories and failed fetches should show useful errors.
+28. **2.0 usability/performance:** Use keyboard-only navigation through new actions, verify confirm/cancel and disabled states under Luna Blue, inspect text clipping at 780×500 and measure UI responsiveness during scans/downloads. Repeat functional paths under the other four Rices without changing their visual styling.
+
+Release blockers: crashing/blocked UI, data loss, unsafe prefix or runner removal, failed backup restore, broken launcher integration, an unapproved license, or any confirmed Wine/Proton command that launches the wrong runner. Keep real Windows programs out of CI and never treat a mock Wine binary as hardware acceptance.

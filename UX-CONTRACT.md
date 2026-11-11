@@ -4,9 +4,13 @@ RiceWine uses native egui controls. `DESIGN.md` owns color and typography; this 
 
 | Action | Pending state | Success | Failure / recovery |
 | --- | --- | --- | --- |
-| Install EXE/MSI | Disable duplicate install, show running status | Select new library entry; ask for launch EXE | Keep prefix for diagnosis, show error and logs |
+| Install EXE/MSI | Disable duplicate install, show running status and confirmation for cancellation | Select new library entry; auto-detect unambiguous launch EXE | Keep partial prefix for diagnosis, show error and logs; allow manual EXE override |
+| Stop tracked app | Confirmation warns about unsaved work | Stop the launched process group, clear busy status | Preserve prefix and unrelated processes; Wine processes that detach may need manual shutdown |
 | Import existing prefix | Validate markers and EXE before writing | Add to Library; original files stay in place | Keep dialog data, show validation error |
 | Change runner | Disable while program runs | Save profile atomically for selected program | Keep prior profile, show error |
+| Managed GE-Proton | Explicit check/download; verify upstream SHA512; cancellable worker | Publish to user-local runners and offer selection | Keep existing builds unchanged; delete partial staging on failure; removal only with confirmation and when unused |
+| Disk usage / temp cleanup | Scan off-thread, show exact size and seven-day deletion preview | Remove only verified old temp files from managed prefixes | Reject symlinks, imported prefixes, running apps and unsupported targets |
+| Windows app update | Optional GitHub release source + manual installer confirmation | Show latest upstream tag or run trusted installer in same prefix | Preserve app identity and catalog; no automatic execution/download of publisher code |
 | Apply Winetricks | Spinner and disabled per-program action | State component command completed | Show failure and log location; never claim component installed after failure |
 | Back up prefix | Busy indicator, block duplicate operation | Add snapshot to Prefixes list | Clean partial staging copy, preserve source |
 | Restore snapshot | Busy indicator | Add independent restored program and select it | Preserve snapshot and original prefix; show error |

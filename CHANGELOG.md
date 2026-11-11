@@ -2,6 +2,16 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
+## 2.0.0-beta.1 – guided application lifecycle
+
+- Cancel long-running installations and update installers; stop a tracked Windows application with an explicit warning. Prefixes are never deleted during cancellation.
+- Bounded scan for installed EXEs, with automatic selection only for an unambiguous candidate and manual override for other applications.
+- Per-prefix disk usage and opt-in preview/cleanup of temporary files older than seven days. Cleanup is blocked for external/imported prefixes and never follows symlinks.
+- Five allowlisted Wine launch presets, selectable from the existing Runner UI without modifying launch arguments.
+- Discover Steam Proton builds; fetch the latest official GE-Proton release, verify its SHA512 checksum, install it user-locally and explicitly remove unused managed releases. Download is cancellable; existing builds are never replaced.
+- Configure optional GitHub release checks and a manually labeled installed version for supported Windows apps; run trusted EXE/MSI updates in the existing prefix after confirmation.
+- Add focused tests for cancellation, installer argument integrity, executable discovery, data deletion boundaries, release parsing and release asset verification. No hardware compatibility acceptance is implied.
+
 ## 1.0.0-rc.3 – built-in Rice collection
 
 - Add Windows 10 Dark, XP Luna Olive and XP Luna Silver to the existing Windows 10 Light and XP Luna Blue styles.

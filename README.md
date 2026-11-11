@@ -4,14 +4,15 @@
 
 Install, organize and launch Windows applications in separate Wine prefixes — with a native desktop UI and five built-in Rices. Works standalone or alongside RiceBowl; no background service required.
 
-> **Version 1.0.0-rc.3** · Release candidate. Real Wine/Proton and X11/Wayland acceptance is still required before 1.0 stable.
+> **Version 2.0.0-beta.1** · Feature-complete software beta. Real Wine/Proton and X11/Wayland acceptance remains outstanding; this is **not** a stable release.
 
 ## Features
 
-- **Application library:** install EXE/MSI files, register portable apps, search, rename and launch programs.
-- **Runners:** system Wine, custom Wine and Proton via [`umu-run`](https://github.com/Open-Wine-Components/umu-launcher); discover local Proton installs.
-- **Per-app configuration:** isolated prefixes, launch arguments, selected environment overrides and Winetricks components (including DXVK/VKD3D where available).
+- **Application library:** install EXE/MSI files, register portable apps, search, rename, launch and stop programs. Cancel setup without deleting its partial prefix; automatically detect obvious launch EXEs and review ambiguous ones.
+- **Runners:** system Wine, custom Wine and Proton via [`umu-run`](https://github.com/Open-Wine-Components/umu-launcher). Discover installed Proton builds or download the latest **SHA512-verified GE-Proton** into a managed user-local folder. Remove managed, unused builds with confirmation.
+- **Compatibility:** isolated prefixes, five launch presets, custom arguments, allowlisted environment overrides and Winetricks components (including DXVK/VKD3D where available).
 - **Recovery:** import existing prefixes, create full prefix backups and restore into a *new* prefix without overwriting the original.
+- **Space & updates:** calculate per-prefix disk usage, preview removal of old Wine temporary files, optionally check the latest GitHub release of an app and run a trusted update installer inside its existing prefix.
 - **Desktop integration:** application-menu shortcuts, optional *Open With RiceWine* and read-only RiceBowl theme detection.
 - **Diagnostics:** live status, logs, library verification and a few useful CLI commands.
 
@@ -25,11 +26,13 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 | :---: | :---: |
 | ![XP Luna Blue — prefixes](docs/screenshots/luna-prefixes.webp) | ![XP Luna Blue — settings](docs/screenshots/luna-settings.webp) |
 
+![XP Luna Blue — runners and GE-Proton management](docs/screenshots/luna-runners.webp)
+
 Windows 10 Light/Dark and XP Luna Olive/Silver remain available but are not part of the current visual refresh. Switch in **Settings**; Rice choice persists across restarts and does not alter your desktop or Wine configuration.
 
 ## Install
 
-**Requirements:** Linux (X11 or Wayland), working OpenGL graphics, Rust/Cargo and a supported Wine runner. System Wine needs `wine` and `wineboot` in `PATH`; Proton needs `umu-run` and a locally installed Proton build.
+**Requirements:** Linux (X11 or Wayland), OpenGL, Rust/Cargo and a supported Wine runner. System Wine needs `wine` and `wineboot` in `PATH`; Proton needs `umu-run`. GE-Proton management additionally uses `curl`, `tar` and `sha512sum`.
 
 ```bash
 git clone https://github.com/CopyPasteUser/Ricewine.git
@@ -39,7 +42,7 @@ sh scripts/install-user.sh
 
 RiceWine is installed to `~/.local/bin/ricewine` with a user-local application-menu entry. No `sudo` is needed. To run without installing, use `cargo run --release` from the repository.
 
-**First steps:** Select **Install program**, choose an EXE/MSI or portable EXE, then select its runner. After a setup program finishes, use **Choose launch EXE** to register the installed application. You can adjust its runner and compatibility components later.
+**First steps:** Select **Install program**, choose an EXE/MSI or portable EXE, then a runner. RiceWine attempts to identify the launch EXE automatically; verify it and use **Scan installed EXEs** or **Choose launch EXE** if needed. Use **Prefixes** for backups, disk usage and optional cleanup; **Runners** for compatibility presets, GE-Proton management and app updates.
 
 To remove RiceWine **without deleting your applications, prefixes or backups**:
 
@@ -55,8 +58,11 @@ RiceWine stores its catalog, preferences, prefixes, logs and backups under `${XD
 
 - Removing a program from the library **does not delete its prefix**.
 - Full prefix backups are manual; restore creates a separate program entry and prefix. Close Wine processes before backing up.
+- Cancel/Stop target only RiceWine-launched processes; Windows programs that detach from the runner may require manual shutdown. Cancelled installations preserve their partial prefix for diagnosis.
+- Cleanup is opt-in and requires a preview and explicit confirmation. It deletes only regular files older than seven days in temp folders of RiceWine-owned prefixes. Imported/external prefixes are never cleaned.
 - `--snapshot-library` backs up **catalog/preferences only**, not installed applications.
-- Proton MSI installation and Winetricks on Proton are not supported yet. RiceWine does not download runners or game-store content.
+- Managed GE-Proton downloads are checksum-verified against the publisher's release assets; existing installations are never overwritten. System Wine installation and updates remain your distro package manager's responsibility. Proton MSI installation and Winetricks on Proton are unsupported.
+- Windows app update checks are **opt-in GitHub release checks** (`owner/repo`), not universal version detection. Publisher installers must be selected and approved manually; a completed installer does not guarantee a successful application update.
 - **Wine prefixes are not security sandboxes.** Windows programs can access files allowed to your Linux user. Run only software you trust.
 
 Useful diagnostics:
@@ -72,11 +78,11 @@ ricewine --snapshot-library
 
 | Milestone | Status |
 | --- | --- |
-| 0.1–0.9 · core, runners, backups, desktop integration | Implemented |
-| **1.0 RC3 · five Rices, safety, diagnostics, installer and tests** | **Available** |
-| 1.0 stable · real app tests, X11/Wayland review, recovery and performance | Awaiting acceptance |
+| 0.1–1.0 RC3 · core, backups, desktop integration and five Rices | Implemented |
+| **2.0 beta 1 · process control, discovery, managed GE-Proton, disk tools, presets and updates** | **Implemented; automated checks required** |
+| 2.0 stable · real app tests, X11/Wayland review, recovery and performance | Awaiting manual acceptance |
 
-See [the acceptance checklist](ACCEPTANCE.md) for the remaining real-desktop tests. No stable `v1.0.0` release has been published.
+See [the acceptance checklist](ACCEPTANCE.md) for real-desktop tests. No stable `v2.0.0` release has been published.
 
 ## Development
 

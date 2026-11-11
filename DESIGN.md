@@ -17,7 +17,7 @@ Native Linux tool for people who want to install and launch Windows software wit
 - Empty library explains the next action; missing Wine disables installation with a clear diagnostic.
 - Windows setup runs in a worker thread so the interface remains responsive.
 - Launching a registered app requires an explicit target EXE, never re-runs the setup file by accident.
-- Removing an entry must warn that its prefix stays on disk; no automatic destructive cleanup in 0.1.
+- Removing an entry always preserves its prefix. 2.0 offers a separate, explicitly confirmed cleanup of *old temporary files only* within RiceWine-managed prefixes.
 - Show errors in text, including the path to logs for process errors.
 - Maintain keyboard focus visibility and non-color-only feedback, and keep all functionality available without drag-and-drop.
 - Import is additive: registering an existing prefix must never move files. Show the source path so users recognize external ownership.

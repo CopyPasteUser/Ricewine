@@ -35,3 +35,9 @@ Native Linux tool for people who want to install and launch Windows software wit
 - Installed applications use the same Explorer details-header treatment as the empty state; other Rices keep their existing list header.
 - Native decorations and window buttons are left to the compositor/RiceBowl, and no custom viewport decorations are enabled.
 - Screenshots must be verified against real rendered states; identical captures for multiple pages are not evidence of separate page layouts.
+
+## Screenshot validation
+
+The screenshot workflow starts each of four Luna views in an isolated app
+process using RICEWINE_CAPTURE_PAGE. This changes only the initial page and
+does not modify the stored Wine library. Duplicate captures fail the job.

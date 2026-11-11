@@ -265,6 +265,16 @@ impl Page {
             Self::Settings => "Settings",
         }
     }
+
+    /// Screenshot-only override for the initial page, not the persisted app state.
+    fn capture_override() -> Self {
+        match std::env::var("RICEWINE_CAPTURE_PAGE").as_deref() {
+            Ok("prefixes") => Self::Prefixes,
+            Ok("runners") => Self::Runners,
+            Ok("settings") => Self::Settings,
+            _ => Self::Library,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -443,7 +453,7 @@ impl RiceWineApp {
             wine: wine.ok(),
             theme,
             preferences,
-            page: Page::Library,
+            page: Page::capture_override(),
             about_open: false,
             selected,
             search: String::new(),
@@ -1322,7 +1332,7 @@ impl RiceWineApp {
         }
         luna::application_toolbar(ui, self.page.label());
         ui.add_space(5.0);
-        let available_height = ui.available_height();
+        let available_height = (ui.available_height() - 27.0).max(250.0);
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(
                 egui::vec2(225.0, available_height),
@@ -1364,6 +1374,18 @@ impl RiceWineApp {
                 },
             );
         });
+        let state = match self.page {
+            Page::Library => format!(
+                "{} installed program(s)",
+                self.store
+                    .as_ref()
+                    .map_or(0, |store| store.applications().len())
+            ),
+            Page::Prefixes => "Wine prefix management".to_owned(),
+            Page::Runners => "Runner configuration".to_owned(),
+            Page::Settings => "RiceWine preferences".to_owned(),
+        };
+        luna::status_bar(ui, &state);
     }
 
     fn library(&mut self, ui: &mut egui::Ui) {
@@ -2524,7 +2546,9 @@ impl eframe::App for RiceWineApp {
                     ui.heading("RiceWine");
                     ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
                     ui.label("Windows programs on Linux, managed with Wine and Proton.");
-                    ui.label("XP Luna styles the application only. RiceBowl owns window decorations.");
+                    ui.label(
+                        "XP Luna styles the application only. RiceBowl owns window decorations.",
+                    );
                 });
         }
     }

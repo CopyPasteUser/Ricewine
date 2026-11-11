@@ -272,12 +272,10 @@ pub fn program_list_header(ui: &mut egui::Ui) {
         [rect.left_bottom(), rect.right_bottom()],
         Stroke::new(1.0, Color32::from_rgb(153, 162, 176)),
     );
-    for (offset, heading) in [(14.0, "Name"), (0.50, "Environment"), (0.77, "Runner")] {
-        let x = if offset > 1.0 {
-            rect.left() + offset
-        } else {
-            rect.left() + offset * rect.width()
-        };
+    for (x, heading) in [
+        (rect.left() + 14.0, "Name"),
+        (rect.right() - 105.0, "Runner"),
+    ] {
         painter.text(
             egui::pos2(x, rect.center().y),
             Align2::LEFT_CENTER,
@@ -317,5 +315,28 @@ fn folder_illustration(ui: &mut egui::Ui) {
             folder.right_top() + egui::vec2(-5.0, 8.0),
         ],
         Stroke::new(2.0, Color32::from_rgb(255, 242, 178)),
+    );
+}
+
+/// An XP-style status strip, part of the application surface.
+pub fn status_bar(ui: &mut egui::Ui, text: &str) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 23.0), Sense::hover());
+    let painter = ui.painter_at(rect);
+    gradient(
+        &painter,
+        rect,
+        Color32::from_rgb(242, 242, 238),
+        Color32::from_rgb(222, 226, 231),
+    );
+    painter.line_segment(
+        [rect.left_top(), rect.right_top()],
+        Stroke::new(1.0, Color32::from_rgb(148, 155, 169)),
+    );
+    painter.text(
+        rect.left_center() + egui::vec2(12.0, 0.0),
+        Align2::LEFT_CENTER,
+        text,
+        FontId::proportional(11.0),
+        Color32::from_rgb(53, 63, 78),
     );
 }

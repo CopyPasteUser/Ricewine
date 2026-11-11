@@ -1,5 +1,6 @@
 use eframe::egui::{self, Color32, RichText};
 use ricewine::core::{self, Application, InstallMode, Store, WineTools};
+use ricewine::runtime::{self, PrefixProfile, Runner};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -80,12 +81,36 @@ struct InstallDraft {
     name: String,
     file: String,
     portable: bool,
+    runner_kind: usize,
+    custom_wine: String,
+    proton_dir: String,
+    game_id: String,
+}
+
+impl InstallDraft {
+    fn runner(&self) -> Runner {
+        match self.runner_kind {
+            1 => Runner::CustomWine {
+                wine: PathBuf::from(self.custom_wine.trim()),
+            },
+            2 => Runner::ProtonUmu {
+                proton: PathBuf::from(self.proton_dir.trim()),
+                game_id: if self.game_id.trim().is_empty() {
+                    "0".into()
+                } else {
+                    self.game_id.trim().into()
+                },
+            },
+            _ => Runner::SystemWine,
+        }
+    }
 }
 
 enum Event {
     Installed(Result<Application, String>),
     Started(String, Result<u32, String>),
     Exited(String, Result<String, String>),
+    CompatibilityFinished(String, String, Result<(), String>),
 }
 
 struct RiceWineApp {
@@ -98,6 +123,10 @@ struct RiceWineApp {
     remove_confirmation: Option<String>,
     busy: bool,
     running: HashSet<String>,
+    compatibility_busy: HashSet<String>,
+    runner_draft: InstallDraft,
+    winetricks_verb: usize,
+    log_preview: String,
     notice: Option<(bool, String)>,
     sender: Sender<Event>,
     receiver: Receiver<Event>,
@@ -133,6 +162,10 @@ impl RiceWineApp {
             remove_confirmation: None,
             busy: false,
             running: HashSet::new(),
+            compatibility_busy: HashSet::new(),
+            runner_draft: InstallDraft::default(),
+            winetricks_verb: 0,
+            log_preview: String::new(),
             notice,
             sender,
             receiver,
@@ -155,6 +188,7 @@ impl RiceWineApp {
                                 .add(app)
                             {
                                 Ok(()) => {
+                                    self.sync_runner_draft();
                                     self.notice = Some((
                                         false,
                                         format!(
@@ -184,21 +218,36 @@ impl RiceWineApp {
                         self.notice = Some((true, error));
                     }
                 }
+                Event::CompatibilityFinished(id, verb, result) => {
+                    self.compatibility_busy.remove(&id);
+                    self.notice = Some(match result {
+                        Ok(()) => (false, format!("Winetricks completed: {verb}")),
+                        Err(error) => (true, format!("Winetricks {verb} failed: {error}")),
+                    });
+                }
             }
         }
-        if self.busy || !self.running.is_empty() {
+        if self.busy || !self.running.is_empty() || !self.compatibility_busy.is_empty() {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
     }
 
     fn install_async(&mut self, draft: InstallDraft) {
-        let Some(wine) = self.wine.clone() else {
-            self.notice = Some((true, "Install Wine before adding programs".into()));
-            return;
-        };
         let Some(store) = self.store.as_ref() else {
             return;
         };
+        let profile = PrefixProfile {
+            runner: draft.runner(),
+            ..Default::default()
+        };
+        if let Err(error) = runtime::validate_runner(&profile.runner) {
+            self.notice = Some((true, error));
+            return;
+        }
+        if self.wine.is_none() && matches!(profile.runner, Runner::SystemWine) {
+            self.notice = Some((true, "Install Wine or choose a different runner".into()));
+            return;
+        }
         let file = PathBuf::from(draft.file.trim());
         if let Err(error) = core::validate_name(&draft.name)
             .and_then(|_| core::validate_installer(&file, draft.portable))
@@ -215,6 +264,7 @@ impl RiceWineApp {
             ),
         ));
         let root = store.root().to_path_buf();
+        let wine = self.wine.clone();
         let tx = self.sender.clone();
         thread::spawn(move || {
             let mode = if draft.portable {
@@ -222,14 +272,28 @@ impl RiceWineApp {
             } else {
                 InstallMode::Installer
             };
-            let result = core::install(&root, &wine, &draft.name, &file, mode);
+            let result = runtime::install_with_profile(
+                &root,
+                wine.as_ref(),
+                &profile,
+                &draft.name,
+                &file,
+                mode,
+            );
             let _ = tx.send(Event::Installed(result));
         });
     }
 
     fn play(&mut self, app: Application) {
-        let (Some(store), Some(wine)) = (&self.store, &self.wine) else {
+        let Some(store) = &self.store else {
             return;
+        };
+        let profile = match runtime::load_profile(&app.prefix) {
+            Ok(profile) => profile,
+            Err(error) => {
+                self.notice = Some((true, error));
+                return;
+            }
         };
         if self.running.contains(&app.id) {
             self.notice = Some((false, "Already running".into()));
@@ -237,11 +301,11 @@ impl RiceWineApp {
         }
         let tx = self.sender.clone();
         let root = store.root().to_path_buf();
-        let wine = wine.clone();
+        let wine = self.wine.clone();
         self.running.insert(app.id.clone());
         thread::spawn(move || {
             let id = app.id.clone();
-            match core::launch(&root, &wine, &app) {
+            match runtime::launch(&root, wine.as_ref(), &app, &profile) {
                 Ok(mut child) => {
                     let _ = tx.send(Event::Started(id.clone(), Ok(child.id())));
                     let outcome = child
@@ -254,6 +318,53 @@ impl RiceWineApp {
                     let _ = tx.send(Event::Started(id, Err(error)));
                 }
             }
+        });
+    }
+
+    fn sync_runner_draft(&mut self) {
+        self.runner_draft = InstallDraft::default();
+        let Some(app) = self
+            .selected
+            .as_ref()
+            .and_then(|id| self.store.as_ref()?.get(id))
+        else {
+            return;
+        };
+        match runtime::load_profile(&app.prefix) {
+            Ok(profile) => match profile.runner {
+                Runner::SystemWine => {}
+                Runner::CustomWine { wine } => {
+                    self.runner_draft.runner_kind = 1;
+                    self.runner_draft.custom_wine = core::readable_path(&wine);
+                }
+                Runner::ProtonUmu { proton, game_id } => {
+                    self.runner_draft.runner_kind = 2;
+                    self.runner_draft.proton_dir = core::readable_path(&proton);
+                    self.runner_draft.game_id = game_id;
+                }
+            },
+            Err(error) => self.notice = Some((true, error)),
+        }
+    }
+
+    fn compatibility_async(&mut self, app: Application, verb: String) {
+        let Some(store) = &self.store else {
+            return;
+        };
+        let profile = match runtime::load_profile(&app.prefix) {
+            Ok(profile) => profile,
+            Err(error) => {
+                self.notice = Some((true, error));
+                return;
+            }
+        };
+        let root = store.root().to_path_buf();
+        let sender = self.sender.clone();
+        self.compatibility_busy.insert(app.id.clone());
+        self.notice = Some((false, format!("Applying {verb}; see Wine log for details…")));
+        thread::spawn(move || {
+            let result = runtime::run_winetricks(&root, &app, &profile, &verb);
+            let _ = sender.send(Event::CompatibilityFinished(app.id, verb, result));
         });
     }
 
@@ -307,7 +418,7 @@ impl RiceWineApp {
             ui.add_space(20.0);
             if ui
                 .add_enabled(
-                    !self.busy && self.wine.is_some() && self.store.is_some(),
+                    !self.busy && self.store.is_some(),
                     egui::Button::new("＋ Install program"),
                 )
                 .clicked()
@@ -359,8 +470,12 @@ impl RiceWineApp {
                                     .clicked()
                                 {
                                     self.selected = Some(app.id.clone());
+                                    self.sync_runner_draft();
                                 }
-                                ui.label("Wine");
+                                let label = runtime::load_profile(&app.prefix)
+                                    .map(|profile| profile.runner.label())
+                                    .unwrap_or("Invalid profile");
+                                ui.label(label);
                             });
                             ui.separator();
                         }
@@ -379,14 +494,23 @@ impl RiceWineApp {
                     ui.heading(&app.name);
                     ui.add_space(8.0);
                     ui.label(RichText::new("Runner").small().strong());
-                    ui.label("System Wine");
+                    let selected_profile = runtime::load_profile(&app.prefix);
+                    match &selected_profile {
+                        Ok(profile) => ui.label(profile.runner.label()),
+                        Err(error) => ui.colored_label(Color32::DARK_RED, error),
+                    };
                     ui.add_space(5.0);
                     ui.label(RichText::new("Prefix").small().strong());
                     ui.small(core::readable_path(&app.prefix));
                     ui.add_space(12.0);
                     if ui
                         .add_enabled(
-                            !self.busy && self.wine.is_some() && app.executable.is_some(),
+                            !self.busy
+                                && !self.compatibility_busy.contains(&app.id)
+                                && app.executable.is_some()
+                                && selected_profile.as_ref().is_ok_and(|p| {
+                                    self.wine.is_some() || !matches!(p.runner, Runner::SystemWine)
+                                }),
                             egui::Button::new("▶ Play"),
                         )
                         .clicked()
@@ -437,19 +561,130 @@ impl RiceWineApp {
         }
     }
 
-    fn runners(&self, ui: &mut egui::Ui) {
+    fn runners(&mut self, ui: &mut egui::Ui) {
         ui.heading("Runners");
-        ui.label("Version management arrives in 0.3. Version 0.1 uses installed system Wine.");
+        ui.label("Choose a runner per program. Proton uses the external umu launcher.");
         ui.add_space(14.0);
-        if let Some(wine) = &self.wine {
-            ui.label(RichText::new(format!("Detected: {}", wine.version)).strong());
-            ui.small(core::readable_path(&wine.wine));
-            ui.small(core::readable_path(&wine.wineboot));
-        } else {
-            ui.colored_label(
-                Color32::DARK_RED,
-                "Wine was not found. Install Wine and restart RiceWine.",
-            );
+        for line in runtime::diagnostics(self.wine.as_ref()) {
+            ui.small(line);
+        }
+        ui.separator();
+        let Some(app) = self
+            .selected
+            .as_ref()
+            .and_then(|id| self.store.as_ref()?.get(id))
+            .cloned()
+        else {
+            ui.label("Add and select a program in Library to configure a runner.");
+            return;
+        };
+        ui.heading(format!("Program: {}", app.name));
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Runner");
+            for (index, label) in ["System Wine", "Custom Wine", "Proton / umu"]
+                .iter()
+                .enumerate()
+            {
+                ui.radio_value(&mut self.runner_draft.runner_kind, index, *label);
+            }
+        });
+        Self::runner_fields(ui, &mut self.runner_draft);
+        let working = self.running.contains(&app.id)
+            || self.compatibility_busy.contains(&app.id)
+            || self.busy;
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(!working, egui::Button::new("Save runner for program"))
+                .clicked()
+            {
+                let profile = PrefixProfile {
+                    runner: self.runner_draft.runner(),
+                    ..Default::default()
+                };
+                match runtime::save_profile(&app.prefix, &profile) {
+                    Ok(()) => self.notice = Some((false, format!("Runner saved for {}", app.name))),
+                    Err(error) => self.notice = Some((true, error)),
+                }
+            }
+            if ui.button("Reload saved runner").clicked() {
+                self.sync_runner_draft();
+            }
+        });
+        ui.add_space(12.0);
+        ui.separator();
+        ui.label(RichText::new("Compatibility tools").strong());
+        ui.small("Winetricks modifies the selected prefix. Apply components only when the program requires them. DXVK and VKD3D are provided by the installed Winetricks version.");
+        ui.horizontal(|ui| {
+            egui::ComboBox::from_id_salt("winetricks_component")
+                .selected_text(runtime::WINETRICKS_VERBS[self.winetricks_verb])
+                .show_ui(ui, |ui| {
+                    for (index, name) in runtime::WINETRICKS_VERBS.iter().enumerate() {
+                        ui.selectable_value(&mut self.winetricks_verb, index, *name);
+                    }
+                });
+            if ui
+                .add_enabled(!working, egui::Button::new("Apply with Winetricks"))
+                .clicked()
+            {
+                self.compatibility_async(
+                    app.clone(),
+                    runtime::WINETRICKS_VERBS[self.winetricks_verb].to_owned(),
+                );
+            }
+            if self.compatibility_busy.contains(&app.id) {
+                ui.spinner();
+                ui.label("Applying…");
+            }
+        });
+        ui.add_space(12.0);
+        ui.separator();
+        if ui.button("Read recent Wine log").clicked() {
+            self.log_preview = self
+                .store
+                .as_ref()
+                .map(|store| {
+                    runtime::log_tail(store.root(), &app.id, 12_000)
+                        .unwrap_or_else(|e| format!("Could not read log: {e}"))
+                })
+                .unwrap_or_default();
+        }
+        if !self.log_preview.is_empty() {
+            egui::ScrollArea::vertical()
+                .max_height(180.0)
+                .show(ui, |ui| {
+                    ui.monospace(&self.log_preview);
+                });
+        }
+    }
+
+    fn runner_fields(ui: &mut egui::Ui, draft: &mut InstallDraft) {
+        match draft.runner_kind {
+            1 => {
+                ui.label("Wine executable (wineboot must be alongside it)");
+                ui.horizontal(|ui| {
+                    ui.text_edit_singleline(&mut draft.custom_wine);
+                    if ui.button("Browse…").clicked()
+                        && let Some(path) = rfd::FileDialog::new().pick_file()
+                    {
+                        draft.custom_wine = core::readable_path(&path);
+                    }
+                });
+            }
+            2 => {
+                ui.label("Extracted Proton directory");
+                ui.horizontal(|ui| {
+                    ui.text_edit_singleline(&mut draft.proton_dir);
+                    if ui.button("Browse…").clicked()
+                        && let Some(path) = rfd::FileDialog::new().pick_folder()
+                    {
+                        draft.proton_dir = core::readable_path(&path);
+                    }
+                });
+                ui.label("Game ID (0 disables game-specific protonfixes)");
+                ui.text_edit_singleline(&mut draft.game_id);
+                ui.small("Requires umu-run in PATH. Wine prefixes are not permission sandboxes.");
+            }
+            _ => {}
         }
     }
 
@@ -501,11 +736,21 @@ impl RiceWineApp {
                         }
                     });
                     ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
+                    ui.add_space(10.0);
+                    ui.label("Runner for this program");
+                    ui.horizontal_wrapped(|ui| {
+                        for (index, label) in ["System Wine", "Custom Wine", "Proton / umu"].iter().enumerate() {
+                            ui.radio_value(&mut draft.runner_kind, index, *label);
+                        }
+                    });
+                    Self::runner_fields(ui, draft);
                     ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
                     ui.add_space(12.0);
                     if ui.button(if draft.portable { "Add portable program" } else { "Run installer" }).clicked() {
                         submit = Some(InstallDraft {
                             name: draft.name.clone(), file: draft.file.clone(), portable: draft.portable,
+                            runner_kind: draft.runner_kind, custom_wine: draft.custom_wine.clone(),
+                            proton_dir: draft.proton_dir.clone(), game_id: draft.game_id.clone(),
                         });
                     }
                 });

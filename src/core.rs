@@ -303,7 +303,7 @@ fn extension_is(path: &Path, ext: &str) -> bool {
         .is_some_and(|value| value.eq_ignore_ascii_case(ext))
 }
 
-fn new_id(name: &str) -> String {
+pub(crate) fn new_id(name: &str) -> String {
     let slug: String = name
         .chars()
         .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
@@ -340,7 +340,7 @@ fn find_in_path(name: &str) -> Option<PathBuf> {
     })
 }
 
-fn run_logged(
+pub(crate) fn run_logged(
     command: &mut Command,
     log_path: &Path,
     timeout: Option<Duration>,

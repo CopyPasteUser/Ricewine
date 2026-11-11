@@ -354,6 +354,22 @@ pub fn empty_library(ui: &mut egui::Ui) {
         });
 }
 
+/// A compact icon-bearing Explorer list row. The selectable widget retains
+/// keyboard navigation and selection semantics.
+pub fn program_row(ui: &mut egui::Ui, name: &str, selected: bool, width: f32) -> egui::Response {
+    let response = ui.add_sized(
+        [width, 28.0],
+        egui::Button::selectable(selected, format!("       {name}")),
+    );
+    paint_icon(
+        ui.painter(),
+        response.rect.left_center() + egui::vec2(7.0, -8.0),
+        XpIcon::Programs,
+        16.0,
+    );
+    response
+}
+
 pub fn program_list_header(ui: &mut egui::Ui) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 35.0), Sense::hover());
     let painter = ui.painter_at(rect);

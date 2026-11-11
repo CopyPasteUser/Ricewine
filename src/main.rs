@@ -1306,6 +1306,18 @@ impl RiceWineApp {
                 self.theme.accent()
             };
             ui.horizontal(|ui| {
+                if self.theme == Theme::Luna {
+                    let (rect, _) = ui.allocate_exact_size(
+                        egui::vec2(16.0, 16.0),
+                        egui::Sense::hover(),
+                    );
+                    luna_icons::paint_icon(
+                        ui.painter(),
+                        rect.min,
+                        luna::XpIcon::Info,
+                        16.0,
+                    );
+                }
                 ui.colored_label(color, message);
                 if ui.small_button("×").clicked() {
                     self.notice = None;
@@ -1513,9 +1525,10 @@ impl RiceWineApp {
                                 });
                             });
                     }
+                    let row_height = if self.theme == Theme::Luna { 28.0 } else { 42.0 };
                     egui::ScrollArea::vertical().show_rows(
                         ui,
-                        42.0,
+                        row_height,
                         matching_indices.len(),
                         |ui, range| {
                             for index in range {
@@ -1526,13 +1539,15 @@ impl RiceWineApp {
                                     .applications()[matching_indices[index]];
                                 let selected = self.selected.as_deref() == Some(&app.id);
                                 ui.horizontal(|ui| {
-                                    if ui
-                                        .add_sized(
+                                    let response = if self.theme == Theme::Luna {
+                                        luna::program_row(ui, &app.name, selected, width - 112.0)
+                                    } else {
+                                        ui.add_sized(
                                             [width - 112.0, 42.0],
                                             egui::Button::selectable(selected, &app.name),
                                         )
-                                        .clicked()
-                                    {
+                                    };
+                                    if response.clicked() {
                                         next_selected = Some(app.id.clone());
                                     }
                                     let label = runtime::load_profile(&app.prefix)

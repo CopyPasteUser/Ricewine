@@ -8,6 +8,7 @@ on:
       - scripts/capture-luna.sh
       - src/main.rs
       - src/luna.rs
+      - src/luna_icons.rs
   workflow_dispatch:
 
 permissions:
@@ -33,5 +34,15 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/screenshots/luna-library.webp docs/screenshots/luna-prefixes.webp docs/screenshots/luna-runners.webp docs/screenshots/luna-settings.webp
+          if git diff --cached --quiet; then
+            echo 'All screenshot frames are unchanged'
+            exit 0
+          fi
+          # Never overwrite a newer UI capture from a superseding source commit.
+          git fetch origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo 'Source commit was superseded; skip stale screenshots'
+            exit 0
+          fi
           git commit -m 'docs: capture actual XP Luna Blue desktop screens'
           git push origin HEAD:main

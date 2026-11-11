@@ -201,10 +201,20 @@ impl Theme {
             widget.bg_stroke = egui::Stroke::new(1.0, palette.border);
         }
         if self == Self::Luna {
-            // Style application controls, not the native compositor title bar.
+            // Classic Luna control surfaces, not the compositor title bar.
+            visuals.widgets.inactive.bg_fill = Color32::from_rgb(238, 240, 246);
+            visuals.widgets.inactive.weak_bg_fill = Color32::from_rgb(238, 240, 246);
+            visuals.widgets.hovered.bg_fill = Color32::from_rgb(255, 245, 205);
+            visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(255, 245, 205);
+            visuals.widgets.active.bg_fill = Color32::from_rgb(212, 225, 246);
+            visuals.widgets.active.weak_bg_fill = Color32::from_rgb(212, 225, 246);
+            visuals.widgets.active.fg_stroke.color = Color32::from_rgb(25, 52, 108);
             let border = egui::Stroke::new(1.0, Color32::from_rgb(118, 148, 194));
             visuals.widgets.inactive.bg_stroke = border;
-            visuals.widgets.hovered.bg_stroke = border;
+            visuals.widgets.hovered.bg_stroke = egui::Stroke::new(
+                1.0,
+                Color32::from_rgb(238, 150, 40),
+            );
             visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, palette.accent);
         }
         visuals.window_corner_radius = egui::CornerRadius::same(palette.corner_radius);

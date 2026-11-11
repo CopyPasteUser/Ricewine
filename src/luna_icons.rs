@@ -27,7 +27,15 @@ fn block(p: &Painter, at: Pos2, k: f32, x: f32, y: f32, w: f32, h: f32, fill: Co
     );
 }
 
-fn segment(p: &Painter, at: Pos2, k: f32, from: [f32; 2], to: [f32; 2], color: Color32, width: f32) {
+fn segment(
+    p: &Painter,
+    at: Pos2,
+    k: f32,
+    from: [f32; 2],
+    to: [f32; 2],
+    color: Color32,
+    width: f32,
+) {
     p.line_segment(
         [
             at + egui::vec2(from[0] * k, from[1] * k),

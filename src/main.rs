@@ -2169,7 +2169,10 @@ impl RiceWineApp {
                         .width(195.0)
                         .show_ui(ui, |ui| {
                             for theme in Theme::ALL {
-                                if ui.selectable_label(self.theme == theme, theme.label()).clicked() {
+                                if ui
+                                    .selectable_label(self.theme == theme, theme.label())
+                                    .clicked()
+                                {
                                     self.set_theme(theme, ui.ctx());
                                 }
                             }
@@ -2186,7 +2189,10 @@ impl RiceWineApp {
                             self.theme = appearance.into();
                             self.theme.apply(ui.ctx());
                         } else {
-                            self.notice = Some((false, "No supported desktop style detected; appearance unchanged".into()));
+                            self.notice = Some((
+                                false,
+                                "No supported desktop style detected; appearance unchanged".into(),
+                            ));
                         }
                     }
                     self.persist_preferences();
@@ -2199,7 +2205,10 @@ impl RiceWineApp {
                         self.theme.apply(ui.ctx());
                         self.notice = Some((false, "Desktop appearance refreshed".into()));
                     } else {
-                        self.notice = Some((false, "Desktop style not recognized; appearance unchanged".into()));
+                        self.notice = Some((
+                            false,
+                            "Desktop style not recognized; appearance unchanged".into(),
+                        ));
                     }
                 }
             });
@@ -2229,7 +2238,9 @@ impl RiceWineApp {
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     if luna::xp_button(ui, "Verify library", true).clicked() {
-                        self.library_report = library::check(store.applications()).lines().join("\n");
+                        self.library_report = library::check(store.applications())
+                            .lines()
+                            .join("\n");
                     }
                     if luna::xp_button(ui, "Save metadata snapshot", true).clicked() {
                         self.notice = Some(match library::snapshot_metadata(store.root()) {

@@ -93,15 +93,15 @@ impl Theme {
                 corner_radius: 3,
             },
             Self::Luna => RicePalette {
-                accent: rgb(25, 73, 171),
-                sidebar: rgb(182, 207, 249),
-                panel: rgb(255, 253, 244),
-                button: rgb(229, 237, 251),
-                hover: rgb(196, 218, 254),
+                accent: rgb(24, 70, 158),
+                sidebar: rgb(196, 215, 248),
+                panel: rgb(254, 254, 251),
+                button: rgb(236, 243, 254),
+                hover: rgb(206, 226, 255),
                 input: rgb(255, 255, 255),
-                text: rgb(28, 46, 81),
-                muted: rgb(75, 91, 118),
-                border: rgb(106, 145, 211),
+                text: rgb(39, 57, 91),
+                muted: rgb(87, 102, 131),
+                border: rgb(145, 171, 214),
                 dark: false,
                 corner_radius: 4,
             },
@@ -203,8 +203,33 @@ impl Theme {
         visuals.menu_corner_radius = egui::CornerRadius::same(palette.corner_radius);
         ctx.set_visuals(visuals);
         ctx.global_style_mut(|style| {
-            style.spacing.item_spacing = egui::vec2(8.0, 10.0);
-            style.spacing.button_padding = egui::vec2(12.0, 7.0);
+            style.spacing.item_spacing = if self == Theme::Luna {
+                egui::vec2(9.0, 9.0)
+            } else {
+                egui::vec2(8.0, 10.0)
+            };
+            style.spacing.button_padding = if self == Theme::Luna {
+                egui::vec2(12.0, 8.0)
+            } else {
+                egui::vec2(12.0, 7.0)
+            };
+            if self == Theme::Luna {
+                style
+                    .text_styles
+                    .insert(egui::TextStyle::Body, egui::FontId::proportional(14.0));
+                style
+                    .text_styles
+                    .insert(egui::TextStyle::Button, egui::FontId::proportional(13.5));
+                style
+                    .text_styles
+                    .insert(egui::TextStyle::Small, egui::FontId::proportional(12.0));
+                style
+                    .text_styles
+                    .insert(egui::TextStyle::Heading, egui::FontId::proportional(21.0));
+            } else {
+                // Switching away from Luna must restore untouched egui defaults.
+                style.text_styles = egui::Style::default().text_styles;
+            }
         });
     }
 }
@@ -1188,22 +1213,16 @@ impl RiceWineApp {
     fn luna_sidebar(&mut self, ui: &mut egui::Ui) {
         egui::Frame::new()
             .fill(self.theme.sidebar())
-            .inner_margin(13.0)
-            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(87, 135, 221)))
+            .inner_margin(14.0)
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(108, 151, 218)))
             .show(ui, |ui| {
                 ui.set_min_width(191.0);
                 ui.set_min_height((ui.available_height() - 26.0).max(360.0));
                 luna::brand(ui);
                 luna::task_panel(ui, |ui| {
-                    luna::task_header(ui, "Programs");
+                    luna::task_header(ui, "Your Programs");
                     ui.add_space(7.0);
-                    if ui
-                        .add_sized(
-                            [ui.available_width() - 12.0, 35.0],
-                            egui::Button::selectable(self.page == Page::Library, "▣  Library"),
-                        )
-                        .clicked()
-                    {
+                    if luna::nav_button(ui, "▸  Program Library", self.page == Page::Library) {
                         self.page = Page::Library;
                     }
                     if ui
@@ -1221,24 +1240,24 @@ impl RiceWineApp {
                     {
                         self.install = Some(InstallDraft::default());
                     }
-                    ui.add_space(7.0);
+                    ui.add_space(9.0);
                 });
-                ui.add_space(17.0);
+                ui.add_space(15.0);
                 luna::task_panel(ui, |ui| {
-                    luna::task_header(ui, "Wine Environments");
+                    luna::task_header(ui, "System Tasks");
                     ui.add_space(7.0);
                     for page in [Page::Prefixes, Page::Runners, Page::Settings] {
-                        if ui
-                            .add_sized(
-                                [ui.available_width() - 12.0, 34.0],
-                                egui::Button::selectable(self.page == page, page.label()),
-                            )
-                            .clicked()
-                        {
+                        let label = match page {
+                            Page::Prefixes => "▸  Wine Prefixes",
+                            Page::Runners => "▸  Runners & Proton",
+                            Page::Settings => "▸  Settings",
+                            Page::Library => unreachable!(),
+                        };
+                        if luna::nav_button(ui, label, self.page == page) {
                             self.page = page;
                         }
                     }
-                    ui.add_space(7.0);
+                    ui.add_space(9.0);
                 });
                 ui.add_space((ui.available_height() - 88.0).max(16.0));
                 ui.label(
@@ -1265,18 +1284,49 @@ impl RiceWineApp {
 
     fn page_body(&mut self, ui: &mut egui::Ui) {
         if let Some((is_error, message)) = self.notice.clone() {
-            let color = if is_error {
-                self.theme.error()
+            if self.theme == Theme::Luna {
+                let (fill, border, text) = if is_error {
+                    (
+                        Color32::from_rgb(255, 244, 231),
+                        Color32::from_rgb(204, 149, 86),
+                        Color32::from_rgb(125, 63, 32),
+                    )
+                } else {
+                    (
+                        Color32::from_rgb(236, 247, 232),
+                        Color32::from_rgb(134, 185, 116),
+                        Color32::from_rgb(45, 97, 42),
+                    )
+                };
+                egui::Frame::new()
+                    .fill(fill)
+                    .stroke(egui::Stroke::new(1.0, border))
+                    .inner_margin(10.0)
+                    .corner_radius(egui::CornerRadius::same(4))
+                    .show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.colored_label(text, if is_error { "!" } else { "✓" });
+                            ui.label(RichText::new(message).color(text));
+                            if ui.button("Dismiss").clicked() {
+                                self.notice = None;
+                            }
+                        });
+                    });
             } else {
-                self.theme.accent()
-            };
-            ui.horizontal(|ui| {
-                ui.colored_label(color, message);
-                if ui.small_button("×").clicked() {
-                    self.notice = None;
-                }
-            });
-            ui.separator();
+                let color = if is_error {
+                    self.theme.error()
+                } else {
+                    self.theme.accent()
+                };
+                ui.horizontal(|ui| {
+                    ui.colored_label(color, message);
+                    if ui.small_button("×").clicked() {
+                        self.notice = None;
+                    }
+                });
+                ui.separator();
+            }
+            ui.add_space(8.0);
         }
         match self.page {
             Page::Library => self.library(ui),
@@ -1284,13 +1334,16 @@ impl RiceWineApp {
             Page::Runners => {
                 egui::ScrollArea::vertical().show(ui, |ui| self.runners(ui));
             }
+            Page::Settings if self.theme == Theme::Luna => {
+                egui::ScrollArea::vertical().show(ui, |ui| self.settings(ui));
+            }
             Page::Settings => self.settings(ui),
         }
     }
 
     fn luna_shell(&mut self, ui: &mut egui::Ui) {
         luna::title_bar(ui);
-        ui.add_space(7.0);
+        ui.add_space(8.0);
         let available_height = ui.available_height();
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(
@@ -1298,17 +1351,17 @@ impl RiceWineApp {
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| self.luna_sidebar(ui),
             );
-            ui.add_space(8.0);
+            ui.add_space(10.0);
             let content_width = ui.available_width().max(390.0);
             ui.allocate_ui_with_layout(
                 egui::vec2(content_width, available_height),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
                     egui::Frame::new()
-                        .fill(Color32::from_rgb(255, 255, 252))
-                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(104, 148, 218)))
-                        .inner_margin(13.0)
-                        .corner_radius(egui::CornerRadius::same(6))
+                        .fill(Color32::from_rgb(255, 255, 254))
+                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(108, 151, 218)))
+                        .inner_margin(16.0)
+                        .corner_radius(egui::CornerRadius::same(5))
                         .show(ui, |ui| {
                             ui.set_min_height((available_height - 28.0).max(380.0));
                             let (title, subtitle) = match self.page {
@@ -1327,7 +1380,7 @@ impl RiceWineApp {
                                 ),
                             };
                             luna::content_heading(ui, title, subtitle);
-                            ui.add_space(15.0);
+                            ui.add_space(17.0);
                             self.page_body(ui);
                         });
                 },
@@ -1336,49 +1389,60 @@ impl RiceWineApp {
     }
 
     fn library(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            if self.theme != Theme::Luna {
-                ui.heading("Library");
-                ui.add_space(20.0);
-            }
-            if ui
-                .add_enabled(
-                    !self.busy && self.store.is_some(),
-                    egui::Button::new("＋ Install program"),
-                )
-                .clicked()
-            {
-                self.install = Some(InstallDraft::default());
-            }
-            if ui
-                .add_enabled(
-                    !self.busy && self.store.is_some(),
-                    egui::Button::new("Import existing prefix…"),
-                )
-                .clicked()
-            {
-                self.import = Some(ImportDraft::default());
-            }
-            if self.busy {
-                ui.spinner();
-                ui.label("Installing…");
-                if ui.button("Cancel installation…").clicked() {
-                    self.cancel_install_confirmation = true;
+        let empty_luna_library = self.theme == Theme::Luna
+            && self
+                .store
+                .as_ref()
+                .is_some_and(|store| store.applications().is_empty());
+        // The welcome state has its own clear install action. Don't display
+        // three equivalent toolbars when there are no applications yet.
+        if !empty_luna_library || self.busy {
+            ui.horizontal(|ui| {
+                if self.theme != Theme::Luna {
+                    ui.heading("Library");
+                    ui.add_space(20.0);
                 }
-            }
-        });
-        ui.add_space(10.0);
-        ui.horizontal(|ui| {
-            ui.label("Search");
-            ui.add(
-                egui::TextEdit::singleline(&mut self.search)
-                    .hint_text("Filter installed programs…")
-                    .desired_width(210.0),
-            );
-            if !self.search.is_empty() && ui.button("Clear search").clicked() {
-                self.search.clear();
-            }
-        });
+                if ui
+                    .add_enabled(
+                        !self.busy && self.store.is_some(),
+                        egui::Button::new("＋ Install program"),
+                    )
+                    .clicked()
+                {
+                    self.install = Some(InstallDraft::default());
+                }
+                if ui
+                    .add_enabled(
+                        !self.busy && self.store.is_some(),
+                        egui::Button::new("Import existing prefix…"),
+                    )
+                    .clicked()
+                {
+                    self.import = Some(ImportDraft::default());
+                }
+                if self.busy {
+                    ui.spinner();
+                    ui.label("Installing…");
+                    if ui.button("Cancel installation…").clicked() {
+                        self.cancel_install_confirmation = true;
+                    }
+                }
+            });
+        }
+        if !empty_luna_library {
+            ui.add_space(10.0);
+            ui.horizontal(|ui| {
+                ui.label("Search");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.search)
+                        .hint_text("Filter installed programs…")
+                        .desired_width(230.0),
+                );
+                if !self.search.is_empty() && ui.button("Clear search").clicked() {
+                    self.search.clear();
+                }
+            });
+        }
         if self.store.is_none() {
             ui.add_space(28.0);
             ui.heading("Library unavailable");
@@ -1391,7 +1455,7 @@ impl RiceWineApp {
             .is_none_or(|s| s.applications().is_empty())
         {
             if self.theme == Theme::Luna {
-                ui.add_space(15.0);
+                ui.add_space(5.0);
                 match luna::empty_library(ui, !self.busy && self.store.is_some()) {
                     luna::EmptyLibraryAction::Install => {
                         self.install = Some(InstallDraft::default());
@@ -1436,24 +1500,28 @@ impl RiceWineApp {
                 egui::vec2(width, ui.available_height()),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
-                    egui::Frame::new()
-                        .fill(self.theme.palette().button)
-                        .inner_margin(8.0)
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label(
-                                    RichText::new("Program")
-                                        .strong()
-                                        .color(self.theme.palette().text),
-                                );
-                                ui.add_space(80.0);
-                                ui.label(
-                                    RichText::new("Runner")
-                                        .strong()
-                                        .color(self.theme.palette().text),
-                                );
+                    if self.theme == Theme::Luna {
+                        luna::populated_list_header(ui);
+                    } else {
+                        egui::Frame::new()
+                            .fill(self.theme.palette().button)
+                            .inner_margin(8.0)
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label(
+                                        RichText::new("Program")
+                                            .strong()
+                                            .color(self.theme.palette().text),
+                                    );
+                                    ui.add_space(80.0);
+                                    ui.label(
+                                        RichText::new("Runner")
+                                            .strong()
+                                            .color(self.theme.palette().text),
+                                    );
+                                });
                             });
-                        });
+                    }
                     egui::ScrollArea::vertical().show_rows(
                         ui,
                         42.0,
@@ -1645,6 +1713,12 @@ impl RiceWineApp {
     fn prefixes(&mut self, ui: &mut egui::Ui) {
         if self.theme != Theme::Luna {
             ui.heading("Wine prefixes");
+        } else {
+            luna::section_heading(
+                ui,
+                "Installed environments",
+                "Manage disk space and protect your programs",
+            );
         }
         ui.label(
             "Create a backup before runner changes. Restoring never overwrites a live prefix.",
@@ -1655,6 +1729,21 @@ impl RiceWineApp {
             .as_ref()
             .map(|s| s.applications().to_vec())
             .unwrap_or_default();
+        if apps.is_empty() && self.theme == Theme::Luna {
+            luna::inset_panel(ui, |ui| {
+                ui.label(
+                    RichText::new("No Wine prefixes yet")
+                        .size(16.0)
+                        .strong()
+                        .color(luna::NAV_BLUE),
+                );
+                ui.label("Install or import a Windows program to see its environment here.");
+                ui.add_space(7.0);
+                if ui.button("Open program library").clicked() {
+                    self.page = Page::Library;
+                }
+            });
+        }
         egui::ScrollArea::vertical().show(ui, |ui| {
             for app in apps {
                 ui.group(|ui| {
@@ -1709,7 +1798,11 @@ impl RiceWineApp {
                 });
             }
             ui.add_space(12.0);
-            ui.heading("Backups");
+            if self.theme == Theme::Luna {
+                luna::section_heading(ui, "Backups", "Restore a safe copy as a new program");
+            } else {
+                ui.heading("Backups");
+            }
             if ui.button("Refresh backup list").clicked()
                 && let Some(store) = &self.store
             {
@@ -1745,18 +1838,46 @@ impl RiceWineApp {
     fn runners(&mut self, ui: &mut egui::Ui) {
         if self.theme != Theme::Luna {
             ui.heading("Runners");
+            ui.label("Choose a runner per program. Proton uses the external umu launcher.");
+            ui.add_space(14.0);
+            for line in runtime::diagnostics(self.wine.as_ref()) {
+                ui.small(line);
+            }
+        } else {
+            luna::section_heading(
+                ui,
+                "System readiness",
+                "Detected Wine and compatibility tools",
+            );
+            luna::inset_panel(ui, |ui| {
+                let diagnostics = runtime::diagnostics(self.wine.as_ref());
+                if ui.available_width() > 550.0 {
+                    ui.columns(2, |columns| {
+                        for (index, line) in diagnostics.iter().enumerate() {
+                            luna::diagnostic_row(&mut columns[index % 2], line);
+                        }
+                    });
+                } else {
+                    for line in diagnostics {
+                        luna::diagnostic_row(ui, &line);
+                    }
+                }
+            });
         }
-        ui.label("Choose a runner per program. Proton uses the external umu launcher.");
-        ui.add_space(14.0);
-        for line in runtime::diagnostics(self.wine.as_ref()) {
-            ui.small(line);
+        ui.add_space(12.0);
+        if self.theme == Theme::Luna {
+            luna::section_heading(
+                ui,
+                "GE-Proton manager",
+                "Discover and manage verified compatibility runners",
+            );
+        } else {
+            ui.label(
+                RichText::new("GE-Proton manager")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
         }
-        ui.add_space(8.0);
-        ui.label(
-            RichText::new("GE-Proton manager")
-                .strong()
-                .color(self.theme.palette().text),
-        );
         ui.small("Opt-in official GE-Proton releases. Downloads are SHA512-verified and installed only under RiceWine's data directory; no sudo or Steam changes.");
         ui.horizontal(|ui| {
             if ui
@@ -1843,14 +1964,41 @@ impl RiceWineApp {
                 }
             });
         }
-        ui.separator();
+        ui.add_space(14.0);
+        if self.theme == Theme::Luna {
+            luna::section_heading(
+                ui,
+                "Program configuration",
+                "Runner and compatibility options are saved per application",
+            );
+        } else {
+            ui.separator();
+        }
         let Some(app) = self
             .selected
             .as_ref()
             .and_then(|id| self.store.as_ref()?.get(id))
             .cloned()
         else {
-            ui.label("Add and select a program in Library to configure a runner.");
+            if self.theme == Theme::Luna {
+                luna::inset_panel(ui, |ui| {
+                    ui.label(
+                        RichText::new("No program selected")
+                            .size(16.0)
+                            .strong()
+                            .color(luna::NAV_BLUE),
+                    );
+                    ui.label(
+                        "Install or select an application to assign its Wine or Proton runner.",
+                    );
+                    ui.add_space(6.0);
+                    if ui.button("Open program library").clicked() {
+                        self.page = Page::Library;
+                    }
+                });
+            } else {
+                ui.label("Add and select a program in Library to configure a runner.");
+            }
             return;
         };
         ui.heading(format!("Program: {}", app.name));
@@ -1910,11 +2058,19 @@ impl RiceWineApp {
             runtime::ALLOWED_ENVIRONMENT.join(", ")
         ));
         ui.add_space(14.0);
-        ui.label(
-            RichText::new("Application updates")
-                .strong()
-                .color(self.theme.palette().text),
-        );
+        if self.theme == Theme::Luna {
+            luna::section_heading(
+                ui,
+                "Application updates",
+                "Optional updates for this Windows app",
+            );
+        } else {
+            ui.label(
+                RichText::new("Application updates")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
+        }
         ui.small("Optional release notices for apps published on GitHub. RiceWine never downloads or runs a publisher EXE without your explicit selection.");
         ui.label("GitHub repository (owner/repo)");
         ui.add(
@@ -2004,11 +2160,19 @@ impl RiceWineApp {
         ui.small("A publisher update can overwrite installed app files. Back up the prefix first. Successful setup does not prove the app version changed.");
         ui.add_space(12.0);
         ui.separator();
-        ui.label(
-            RichText::new("Compatibility tools")
-                .strong()
-                .color(self.theme.palette().text),
-        );
+        if self.theme == Theme::Luna {
+            luna::section_heading(
+                ui,
+                "Compatibility tools",
+                "Optional components installed with Winetricks",
+            );
+        } else {
+            ui.label(
+                RichText::new("Compatibility tools")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
+        }
         ui.small("Winetricks modifies the selected prefix. Apply components only when the program requires them. DXVK and VKD3D are provided by the installed Winetricks version.");
         ui.horizontal(|ui| {
             egui::ComboBox::from_id_salt("winetricks_component")
@@ -2087,13 +2251,19 @@ impl RiceWineApp {
     fn settings(&mut self, ui: &mut egui::Ui) {
         if self.theme != Theme::Luna {
             ui.heading("Settings");
+            ui.label(
+                RichText::new("Rices")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
+            ui.small("Five lightweight built-in looks. Switching does not change Wine or your desktop theme.");
+        } else {
+            luna::section_heading(
+                ui,
+                "Choose your Rice",
+                "A different look, the same Wine library",
+            );
         }
-        ui.label(
-            RichText::new("Rices")
-                .strong()
-                .color(self.theme.palette().text),
-        );
-        ui.small("Five lightweight built-in looks. Switching does not change Wine or your desktop theme.");
         ui.add_space(8.0);
         ui.horizontal_wrapped(|ui| {
             for theme in Theme::ALL {
@@ -2147,8 +2317,16 @@ impl RiceWineApp {
                 ));
             }
         }
-        ui.add_space(16.0);
-        ui.label("Desktop integration");
+        ui.add_space(18.0);
+        if self.theme == Theme::Luna {
+            luna::section_heading(
+                ui,
+                "Desktop integration",
+                "Open EXE and MSI installers from your file manager",
+            );
+        } else {
+            ui.label("Desktop integration");
+        }
         if ui.button("Add RiceWine to Open With menu").clicked() {
             let result = std::env::current_exe()
                 .map_err(|e| e.to_string())
@@ -2162,9 +2340,13 @@ impl RiceWineApp {
             });
         }
         ui.small("Does not replace system file associations or change your default app.");
-        ui.add_space(18.0);
+        ui.add_space(20.0);
         if let Some(store) = &self.store {
-            ui.label("Application data");
+            if self.theme == Theme::Luna {
+                luna::section_heading(ui, "Application data", "Safe maintenance and diagnostics");
+            } else {
+                ui.label("Application data");
+            }
             ui.small(core::readable_path(store.root()));
             ui.small("Catalog changes are saved atomically. Removing a program from the library preserves its files.");
             ui.add_space(12.0);

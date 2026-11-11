@@ -4,6 +4,7 @@ All entries describe source-code milestones, not automatic confirmation of real 
 
 ## 2.0.0-beta.1 – guided application lifecycle
 
+- Refine the flagship XP Luna Blue interface: layered Explorer-style title chrome, contextual category icons, clear navigation states, readable text, task-focused section headings, grouped runner diagnostics and informative empty/status states. Keep all other Rices and Wine workflows intact.
 - Cancel long-running installations and update installers; stop a tracked Windows application with an explicit warning. Prefixes are never deleted during cancellation.
 - Bounded scan for installed EXEs, with automatic selection only for an unambiguous candidate and manual override for other applications.
 - Per-prefix disk usage and opt-in preview/cleanup of temporary files older than seven days. Cleanup is blocked for external/imported prefixes and never follows symlinks.

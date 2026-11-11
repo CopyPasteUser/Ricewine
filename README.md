@@ -18,7 +18,7 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 
 ## Built-in Rices
 
-**XP Luna Blue** has its own XP-inspired window chrome, Explorer task panes and library layout. These are real screenshots of the current Linux build:
+**XP Luna Blue** is the flagship design: glossy classic desktop chrome, Explorer task panes, contextual icons, grouped Wine/Proton settings and a focused installation flow. These are real screenshots of the current Linux build:
 
 ![XP Luna Blue — program library](docs/screenshots/luna-library.webp)
 

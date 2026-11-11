@@ -4,7 +4,7 @@
 
 RiceWine helps you install and run Windows applications and games with isolated Wine prefixes. It works independently of RiceBowl and is designed to fit both Windows 10 and XP Luna desktop themes.
 
-> **1.0 release candidate (RC2)** — software and packaging checks are underway. The maintainer will perform the real Wine/Proton and desktop acceptance before a stable 1.0 release.
+> **1.0 release candidate (RC3)** — software and packaging checks are underway. The maintainer will perform the real Wine/Proton and desktop acceptance before a stable 1.0 release.
 
 ## Features in 0.1
 
@@ -14,7 +14,7 @@ RiceWine helps you install and run Windows applications and games with isolated 
 - Maintain a persistent application library and choose a launch executable.
 - Start registered programs, see running state and collect Wine logs.
 - Remove entries from the library **without deleting** their Wine prefixes.
-- Switch between initial Windows 10 and XP Luna visual styles.
+- Switch between lightweight Windows 10 and XP Luna visual styles.
 - Use a native Rust/egui window; no permanent background service.
 
 ## New in 0.3
@@ -70,6 +70,18 @@ DXVK_HUD=fps
 
 These examples are not applied automatically. Custom environment keys such as `WINEPREFIX`, `PATH` or `LD_PRELOAD` cannot be set through this UI.
 
+## Built-in Rices (1.0 RC3)
+
+| Rice | Character |
+| --- | --- |
+| **Windows 10 Light** | Clean white workspace, pale navigation and blue accents |
+| **Windows 10 Dark** | Deep charcoal workspace with bright blue focus and controls |
+| **XP Luna Blue** | Classic blue navigation, warm content surface and rounded controls |
+| **XP Luna Olive** | Olive-green navigation with warm cream backgrounds |
+| **XP Luna Silver** | Cool silver/lavender navigation and restrained blue controls |
+
+Select a Rice from the left sidebar or from the preview buttons in **Settings**. Switching is instant and persisted in `preferences.json`; existing Windows 10/XP preferences remain compatible. Choosing a Rice manually disables optional RiceBowl theme following so it stays selected after restarting. Theme selection never changes Wine prefixes, Windows applications or desktop configuration. No artwork, fonts or graphics assets are downloaded.
+
 ## Requirements
 
 - Linux with X11 or Wayland and an OpenGL-capable graphics stack.
@@ -124,7 +136,7 @@ Existing Wine prefixes are not imported automatically. Removing a library entry 
 | 0.3 | Per-program Wine and Proton/umu runner selection, Winetricks, DXVK/VKD3D via installed Winetricks, diagnostics |
 | **0.6** | Templates, prefix import, desktop shortcuts, bounded logs and backup/restore |
 | **0.9** | Persistent XP/Win10 appearance, read-only RiceBowl theme detection, opt-in Open With and XDG integration |
-| **1.0 RC2** | Catalog and runner safety, prefix backup/restore tests, transactional user installation, safe uninstaller, pinned CI, diagnostics and acceptance checklist. Earlier experimental library-management features are included. |
+| **1.0 RC3** | Five persistent built-in Rices with contrast-tested palettes, plus RC2 catalog and runner safety, transactional installation, uninstaller, CI and acceptance checklist. |
 | 1.0 stable | Pending: real Wine/Proton install-and-play tests, X11/Wayland keyboard/visual acceptance, recovery exercises, performance baselines and maintainer signoff |
 | 2.0 | Future feature roadmap after stable 1.0 acceptance |
 

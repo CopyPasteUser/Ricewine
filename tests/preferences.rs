@@ -58,3 +58,30 @@ fn ricebowl_theme_detection_is_explicit_and_does_not_guess() {
     assert_eq!(preferences::appearance_for_theme("WhiteSur-Dark"), None);
     assert_eq!(preferences::appearance_for_theme("Adwaita"), None);
 }
+
+#[test]
+fn all_rices_round_trip_without_breaking_old_preferences() {
+    for appearance in [
+        Appearance::Windows10,
+        Appearance::Windows10Dark,
+        Appearance::Luna,
+        Appearance::LunaOlive,
+        Appearance::LunaSilver,
+    ] {
+        let preferences = Preferences {
+            appearance,
+            follow_desktop: false,
+        };
+        let json = serde_json::to_string(&preferences).unwrap();
+        assert_eq!(
+            serde_json::from_str::<Preferences>(&json).unwrap(),
+            preferences
+        );
+    }
+
+    let old = r#"{"appearance":"luna","follow_desktop":true}"#;
+    assert_eq!(
+        serde_json::from_str::<Preferences>(old).unwrap().appearance,
+        Appearance::Luna
+    );
+}

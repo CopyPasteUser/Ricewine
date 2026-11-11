@@ -2,6 +2,14 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
+## 1.0.0-rc.3 – built-in Rice collection
+
+- Add Windows 10 Dark, XP Luna Olive and XP Luna Silver to the existing Windows 10 Light and XP Luna Blue styles.
+- Apply coherent palette tokens to panels, navigation, buttons, inputs and selection states; add keyboard-accessible preview buttons in Settings.
+- Render the app inside a theme-colored central panel instead of exposing the renderer's black clear color; fix strong-label and dark-mode error-message contrast.
+- Persist all five Rices without changing previously stored `windows10`/`luna` preferences. Manual selection disables automatic desktop matching.
+- Test palette text/selection contrast and serialization of every appearance; no Wine or prefix execution paths changed.
+
 ## 1.0.0-rc.2 – preparing maintainer acceptance
 
 - Use private permissions even for existing RiceWine data roots, and reject a symlinked data root before writing.

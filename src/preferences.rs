@@ -17,6 +17,9 @@ pub enum Appearance {
     #[default]
     Windows10,
     Luna,
+    Windows10Dark,
+    LunaOlive,
+    LunaSilver,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]

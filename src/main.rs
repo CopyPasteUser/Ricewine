@@ -15,48 +15,187 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Theme {
     Windows10,
     Luna,
+    Windows10Dark,
+    LunaOlive,
+    LunaSilver,
+}
+
+#[derive(Clone, Copy)]
+struct RicePalette {
+    accent: Color32,
+    sidebar: Color32,
+    panel: Color32,
+    button: Color32,
+    hover: Color32,
+    input: Color32,
+    text: Color32,
+    muted: Color32,
+    border: Color32,
+    dark: bool,
+    corner_radius: u8,
 }
 
 impl Theme {
+    const ALL: [Self; 5] = [
+        Self::Windows10,
+        Self::Windows10Dark,
+        Self::Luna,
+        Self::LunaOlive,
+        Self::LunaSilver,
+    ];
+
     fn label(self) -> &'static str {
         match self {
-            Self::Windows10 => "Windows 10",
-            Self::Luna => "XP Luna",
+            Self::Windows10 => "Windows 10 Light",
+            Self::Windows10Dark => "Windows 10 Dark",
+            Self::Luna => "XP Luna Blue",
+            Self::LunaOlive => "XP Luna Olive",
+            Self::LunaSilver => "XP Luna Silver",
+        }
+    }
+
+    fn palette(self) -> RicePalette {
+        let rgb = Color32::from_rgb;
+        match self {
+            Self::Windows10 => RicePalette {
+                accent: rgb(0, 102, 190),
+                sidebar: rgb(242, 244, 247),
+                panel: rgb(255, 255, 255),
+                button: rgb(232, 237, 244),
+                hover: rgb(211, 229, 248),
+                input: rgb(255, 255, 255),
+                text: rgb(28, 37, 47),
+                muted: rgb(82, 96, 112),
+                border: rgb(176, 189, 202),
+                dark: false,
+                corner_radius: 3,
+            },
+            Self::Windows10Dark => RicePalette {
+                accent: rgb(86, 175, 244),
+                sidebar: rgb(32, 39, 48),
+                panel: rgb(23, 29, 36),
+                button: rgb(45, 55, 67),
+                hover: rgb(60, 75, 90),
+                input: rgb(35, 43, 53),
+                text: rgb(234, 240, 246),
+                muted: rgb(179, 193, 209),
+                border: rgb(89, 104, 120),
+                dark: true,
+                corner_radius: 3,
+            },
+            Self::Luna => RicePalette {
+                accent: rgb(37, 83, 181),
+                sidebar: rgb(204, 222, 252),
+                panel: rgb(248, 247, 237),
+                button: rgb(225, 234, 252),
+                hover: rgb(191, 212, 249),
+                input: rgb(255, 255, 255),
+                text: rgb(31, 48, 79),
+                muted: rgb(78, 92, 117),
+                border: rgb(112, 145, 202),
+                dark: false,
+                corner_radius: 6,
+            },
+            Self::LunaOlive => RicePalette {
+                accent: rgb(77, 106, 43),
+                sidebar: rgb(219, 229, 191),
+                panel: rgb(248, 246, 229),
+                button: rgb(227, 234, 209),
+                hover: rgb(208, 224, 175),
+                input: rgb(255, 254, 246),
+                text: rgb(42, 55, 34),
+                muted: rgb(84, 100, 69),
+                border: rgb(140, 160, 105),
+                dark: false,
+                corner_radius: 6,
+            },
+            Self::LunaSilver => RicePalette {
+                accent: rgb(72, 91, 145),
+                sidebar: rgb(220, 225, 239),
+                panel: rgb(247, 248, 252),
+                button: rgb(227, 231, 241),
+                hover: rgb(209, 218, 240),
+                input: rgb(255, 255, 255),
+                text: rgb(38, 47, 69),
+                muted: rgb(84, 96, 124),
+                border: rgb(144, 156, 183),
+                dark: false,
+                corner_radius: 6,
+            },
         }
     }
 
     fn accent(self) -> Color32 {
-        match self {
-            Self::Windows10 => Color32::from_rgb(0, 120, 215),
-            Self::Luna => Color32::from_rgb(32, 76, 184),
+        self.palette().accent
+    }
+
+    fn error(self) -> Color32 {
+        if self.palette().dark {
+            Color32::from_rgb(255, 137, 130)
+        } else {
+            Color32::DARK_RED
         }
     }
 
     fn sidebar(self) -> Color32 {
-        match self {
-            Self::Windows10 => Color32::from_rgb(242, 244, 247),
-            Self::Luna => Color32::from_rgb(211, 225, 251),
-        }
+        self.palette().sidebar
     }
 
     fn apply(self, ctx: &egui::Context) {
-        let mut visuals = egui::Visuals::light();
-        visuals.panel_fill = match self {
-            Self::Windows10 => Color32::WHITE,
-            Self::Luna => Color32::from_rgb(248, 247, 237),
+        let palette = self.palette();
+        let mut visuals = if palette.dark {
+            egui::Visuals::dark()
+        } else {
+            egui::Visuals::light()
         };
-        visuals.selection.bg_fill = self.accent().gamma_multiply(0.35);
-        visuals.selection.stroke.color = Color32::BLACK;
-        visuals.widgets.active.bg_fill = self.accent();
-        visuals.widgets.hovered.bg_fill = self.accent().gamma_multiply(0.25);
-        visuals.widgets.inactive.bg_fill = match self {
-            Self::Windows10 => Color32::from_rgb(237, 239, 243),
-            Self::Luna => Color32::from_rgb(232, 234, 228),
+        visuals.panel_fill = palette.panel;
+        visuals.window_fill = palette.panel;
+        visuals.window_stroke = egui::Stroke::new(1.0, palette.border);
+        visuals.extreme_bg_color = palette.input;
+        visuals.text_edit_bg_color = Some(palette.input);
+        visuals.faint_bg_color = palette.button;
+        visuals.weak_text_color = Some(palette.muted);
+        visuals.hyperlink_color = palette.accent;
+        visuals.selection.bg_fill = palette.accent;
+        visuals.selection.stroke.color = if palette.dark {
+            palette.panel
+        } else {
+            Color32::WHITE
         };
+        visuals.widgets.active.bg_fill = palette.accent;
+        visuals.widgets.active.weak_bg_fill = palette.accent;
+        visuals.widgets.active.fg_stroke.color = if palette.dark {
+            palette.panel
+        } else {
+            Color32::WHITE
+        };
+        visuals.widgets.hovered.bg_fill = palette.hover;
+        visuals.widgets.hovered.weak_bg_fill = palette.hover;
+        visuals.widgets.hovered.fg_stroke.color = palette.text;
+        visuals.widgets.inactive.bg_fill = palette.button;
+        visuals.widgets.inactive.weak_bg_fill = palette.button;
+        visuals.widgets.inactive.fg_stroke.color = palette.text;
+        visuals.widgets.noninteractive.fg_stroke.color = palette.text;
+        visuals.widgets.noninteractive.bg_fill = palette.panel;
+        visuals.widgets.open.bg_fill = palette.hover;
+        visuals.widgets.open.weak_bg_fill = palette.hover;
+        visuals.widgets.open.fg_stroke.color = palette.text;
+        for widget in [
+            &mut visuals.widgets.noninteractive,
+            &mut visuals.widgets.inactive,
+            &mut visuals.widgets.hovered,
+            &mut visuals.widgets.active,
+            &mut visuals.widgets.open,
+        ] {
+            widget.corner_radius = egui::CornerRadius::same(palette.corner_radius);
+            widget.bg_stroke = egui::Stroke::new(1.0, palette.border);
+        }
+        visuals.window_corner_radius = egui::CornerRadius::same(palette.corner_radius);
+        visuals.menu_corner_radius = egui::CornerRadius::same(palette.corner_radius);
         ctx.set_visuals(visuals);
         ctx.global_style_mut(|style| {
             style.spacing.item_spacing = egui::vec2(8.0, 10.0);
@@ -70,6 +209,9 @@ impl From<Appearance> for Theme {
         match value {
             Appearance::Windows10 => Self::Windows10,
             Appearance::Luna => Self::Luna,
+            Appearance::Windows10Dark => Self::Windows10Dark,
+            Appearance::LunaOlive => Self::LunaOlive,
+            Appearance::LunaSilver => Self::LunaSilver,
         }
     }
 }
@@ -79,6 +221,9 @@ impl From<Theme> for Appearance {
         match value {
             Theme::Windows10 => Self::Windows10,
             Theme::Luna => Self::Luna,
+            Theme::Windows10Dark => Self::Windows10Dark,
+            Theme::LunaOlive => Self::LunaOlive,
+            Theme::LunaSilver => Self::LunaSilver,
         }
     }
 }
@@ -627,7 +772,7 @@ impl RiceWineApp {
                 ui.label(
                     RichText::new("Wine manager")
                         .small()
-                        .color(Color32::DARK_GRAY),
+                        .color(self.theme.palette().muted),
                 );
                 ui.add_space(24.0);
                 for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
@@ -644,12 +789,25 @@ impl RiceWineApp {
                 }
                 ui.add_space(20.0);
                 ui.separator();
-                ui.label(RichText::new("APPEARANCE").small().strong());
-                for theme in [Theme::Windows10, Theme::Luna] {
-                    if ui.radio(self.theme == theme, theme.label()).clicked() {
-                        self.set_theme(theme, ui.ctx());
-                    }
-                }
+                ui.label(
+                    RichText::new("RICE")
+                        .small()
+                        .strong()
+                        .color(self.theme.palette().muted),
+                );
+                egui::ComboBox::from_id_salt("sidebar_rice")
+                    .width(ui.available_width())
+                    .selected_text(self.theme.label())
+                    .show_ui(ui, |ui| {
+                        for theme in Theme::ALL {
+                            if ui
+                                .selectable_label(self.theme == theme, theme.label())
+                                .clicked()
+                            {
+                                self.set_theme(theme, ui.ctx());
+                            }
+                        }
+                    });
             });
     }
 
@@ -737,13 +895,21 @@ impl RiceWineApp {
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
                     egui::Frame::new()
-                        .fill(Color32::from_gray(238))
+                        .fill(self.theme.palette().button)
                         .inner_margin(8.0)
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                ui.label(RichText::new("Program").strong());
+                                ui.label(
+                                    RichText::new("Program")
+                                        .strong()
+                                        .color(self.theme.palette().text),
+                                );
                                 ui.add_space(80.0);
-                                ui.label(RichText::new("Runner").strong());
+                                ui.label(
+                                    RichText::new("Runner")
+                                        .strong()
+                                        .color(self.theme.palette().text),
+                                );
                             });
                         });
                     egui::ScrollArea::vertical().show_rows(
@@ -819,14 +985,24 @@ impl RiceWineApp {
                         }
                     }
                     ui.add_space(8.0);
-                    ui.label(RichText::new("Runner").small().strong());
+                    ui.label(
+                        RichText::new("Runner")
+                            .small()
+                            .strong()
+                            .color(self.theme.palette().text),
+                    );
                     let selected_profile = runtime::load_profile(&app.prefix);
                     match &selected_profile {
                         Ok(profile) => ui.label(profile.runner.label()),
-                        Err(error) => ui.colored_label(Color32::DARK_RED, error),
+                        Err(error) => ui.colored_label(self.theme.error(), error),
                     };
                     ui.add_space(5.0);
-                    ui.label(RichText::new("Prefix").small().strong());
+                    ui.label(
+                        RichText::new("Prefix")
+                            .small()
+                            .strong()
+                            .color(self.theme.palette().text),
+                    );
                     ui.small(core::readable_path(&app.prefix));
                     ui.add_space(12.0);
                     if ui
@@ -900,7 +1076,11 @@ impl RiceWineApp {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for app in apps {
                 ui.group(|ui| {
-                    ui.label(RichText::new(&app.name).strong());
+                    ui.label(
+                        RichText::new(&app.name)
+                            .strong()
+                            .color(self.theme.palette().text),
+                    );
                     ui.small(core::readable_path(&app.prefix));
                     if ui
                         .add_enabled(
@@ -1048,7 +1228,11 @@ impl RiceWineApp {
         });
         ui.add_space(12.0);
         ui.separator();
-        ui.label(RichText::new("Compatibility tools").strong());
+        ui.label(
+            RichText::new("Compatibility tools")
+                .strong()
+                .color(self.theme.palette().text),
+        );
         ui.small("Winetricks modifies the selected prefix. Apply components only when the program requires them. DXVK and VKD3D are provided by the installed Winetricks version.");
         ui.horizontal(|ui| {
             egui::ComboBox::from_id_salt("winetricks_component")
@@ -1126,19 +1310,33 @@ impl RiceWineApp {
 
     fn settings(&mut self, ui: &mut egui::Ui) {
         ui.heading("Settings");
-        ui.label("Appearance");
-        egui::ComboBox::from_id_salt("theme")
-            .selected_text(self.theme.label())
-            .show_ui(ui, |ui| {
-                for theme in [Theme::Windows10, Theme::Luna] {
-                    if ui
-                        .selectable_label(self.theme == theme, theme.label())
-                        .clicked()
-                    {
-                        self.set_theme(theme, ui.ctx());
-                    }
+        ui.label(
+            RichText::new("Rices")
+                .strong()
+                .color(self.theme.palette().text),
+        );
+        ui.small("Five lightweight built-in looks. Switching does not change Wine or your desktop theme.");
+        ui.add_space(8.0);
+        ui.horizontal_wrapped(|ui| {
+            for theme in Theme::ALL {
+                let palette = theme.palette();
+                let selected = self.theme == theme;
+                let button = egui::Button::new(RichText::new(theme.label()).color(palette.text))
+                    .fill(palette.sidebar)
+                    .stroke(egui::Stroke::new(
+                        if selected { 2.0 } else { 1.0 },
+                        if selected {
+                            palette.accent
+                        } else {
+                            palette.border
+                        },
+                    ));
+                if ui.add_sized([143.0, 42.0], button).clicked() {
+                    self.set_theme(theme, ui.ctx());
                 }
-            });
+            }
+        });
+        ui.add_space(8.0);
         let mut follow = self.preferences.follow_desktop;
         if ui
             .checkbox(&mut follow, "Match recognized RiceBowl theme at startup")
@@ -1381,38 +1579,40 @@ impl RiceWineApp {
 impl eframe::App for RiceWineApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.poll(ui.ctx());
-        let height = ui.available_height();
-        ui.horizontal_top(|ui| {
-            ui.allocate_ui_with_layout(
-                egui::vec2(200.0, height),
-                egui::Layout::top_down(egui::Align::Min),
-                |ui| self.sidebar(ui),
-            );
-            ui.separator();
-            ui.vertical(|ui| {
-                ui.add_space(10.0);
-                if let Some((is_error, message)) = self.notice.clone() {
-                    let color = if is_error {
-                        Color32::DARK_RED
-                    } else {
-                        self.theme.accent()
-                    };
-                    ui.horizontal(|ui| {
-                        ui.colored_label(color, message);
-                        if ui.small_button("×").clicked() {
-                            self.notice = None;
-                        }
-                    });
-                    ui.separator();
-                }
-                match self.page {
-                    Page::Library => self.library(ui),
-                    Page::Prefixes => self.prefixes(ui),
-                    Page::Runners => {
-                        egui::ScrollArea::vertical().show(ui, |ui| self.runners(ui));
+        egui::CentralPanel::default().show(ui, |ui| {
+            let height = ui.available_height();
+            ui.horizontal_top(|ui| {
+                ui.allocate_ui_with_layout(
+                    egui::vec2(200.0, height),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| self.sidebar(ui),
+                );
+                ui.separator();
+                ui.vertical(|ui| {
+                    ui.add_space(10.0);
+                    if let Some((is_error, message)) = self.notice.clone() {
+                        let color = if is_error {
+                            self.theme.error()
+                        } else {
+                            self.theme.accent()
+                        };
+                        ui.horizontal(|ui| {
+                            ui.colored_label(color, message);
+                            if ui.small_button("×").clicked() {
+                                self.notice = None;
+                            }
+                        });
+                        ui.separator();
                     }
-                    Page::Settings => self.settings(ui),
-                }
+                    match self.page {
+                        Page::Library => self.library(ui),
+                        Page::Prefixes => self.prefixes(ui),
+                        Page::Runners => {
+                            egui::ScrollArea::vertical().show(ui, |ui| self.runners(ui));
+                        }
+                        Page::Settings => self.settings(ui),
+                    }
+                });
             });
         });
         self.install_dialog(ui.ctx());
@@ -1544,4 +1744,64 @@ fn main() -> eframe::Result {
         options,
         Box::new(move |ctx| Ok(Box::new(RiceWineApp::new(ctx, initial_install.clone())))),
     )
+}
+
+#[cfg(test)]
+mod rice_tests {
+    use super::*;
+
+    fn contrast(a: Color32, b: Color32) -> f32 {
+        fn luminance(color: Color32) -> f32 {
+            let channel = |value: u8| {
+                let value = value as f32 / 255.0;
+                if value <= 0.04045 {
+                    value / 12.92
+                } else {
+                    ((value + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * channel(color.r()) + 0.7152 * channel(color.g()) + 0.0722 * channel(color.b())
+        }
+        let a = luminance(a);
+        let b = luminance(b);
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn every_rice_has_readable_text_and_persists() {
+        for theme in Theme::ALL {
+            let palette = theme.palette();
+            assert!(
+                contrast(palette.text, palette.panel) >= 4.5,
+                "{:?} panel",
+                theme
+            );
+            assert!(
+                contrast(palette.text, palette.sidebar) >= 4.5,
+                "{:?} sidebar",
+                theme
+            );
+            assert!(
+                contrast(palette.text, palette.button) >= 4.5,
+                "{:?} button",
+                theme
+            );
+            let selected_text = if palette.dark {
+                palette.panel
+            } else {
+                Color32::WHITE
+            };
+            assert!(
+                contrast(selected_text, palette.accent) >= 4.5,
+                "{:?} selection",
+                theme
+            );
+            assert!(
+                contrast(palette.accent, palette.sidebar) >= 3.0,
+                "{:?} accent",
+                theme
+            );
+            assert_eq!(Theme::from(Appearance::from(theme)), theme);
+        }
+    }
 }

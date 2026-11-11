@@ -2,10 +2,12 @@ use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
 use ricewine::core::{self, Application, InstallMode, Store, WineTools};
 use ricewine::integration;
+#[cfg(unix)]
+use ricewine::ipc;
 use ricewine::library;
 use ricewine::preferences::{self, Appearance, Preferences};
 use ricewine::runtime::{self, PrefixProfile, Runner, Template};
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -158,6 +160,9 @@ struct RiceWineApp {
     launch_env_text: String,
     detected_proton: Vec<runtime::DetectedProton>,
     install: Option<InstallDraft>,
+    queued_install_files: VecDeque<PathBuf>,
+    #[cfg(unix)]
+    ipc: Option<ipc::Server>,
     import: Option<ImportDraft>,
     remove_confirmation: Option<String>,
     busy: bool,
@@ -175,6 +180,18 @@ struct RiceWineApp {
 }
 
 impl RiceWineApp {
+    fn install_draft_for_file(path: PathBuf) -> InstallDraft {
+        InstallDraft {
+            name: path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+            file: core::readable_path(&path),
+            ..Default::default()
+        }
+    }
+
     fn new(ctx: &eframe::CreationContext<'_>, initial_install: Option<PathBuf>) -> Self {
         let (sender, receiver) = mpsc::channel();
         let store = Store::open_default();
@@ -214,6 +231,17 @@ impl RiceWineApp {
             .ok()
             .and_then(|store| backup::list_backups(store.root()).ok())
             .unwrap_or_default();
+        #[cfg(unix)]
+        let ipc = store
+            .as_ref()
+            .ok()
+            .and_then(|store| match ipc::Server::bind(store.root()) {
+                Ok(server) => Some(server),
+                Err(error) => {
+                    notice = Some((true, format!("Open With handoff unavailable: {error}")));
+                    None
+                }
+            });
         let mut app = Self {
             store: store.ok(),
             wine: wine.ok(),
@@ -226,15 +254,10 @@ impl RiceWineApp {
             launch_args_text: String::new(),
             launch_env_text: String::new(),
             detected_proton: Vec::new(),
-            install: initial_install.map(|path| InstallDraft {
-                name: path
-                    .file_stem()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .into_owned(),
-                file: core::readable_path(&path),
-                ..Default::default()
-            }),
+            install: initial_install.map(Self::install_draft_for_file),
+            queued_install_files: VecDeque::new(),
+            #[cfg(unix)]
+            ipc,
             import: None,
             remove_confirmation: None,
             busy: false,
@@ -255,6 +278,16 @@ impl RiceWineApp {
     }
 
     fn poll(&mut self, ctx: &egui::Context) {
+        #[cfg(unix)]
+        if let Some(server) = &self.ipc {
+            for _ in 0..8 {
+                match server.receive() {
+                    Ok(Some(path)) => self.queued_install_files.push_back(path),
+                    Ok(None) => break,
+                    Err(error) => self.notice = Some((true, error)),
+                }
+            }
+        }
         while let Ok(event) = self.receiver.try_recv() {
             match event {
                 Event::Installed(result) => {
@@ -338,6 +371,19 @@ impl RiceWineApp {
                     }
                 }
             }
+        }
+        if self.install.is_none()
+            && let Some(path) = self.queued_install_files.pop_front()
+        {
+            self.install = Some(Self::install_draft_for_file(path));
+            self.notice = Some((
+                false,
+                "Open With request received; review before installing".into(),
+            ));
+        }
+        #[cfg(unix)]
+        if self.ipc.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(300));
         }
         if self.busy
             || self.backup_busy
@@ -1373,6 +1419,18 @@ fn main() -> eframe::Result {
     } else {
         None
     };
+    #[cfg(unix)]
+    if let Some(file) = &initial_install {
+        let handoff = core::data_directory().and_then(|root| ipc::try_forward_install(&root, file));
+        match handoff {
+            Ok(true) => return Ok(()),
+            Ok(false) => {}
+            Err(error) => {
+                eprintln!("RiceWine Open With: {error}");
+                std::process::exit(1);
+            }
+        }
+    }
     if !args.is_empty() && initial_install.is_none() {
         let outcome = match args.as_slice() {
             [flag] if flag == "--help" => {

@@ -52,6 +52,7 @@ No automatic game-store account login, downloads or library ownership changes ar
 - **Launch controls:** configure up to 32 per-program command arguments (one complete argument per line) and a restricted set of troubleshooting environment variables. There is no shell evaluation. Existing `.ricewine.toml` files remain readable and default to no overrides.
 - **Local Proton discovery:** identify installed Proton distributions in common Steam locations and select one from Runners. Downloads and updates are still managed by Steam or the user, not RiceWine.
 - **Diagnostics:** `ricewine --list`, `--diagnose`, and `--verify-library` inspect the catalog and individual Wine prefixes without launching Windows programs. The Settings panel also has a **Verify library** action.
+- **Single-instance Open With:** passing `--install-file` to an already-open RiceWine sends the file path through a private local Unix socket to the active GUI. Each request opens a reviewable installation draft; queued requests never execute automatically. Closing the GUI removes its socket.
 - **Upgrade safety:** `ricewine --snapshot-library` or the Settings action stores an independent, non-destructive copy of `applications.json` and optional `preferences.json` in `backups/library/`. It does **not** back up Wine prefixes, logs or installed programs. Use the Prefixes panel for full snapshots; restoring library metadata is a deliberate manual recovery operation, not an automatic merge or overwrite.
 
 Sample advanced options in Runners:
@@ -115,7 +116,7 @@ Existing Wine prefixes are not modified or imported. Removing a library entry in
 | **0.6** | Templates, prefix import, desktop shortcuts, bounded logs and backup/restore |
 | **0.9** | Persistent XP/Win10 appearance, read-only RiceBowl theme detection, opt-in Open With and XDG integration |
 | **1.0 RC** | Validated catalog and private data directories, backup/restore tests, per-user install, CI binary artifact and acceptance checklist |
-| **2.0 alpha** | Search, rename, launch arguments, allowlisted environment, installed Proton discovery, metadata snapshots, library verification and CLI diagnostics |
+| **2.0 alpha** | Search, rename, launch arguments, allowlisted environment, installed Proton discovery, metadata snapshots, library verification, CLI diagnostics and local Open With handoff |
 | 2.0 stable | Pending: actual Wine/Proton install-and-play tests, X11/Wayland keyboard/visual acceptance, verified recovery procedures, performance baselines and release signoff |
 
 The software and packaging portions of 1.0 and the current 2.0 alpha are implemented; **real desktop acceptance is pending**. See [ACCEPTANCE.md](ACCEPTANCE.md) for test cases. Do not claim stable 1.0 or full 2.0 compatibility on the basis of CI alone.

@@ -15,5 +15,6 @@ RiceWine uses native egui controls. `DESIGN.md` owns color and typography; this 
 | Configure launch | Edit arguments and allowlisted environment, disable Save while app is running | Atomically save selected profile | Reject invalid values without partially updating profile; never run through a shell |
 | Verify library | User-initiated read-only inspection | Show missing paths, broken profiles and summary | Never silently repair or delete user files |
 | Metadata snapshot | User-initiated copy from Settings or CLI | Create a separate copy of catalog/preferences | Never overwrite the live catalog; errors preserve original data |
+| Open With while GUI is running | Forward path via private local Unix socket, queue when install dialog is already open | Show another pre-filled draft for review; no auto-execution | Reject missing/non-EXE/MSI paths and report malformed requests |
 
 No background service is required. All expensive filesystem and Wine actions run off the GUI thread. Atomic catalog writes and the single-writer lock prevent concurrent GUI catalog corruption. CLI shortcuts read the catalog without needing the writer lock. Wine prefixes are configuration isolation only, **not** security sandboxes. All actions must remain available by keyboard without relying on drag-and-drop.

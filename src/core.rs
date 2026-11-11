@@ -467,7 +467,7 @@ pub(crate) fn new_id(name: &str) -> String {
     )
 }
 
-fn data_directory() -> Result<PathBuf, String> {
+pub fn data_directory() -> Result<PathBuf, String> {
     if let Some(dir) = env::var_os("XDG_DATA_HOME") {
         let path = PathBuf::from(dir);
         if path.is_absolute() {

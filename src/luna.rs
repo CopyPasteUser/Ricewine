@@ -15,73 +15,105 @@ fn gradient(painter: &Painter, rect: Rect, top: Color32, bottom: Color32) {
     painter.add(egui::Shape::mesh(mesh));
 }
 
-/// Explorer-era application toolbar, deliberately not an in-app title bar.
+/// Actions returned by the classic XP menu bar. The caller owns navigation
+/// and installation state so the visual layer cannot mutate the Wine catalog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MenuAction {
+    None,
+    Install,
+    Import,
+    Library,
+    Prefixes,
+    Runners,
+    Settings,
+    About,
+}
+
+/// A genuine application menu bar, below the native window decoration.
+pub fn application_menu(ui: &mut egui::Ui) -> MenuAction {
+    let mut action = MenuAction::None;
+    egui::Frame::new()
+        .fill(Color32::from_rgb(242, 240, 235))
+        .stroke(Stroke::new(1.0, Color32::from_rgb(178, 179, 175)))
+        .inner_margin(egui::Margin::symmetric(8, 2))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Install program…").clicked() {
+                        action = MenuAction::Install;
+                        ui.close();
+                    }
+                    if ui.button("Import existing prefix…").clicked() {
+                        action = MenuAction::Import;
+                        ui.close();
+                    }
+                });
+                ui.menu_button("View", |ui| {
+                    for (label, next) in [
+                        ("Library", MenuAction::Library),
+                        ("Prefixes", MenuAction::Prefixes),
+                        ("Runners", MenuAction::Runners),
+                        ("Settings", MenuAction::Settings),
+                    ] {
+                        if ui.button(label).clicked() {
+                            action = next;
+                            ui.close();
+                        }
+                    }
+                });
+                ui.menu_button("Help", |ui| {
+                    if ui.button("About RiceWine…").clicked() {
+                        action = MenuAction::About;
+                        ui.close();
+                    }
+                });
+            });
+        });
+    action
+}
+
+/// Explorer-era address toolbar. This is an application control, never a
+/// simulated title bar: the compositor and RiceBowl own window decorations.
 pub fn application_toolbar(ui: &mut egui::Ui, section: &str) {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 42.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 35.0), Sense::hover());
     let painter = ui.painter_at(rect);
-    gradient(&painter, rect, Color32::from_rgb(255, 255, 255), Color32::from_rgb(226, 232, 243));
-    painter.line_segment(
-        [
-            rect.left_top() + egui::vec2(0.0, 1.0),
-            rect.right_top() + egui::vec2(0.0, 1.0),
-        ],
-        Stroke::new(1.0, Color32::WHITE),
+    gradient(
+        &painter,
+        rect,
+        Color32::from_rgb(255, 255, 255),
+        Color32::from_rgb(226, 232, 243),
     );
     painter.line_segment(
         [
-            rect.left_bottom() - egui::vec2(0.0, 2.0),
-            rect.right_bottom() - egui::vec2(0.0, 2.0),
+            rect.left_bottom() - egui::vec2(0.0, 1.0),
+            rect.right_bottom() - egui::vec2(0.0, 1.0),
         ],
         Stroke::new(1.0, Color32::from_rgb(153, 167, 189)),
     );
-    wine_icon(&painter, rect.left_top() + egui::vec2(11.0, 3.0));
     painter.text(
-        rect.left_center() + egui::vec2(49.0, -1.0),
+        rect.left_center() + egui::vec2(13.0, 0.0),
         Align2::LEFT_CENTER,
-        "RiceWine",
-        FontId::proportional(17.0),
-        Color32::from_rgb(32, 55, 95),
-    );
-    painter.text(
-        rect.right_center() + egui::vec2(-14.0, 0.0),
-        Align2::RIGHT_CENTER,
-        section,
+        "Address",
         FontId::proportional(12.0),
-        Color32::from_rgb(94, 105, 124),
+        Color32::from_rgb(55, 61, 72),
     );
-}
-
-fn wine_icon(painter: &Painter, origin: egui::Pos2) {
-    let bowl = Rect::from_min_size(origin + egui::vec2(4.0, 2.0), egui::vec2(23.0, 20.0));
-    painter.rect_filled(
-        bowl,
-        egui::CornerRadius::same(7),
-        Color32::from_rgb(240, 244, 255),
+    let field = Rect::from_min_max(
+        rect.left_top() + egui::vec2(72.0, 5.0),
+        rect.right_bottom() - egui::vec2(12.0, 5.0),
     );
-    painter.rect_filled(
-        Rect::from_min_size(origin + egui::vec2(6.0, 10.0), egui::vec2(19.0, 10.0)),
-        egui::CornerRadius::same(5),
-        Color32::from_rgb(161, 42, 73),
-    );
+    painter.rect_filled(field, egui::CornerRadius::same(1), Color32::WHITE);
     painter.rect_stroke(
-        bowl,
-        egui::CornerRadius::same(7),
-        Stroke::new(1.5, Color32::from_rgb(122, 146, 189)),
+        field,
+        egui::CornerRadius::same(1),
+        Stroke::new(1.0, Color32::from_rgb(132, 150, 176)),
         egui::StrokeKind::Inside,
     );
-    painter.line_segment(
-        [
-            origin + egui::vec2(15.5, 22.0),
-            origin + egui::vec2(15.5, 34.0),
-        ],
-        Stroke::new(2.0, Color32::from_rgb(92, 112, 150)),
-    );
-    painter.line_segment(
-        [
-            origin + egui::vec2(8.0, 34.0),
-            origin + egui::vec2(23.0, 34.0),
-        ],
-        Stroke::new(2.0, Color32::from_rgb(92, 112, 150)),
+    painter.text(
+        field.left_center() + egui::vec2(9.0, 0.0),
+        Align2::LEFT_CENTER,
+        format!("RiceWine  ›  {section}"),
+        FontId::proportional(12.0),
+        Color32::from_rgb(36, 50, 82),
     );
 }
 
@@ -227,7 +259,7 @@ pub enum EmptyLibraryAction {
     Import,
 }
 
-fn program_list_header(ui: &mut egui::Ui) {
+pub fn program_list_header(ui: &mut egui::Ui) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 35.0), Sense::hover());
     let painter = ui.painter_at(rect);
     gradient(

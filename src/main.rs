@@ -210,8 +210,16 @@ impl Theme {
         visuals.menu_corner_radius = egui::CornerRadius::same(palette.corner_radius);
         ctx.set_visuals(visuals);
         ctx.global_style_mut(|style| {
-            style.spacing.item_spacing = if self == Self::Luna { egui::vec2(6.0, 7.0) } else { egui::vec2(8.0, 10.0) };
-            style.spacing.button_padding = if self == Self::Luna { egui::vec2(10.0, 5.0) } else { egui::vec2(12.0, 7.0) };
+            style.spacing.item_spacing = if self == Self::Luna {
+                egui::vec2(6.0, 7.0)
+            } else {
+                egui::vec2(8.0, 10.0)
+            };
+            style.spacing.button_padding = if self == Self::Luna {
+                egui::vec2(10.0, 5.0)
+            } else {
+                egui::vec2(12.0, 7.0)
+            };
         });
     }
 }
@@ -320,6 +328,7 @@ struct RiceWineApp {
     theme: Theme,
     preferences: Preferences,
     page: Page,
+    about_open: bool,
     selected: Option<String>,
     search: String,
     name_edit: String,
@@ -435,6 +444,7 @@ impl RiceWineApp {
             theme,
             preferences,
             page: Page::Library,
+            about_open: false,
             selected,
             search: String::new(),
             name_edit: String::new(),
@@ -1296,6 +1306,20 @@ impl RiceWineApp {
     }
 
     fn luna_shell(&mut self, ui: &mut egui::Ui) {
+        match luna::application_menu(ui) {
+            luna::MenuAction::Install if !self.busy && self.store.is_some() => {
+                self.install = Some(InstallDraft::default());
+            }
+            luna::MenuAction::Import if !self.busy && self.store.is_some() => {
+                self.import = Some(ImportDraft::default());
+            }
+            luna::MenuAction::Library => self.page = Page::Library,
+            luna::MenuAction::Prefixes => self.page = Page::Prefixes,
+            luna::MenuAction::Runners => self.page = Page::Runners,
+            luna::MenuAction::Settings => self.page = Page::Settings,
+            luna::MenuAction::About => self.about_open = true,
+            _ => {}
+        }
         luna::application_toolbar(ui, self.page.label());
         ui.add_space(5.0);
         let available_height = ui.available_height();
@@ -1443,24 +1467,28 @@ impl RiceWineApp {
                 egui::vec2(width, ui.available_height()),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
-                    egui::Frame::new()
-                        .fill(self.theme.palette().button)
-                        .inner_margin(8.0)
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label(
-                                    RichText::new("Program")
-                                        .strong()
-                                        .color(self.theme.palette().text),
-                                );
-                                ui.add_space(80.0);
-                                ui.label(
-                                    RichText::new("Runner")
-                                        .strong()
-                                        .color(self.theme.palette().text),
-                                );
+                    if self.theme == Theme::Luna {
+                        luna::program_list_header(ui);
+                    } else {
+                        egui::Frame::new()
+                            .fill(self.theme.palette().button)
+                            .inner_margin(8.0)
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label(
+                                        RichText::new("Program")
+                                            .strong()
+                                            .color(self.theme.palette().text),
+                                    );
+                                    ui.add_space(80.0);
+                                    ui.label(
+                                        RichText::new("Runner")
+                                            .strong()
+                                            .color(self.theme.palette().text),
+                                    );
+                                });
                             });
-                        });
+                    }
                     egui::ScrollArea::vertical().show_rows(
                         ui,
                         42.0,
@@ -2487,6 +2515,18 @@ impl eframe::App for RiceWineApp {
         self.import_dialog(ui.ctx());
         self.remove_dialog(ui.ctx());
         self.process_dialogs(ui.ctx());
+        if self.about_open {
+            egui::Window::new("About RiceWine")
+                .collapsible(false)
+                .resizable(false)
+                .open(&mut self.about_open)
+                .show(ui.ctx(), |ui| {
+                    ui.heading("RiceWine");
+                    ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
+                    ui.label("Windows programs on Linux, managed with Wine and Proton.");
+                    ui.label("XP Luna styles the application only. RiceBowl owns window decorations.");
+                });
+        }
     }
 }
 

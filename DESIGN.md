@@ -27,3 +27,11 @@ Native Linux tool for people who want to install and launch Windows software wit
 - Settings owns the optional desktop-theme follower. Manual theme selection disables following; unknown desktop styles must never trigger a guessed appearance.
 - File association is opt-in and opens the installation dialog with the selected file; no EXE is run automatically and system MIME defaults are preserved.
 
+
+## XP Luna sprint: classic in-app navigation
+
+- The Luna Blue menu bar exposes working **File** actions (install/import), **View** destinations (Library, Prefixes, Runners, Settings), and **Help → About**.
+- The address strip is an in-app location indicator beneath the menu, not a faux title bar. It never issues window commands.
+- Installed applications use the same Explorer details-header treatment as the empty state; other Rices keep their existing list header.
+- Native decorations and window buttons are left to the compositor/RiceBowl, and no custom viewport decorations are enabled.
+- Screenshots must be verified against real rendered states; identical captures for multiple pages are not evidence of separate page layouts.

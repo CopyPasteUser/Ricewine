@@ -42,6 +42,13 @@ impl Default for Catalog {
 pub struct Store {
     root: PathBuf,
     catalog: Catalog,
+    _lock: File,
+}
+
+impl Drop for Store {
+    fn drop(&mut self) {
+        let _ = self._lock.unlock();
+    }
 }
 
 impl Store {
@@ -53,6 +60,15 @@ impl Store {
     pub fn open_at(root: PathBuf) -> Result<Self, String> {
         fs::create_dir_all(root.join("prefixes")).map_err(|e| e.to_string())?;
         fs::create_dir_all(root.join("logs")).map_err(|e| e.to_string())?;
+        let lock = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .open(root.join("catalog.lock"))
+            .map_err(|e| e.to_string())?;
+        lock.try_lock()
+            .map_err(|e| format!("Another RiceWine instance may be using this library: {e}"))?;
         let path = root.join("applications.json");
         let catalog: Catalog = if path.exists() {
             let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -67,7 +83,11 @@ impl Store {
                 catalog.schema
             ));
         }
-        Ok(Self { root, catalog })
+        Ok(Self {
+            root,
+            catalog,
+            _lock: lock,
+        })
     }
 
     pub fn root(&self) -> &Path {
@@ -116,7 +136,9 @@ impl Store {
 
     fn commit(&mut self, next: Catalog) -> Result<(), String> {
         let path = self.root.join("applications.json");
-        let tmp = self.root.join(format!(".applications-{}.tmp", new_id("save")));
+        let tmp = self
+            .root
+            .join(format!(".applications-{}.tmp", new_id("save")));
         let result = (|| -> io::Result<()> {
             let mut file = OpenOptions::new().write(true).create_new(true).open(&tmp)?;
             serde_json::to_writer_pretty(&mut file, &next).map_err(io::Error::other)?;
@@ -183,14 +205,21 @@ pub fn install(
 
     let mut boot = Command::new(&wine.wineboot);
     boot.arg("-u").env("WINEPREFIX", &prefix);
-    run_logged(&mut boot, &log, Some(Duration::from_secs(120)))
-        .map_err(|e| format!("Wine prefix setup failed ({e}); retained at {}", prefix.display()))?;
+    run_logged(&mut boot, &log, Some(Duration::from_secs(120))).map_err(|e| {
+        format!(
+            "Wine prefix setup failed ({e}); retained at {}",
+            prefix.display()
+        )
+    })?;
 
     let portable = matches!(mode, InstallMode::Portable);
     if !portable {
         let mut command = install_command(wine, &prefix, &file);
         run_logged(&mut command, &log, None).map_err(|e| {
-            format!("Installer failed ({e}); prefix retained at {}", prefix.display())
+            format!(
+                "Installer failed ({e}); prefix retained at {}",
+                prefix.display()
+            )
         })?;
     }
 
@@ -215,9 +244,10 @@ pub fn install_command(wine: &WineTools, prefix: &Path, installer: &Path) -> Com
 
 /// Returns a child process so the caller can reap it in a worker thread.
 pub fn launch(root: &Path, wine: &WineTools, app: &Application) -> Result<Child, String> {
-    let executable = app.executable.as_ref().ok_or(
-        "No launch executable selected. Choose the program's EXE after installation.",
-    )?;
+    let executable = app
+        .executable
+        .as_ref()
+        .ok_or("No launch executable selected. Choose the program's EXE after installation.")?;
     validate_executable(executable)?;
     if !app.prefix.is_dir() {
         return Err("Wine prefix no longer exists".into());
@@ -310,7 +340,11 @@ fn find_in_path(name: &str) -> Option<PathBuf> {
     })
 }
 
-fn run_logged(command: &mut Command, log_path: &Path, timeout: Option<Duration>) -> Result<(), String> {
+fn run_logged(
+    command: &mut Command,
+    log_path: &Path,
+    timeout: Option<Duration>,
+) -> Result<(), String> {
     let log = OpenOptions::new()
         .create(true)
         .append(true)

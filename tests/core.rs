@@ -41,11 +41,42 @@ fn catalog_round_trip_and_safe_removal() {
     };
     fs::create_dir(&app.prefix).unwrap();
     store.add(app.clone()).unwrap();
+    assert!(Store::open_at(tmp.0.join("data")).is_err());
+    drop(store);
+    let probe = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(tmp.0.join("data/catalog.lock"))
+        .unwrap();
+    assert!(
+        probe.try_lock().is_ok(),
+        "store drop did not release the catalog lock"
+    );
+    drop(probe);
     let mut reloaded = Store::open_at(tmp.0.join("data")).unwrap();
-    assert_eq!(reloaded.applications(), &[app.clone()]);
+    assert_eq!(reloaded.applications(), std::slice::from_ref(&app));
     reloaded.remove_from_library(&app.id).unwrap();
     assert!(reloaded.applications().is_empty());
-    assert!(app.prefix.exists(), "removing an entry must preserve prefix data");
+    assert!(
+        app.prefix.exists(),
+        "removing an entry must preserve prefix data"
+    );
+}
+
+#[test]
+fn exclusive_lock_releases_when_file_is_dropped() {
+    let tmp = TempDir::new();
+    let path = tmp.0.join("lock");
+    let first = File::create(&path).unwrap();
+    first.try_lock().unwrap();
+    let second = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .unwrap();
+    assert!(second.try_lock().is_err());
+    drop(first);
+    assert!(second.try_lock().is_ok());
 }
 
 #[test]
@@ -85,9 +116,16 @@ fn msi_uses_msiexec_with_an_explicit_prefix() {
     let prefix = tmp.0.join("prefix");
     let installer = tmp.0.join("app.msi");
     let command = core::install_command(&tools, &prefix, &installer);
-    let args: Vec<_> = command.get_args().map(|v| v.to_string_lossy().into_owned()).collect();
+    let args: Vec<_> = command
+        .get_args()
+        .map(|v| v.to_string_lossy().into_owned())
+        .collect();
     assert_eq!(args, ["msiexec", "/i", installer.to_str().unwrap()]);
-    assert!(command.get_envs().any(|(key, value)| key == "WINEPREFIX" && value == Some(prefix.as_os_str())));
+    assert!(
+        command
+            .get_envs()
+            .any(|(key, value)| key == "WINEPREFIX" && value == Some(prefix.as_os_str()))
+    );
 }
 
 #[cfg(unix)]
@@ -104,9 +142,62 @@ fn portable_program_initializes_its_own_prefix() {
     let root = tmp.0.join("data");
     fs::create_dir_all(root.join("prefixes")).unwrap();
     fs::create_dir_all(root.join("logs")).unwrap();
-    let tools = WineTools { wine: boot.clone(), wineboot: boot, version: "fake-wine".into() };
+    let tools = WineTools {
+        wine: boot.clone(),
+        wineboot: boot,
+        version: "fake-wine".into(),
+    };
     let app = core::install(&root, &tools, "Portable game", &exe, InstallMode::Portable).unwrap();
     assert!(app.prefix.is_dir());
     assert!(app.prefix.starts_with(root.join("prefixes")));
     assert_eq!(app.executable, Some(exe));
+}
+
+#[cfg(unix)]
+#[test]
+fn msi_installer_executes_with_prefix_and_preserves_argument_boundaries() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = TempDir::new();
+    let fake_wine = tmp.0.join("wine");
+    fs::write(
+        &fake_wine,
+        "#!/bin/sh\nprintf '%s\\n' \"$WINEPREFIX\" \"$@\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&fake_wine, fs::Permissions::from_mode(0o700)).unwrap();
+    let fake_boot = tmp.0.join("wineboot");
+    fs::write(&fake_boot, "#!/bin/sh\nexit 0\n").unwrap();
+    fs::set_permissions(&fake_boot, fs::Permissions::from_mode(0o700)).unwrap();
+    let installer = tmp.0.join("setup with spaces.MSI");
+    File::create(&installer).unwrap();
+    let store = Store::open_at(tmp.0.join("data")).unwrap();
+    let tools = WineTools {
+        wine: fake_wine,
+        wineboot: fake_boot,
+        version: "fake".into(),
+    };
+
+    let app = core::install(
+        store.root(),
+        &tools,
+        "Test app",
+        &installer,
+        InstallMode::Installer,
+    )
+    .unwrap();
+    assert!(app.prefix.is_dir());
+    assert_eq!(app.executable, None);
+    let log =
+        fs::read_to_string(store.root().join("logs").join(format!("{}.log", app.id))).unwrap();
+    let lines: Vec<_> = log.lines().collect();
+    assert_eq!(
+        lines,
+        [
+            app.prefix.to_str().unwrap(),
+            "msiexec",
+            "/i",
+            installer.to_str().unwrap()
+        ]
+    );
 }

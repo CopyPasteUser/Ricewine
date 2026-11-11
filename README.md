@@ -38,6 +38,7 @@ Data is stored under `${XDG_DATA_HOME:-~/.local/share}/ricewine/` (normally `~/.
 ```text
 ricewine/
 ├── applications.json    # app catalog, saved atomically
+├── catalog.lock         # prevents concurrent writers
 ├── prefixes/            # one isolated Wine environment per app
 └── logs/                # Wine output per app
 ```
@@ -65,4 +66,6 @@ cargo clippy --all-targets -- -D warnings
 ```
 
 RiceWine is currently an early alpha, not a drop-in replacement for Bottles or Lutris. Actual Wine installation and launch should be verified on the target Linux desktop before declaring 0.1 hardware-tested.
+
+**Security:** Wine prefixes separate Windows configuration, **not** Linux permissions. Windows programs run with your user's file access. Install only software you trust, and keep RiceWine open until an installer completes.
 

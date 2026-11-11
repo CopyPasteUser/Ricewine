@@ -49,10 +49,10 @@ impl Theme {
             Self::Luna => Color32::from_rgb(232, 234, 228),
         };
         ctx.set_visuals(visuals);
-        let mut style = (*ctx.style()).clone();
-        style.spacing.item_spacing = egui::vec2(8.0, 10.0);
-        style.spacing.button_padding = egui::vec2(12.0, 7.0);
-        ctx.set_style(style);
+        ctx.global_style_mut(|style| {
+            style.spacing.item_spacing = egui::vec2(8.0, 10.0);
+            style.spacing.button_padding = egui::vec2(12.0, 7.0);
+        });
     }
 }
 
@@ -75,20 +75,11 @@ impl Page {
     }
 }
 
+#[derive(Default)]
 struct InstallDraft {
     name: String,
     file: String,
     portable: bool,
-}
-
-impl Default for InstallDraft {
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            file: String::new(),
-            portable: false,
-        }
-    }
 }
 
 enum Event {
@@ -121,7 +112,10 @@ impl RiceWineApp {
         if let Err(error) = &store {
             notice = Some((true, error.clone()));
         } else if let Err(error) = &wine {
-            notice = Some((true, format!("{error}. Install Wine to enable setup and launch.")));
+            notice = Some((
+                true,
+                format!("{error}. Install Wine to enable setup and launch."),
+            ));
         }
         let theme = Theme::Windows10;
         theme.apply(&ctx.egui_ctx);
@@ -154,11 +148,20 @@ impl RiceWineApp {
                         Ok(app) => {
                             self.selected = Some(app.id.clone());
                             let name = app.name.clone();
-                            match self.store.as_mut().expect("store available during install").add(app) {
-                                Ok(()) => self.notice = Some((
-                                    false,
-                                    format!("{name} added. Select its installed EXE to enable Play."),
-                                )),
+                            match self
+                                .store
+                                .as_mut()
+                                .expect("store available during install")
+                                .add(app)
+                            {
+                                Ok(()) => {
+                                    self.notice = Some((
+                                        false,
+                                        format!(
+                                            "{name} added. Select its installed EXE to enable Play."
+                                        ),
+                                    ))
+                                }
                                 Err(error) => self.notice = Some((true, error)),
                             }
                         }
@@ -170,7 +173,10 @@ impl RiceWineApp {
                         self.running.insert(id);
                         self.notice = Some((false, format!("Program started (PID {pid})")));
                     }
-                    Err(error) => self.notice = Some((true, error)),
+                    Err(error) => {
+                        self.running.remove(&id);
+                        self.notice = Some((true, error));
+                    }
                 },
                 Event::Exited(id, result) => {
                     self.running.remove(&id);
@@ -190,25 +196,41 @@ impl RiceWineApp {
             self.notice = Some((true, "Install Wine before adding programs".into()));
             return;
         };
-        let Some(store) = self.store.as_ref() else { return };
+        let Some(store) = self.store.as_ref() else {
+            return;
+        };
         let file = PathBuf::from(draft.file.trim());
-        if let Err(error) = core::validate_name(&draft.name).and_then(|_| core::validate_installer(&file, draft.portable)) {
+        if let Err(error) = core::validate_name(&draft.name)
+            .and_then(|_| core::validate_installer(&file, draft.portable))
+        {
             self.notice = Some((true, error));
             return;
         }
         self.busy = true;
-        self.notice = Some((false, format!("Setting up {}. Complete the Windows installer when it opens…", draft.name)));
+        self.notice = Some((
+            false,
+            format!(
+                "Setting up {}. Complete the Windows installer when it opens…",
+                draft.name
+            ),
+        ));
         let root = store.root().to_path_buf();
         let tx = self.sender.clone();
         thread::spawn(move || {
-            let mode = if draft.portable { InstallMode::Portable } else { InstallMode::Installer };
+            let mode = if draft.portable {
+                InstallMode::Portable
+            } else {
+                InstallMode::Installer
+            };
             let result = core::install(&root, &wine, &draft.name, &file, mode);
             let _ = tx.send(Event::Installed(result));
         });
     }
 
     fn play(&mut self, app: Application) {
-        let (Some(store), Some(wine)) = (&self.store, &self.wine) else { return };
+        let (Some(store), Some(wine)) = (&self.store, &self.wine) else {
+            return;
+        };
         if self.running.contains(&app.id) {
             self.notice = Some((false, "Already running".into()));
             return;
@@ -216,6 +238,7 @@ impl RiceWineApp {
         let tx = self.sender.clone();
         let root = store.root().to_path_buf();
         let wine = wine.clone();
+        self.running.insert(app.id.clone());
         thread::spawn(move || {
             let id = app.id.clone();
             match core::launch(&root, &wine, &app) {
@@ -235,42 +258,73 @@ impl RiceWineApp {
     }
 
     fn sidebar(&mut self, ui: &mut egui::Ui) {
-        egui::Frame::new().fill(self.theme.sidebar()).inner_margin(16.0).show(ui, |ui| {
-            ui.set_min_width(168.0);
-            ui.set_min_height((ui.available_height() - 32.0).max(300.0));
-            ui.add_space(5.0);
-            ui.label(RichText::new("◈ RiceWine").size(24.0).strong().color(self.theme.accent()));
-            ui.label(RichText::new("Wine manager").small().color(Color32::DARK_GRAY));
-            ui.add_space(24.0);
-            for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
-                let selected = page == self.page;
-                if ui.add_sized([ui.available_width(), 37.0], egui::Button::selectable(selected, page.label())).clicked() {
-                    self.page = page;
+        egui::Frame::new()
+            .fill(self.theme.sidebar())
+            .inner_margin(16.0)
+            .show(ui, |ui| {
+                ui.set_min_width(168.0);
+                ui.set_min_height((ui.available_height() - 32.0).max(300.0));
+                ui.add_space(5.0);
+                ui.label(
+                    RichText::new("◈ RiceWine")
+                        .size(24.0)
+                        .strong()
+                        .color(self.theme.accent()),
+                );
+                ui.label(
+                    RichText::new("Wine manager")
+                        .small()
+                        .color(Color32::DARK_GRAY),
+                );
+                ui.add_space(24.0);
+                for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
+                    let selected = page == self.page;
+                    if ui
+                        .add_sized(
+                            [ui.available_width(), 37.0],
+                            egui::Button::selectable(selected, page.label()),
+                        )
+                        .clicked()
+                    {
+                        self.page = page;
+                    }
                 }
-            }
-            ui.add_space(20.0);
-            ui.separator();
-            ui.label(RichText::new("APPEARANCE").small().strong());
-            for theme in [Theme::Windows10, Theme::Luna] {
-                if ui.radio(self.theme == theme, theme.label()).clicked() {
-                    self.theme = theme;
-                    theme.apply(ui.ctx());
+                ui.add_space(20.0);
+                ui.separator();
+                ui.label(RichText::new("APPEARANCE").small().strong());
+                for theme in [Theme::Windows10, Theme::Luna] {
+                    if ui.radio(self.theme == theme, theme.label()).clicked() {
+                        self.theme = theme;
+                        theme.apply(ui.ctx());
+                    }
                 }
-            }
-        });
+            });
     }
 
     fn library(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.heading("Library");
             ui.add_space(20.0);
-            if ui.add_enabled(!self.busy && self.wine.is_some() && self.store.is_some(), egui::Button::new("＋ Install program")).clicked() {
+            if ui
+                .add_enabled(
+                    !self.busy && self.wine.is_some() && self.store.is_some(),
+                    egui::Button::new("＋ Install program"),
+                )
+                .clicked()
+            {
                 self.install = Some(InstallDraft::default());
             }
-            if self.busy { ui.spinner(); ui.label("Installing…"); }
+            if self.busy {
+                ui.spinner();
+                ui.label("Installing…");
+            }
         });
         ui.add_space(10.0);
-        let applications = self.store.as_ref().map(|s| s.applications().to_vec()).unwrap_or_default();
+        let applications = self
+            .store
+            .as_ref()
+            .map(|s| s.applications().to_vec())
+            .unwrap_or_default();
         if applications.is_empty() {
             ui.add_space(45.0);
             ui.heading("Your library is empty");
@@ -279,31 +333,48 @@ impl RiceWineApp {
         }
         let width = (ui.available_width() - 280.0).max(260.0);
         ui.horizontal_top(|ui| {
-            ui.allocate_ui_with_layout(egui::vec2(width, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
-                egui::Frame::new().fill(Color32::from_gray(238)).inner_margin(8.0).show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("Program").strong());
-                        ui.add_space(80.0);
-                        ui.label(RichText::new("Runner").strong());
-                    });
-                });
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    for app in &applications {
-                        let selected = self.selected.as_deref() == Some(&app.id);
-                        ui.horizontal(|ui| {
-                            if ui.add_sized([width - 112.0, 36.0], egui::Button::selectable(selected, &app.name)).clicked() {
-                                self.selected = Some(app.id.clone());
-                            }
-                            ui.label("Wine");
+            ui.allocate_ui_with_layout(
+                egui::vec2(width, ui.available_height()),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| {
+                    egui::Frame::new()
+                        .fill(Color32::from_gray(238))
+                        .inner_margin(8.0)
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("Program").strong());
+                                ui.add_space(80.0);
+                                ui.label(RichText::new("Runner").strong());
+                            });
                         });
-                        ui.separator();
-                    }
-                });
-            });
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for app in &applications {
+                            let selected = self.selected.as_deref() == Some(&app.id);
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add_sized(
+                                        [width - 112.0, 36.0],
+                                        egui::Button::selectable(selected, &app.name),
+                                    )
+                                    .clicked()
+                                {
+                                    self.selected = Some(app.id.clone());
+                                }
+                                ui.label("Wine");
+                            });
+                            ui.separator();
+                        }
+                    });
+                },
+            );
             ui.separator();
             ui.vertical(|ui| {
                 ui.set_min_width(235.0);
-                let selected = self.selected.as_ref().and_then(|id| applications.iter().find(|app| &app.id == id)).cloned();
+                let selected = self
+                    .selected
+                    .as_ref()
+                    .and_then(|id| applications.iter().find(|app| &app.id == id))
+                    .cloned();
                 if let Some(app) = selected {
                     ui.heading(&app.name);
                     ui.add_space(8.0);
@@ -313,20 +384,31 @@ impl RiceWineApp {
                     ui.label(RichText::new("Prefix").small().strong());
                     ui.small(core::readable_path(&app.prefix));
                     ui.add_space(12.0);
-                    if ui.add_enabled(!self.busy && self.wine.is_some() && app.executable.is_some(), egui::Button::new("▶ Play")).clicked() {
+                    if ui
+                        .add_enabled(
+                            !self.busy && self.wine.is_some() && app.executable.is_some(),
+                            egui::Button::new("▶ Play"),
+                        )
+                        .clicked()
+                    {
                         self.play(app.clone());
                     }
-                    if self.running.contains(&app.id) { ui.label("● Running"); }
-                    if app.executable.is_none() { ui.small("Choose the installed EXE to enable Play."); }
-                    if ui.button("Choose launch EXE…").clicked() {
-                        if let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file() {
-                            if let Some(store) = self.store.as_mut() {
-                                if let Err(error) = store.set_executable(&app.id, path) {
-                                    self.notice = Some((true, error));
-                                } else {
-                                    self.notice = Some((false, "Launch executable saved".into()));
-                                }
-                            }
+                    if self.running.contains(&app.id) {
+                        ui.label("● Running");
+                    }
+                    if app.executable.is_none() {
+                        ui.small("Choose the installed EXE to enable Play.");
+                    }
+                    if ui.button("Choose launch EXE…").clicked()
+                        && let Some(path) = rfd::FileDialog::new()
+                            .add_filter("Windows program", &["exe"])
+                            .pick_file()
+                        && let Some(store) = self.store.as_mut()
+                    {
+                        if let Err(error) = store.set_executable(&app.id, path) {
+                            self.notice = Some((true, error));
+                        } else {
+                            self.notice = Some((false, "Launch executable saved".into()));
                         }
                     }
                     ui.add_space(18.0);
@@ -364,20 +446,28 @@ impl RiceWineApp {
             ui.small(core::readable_path(&wine.wine));
             ui.small(core::readable_path(&wine.wineboot));
         } else {
-            ui.colored_label(Color32::DARK_RED, "Wine was not found. Install Wine and restart RiceWine.");
+            ui.colored_label(
+                Color32::DARK_RED,
+                "Wine was not found. Install Wine and restart RiceWine.",
+            );
         }
     }
 
     fn settings(&mut self, ui: &mut egui::Ui) {
         ui.heading("Settings");
         ui.label("Appearance");
-        egui::ComboBox::from_id_salt("theme").selected_text(self.theme.label()).show_ui(ui, |ui| {
-            for theme in [Theme::Windows10, Theme::Luna] {
-                if ui.selectable_value(&mut self.theme, theme, theme.label()).clicked() {
-                    theme.apply(ui.ctx());
+        egui::ComboBox::from_id_salt("theme")
+            .selected_text(self.theme.label())
+            .show_ui(ui, |ui| {
+                for theme in [Theme::Windows10, Theme::Luna] {
+                    if ui
+                        .selectable_value(&mut self.theme, theme, theme.label())
+                        .clicked()
+                    {
+                        theme.apply(ui.ctx());
+                    }
                 }
-            }
-        });
+            });
         ui.add_space(18.0);
         if let Some(store) = &self.store {
             ui.label("Application data");
@@ -401,17 +491,17 @@ impl RiceWineApp {
                     ui.label("EXE or MSI file");
                     ui.horizontal(|ui| {
                         ui.add(egui::TextEdit::singleline(&mut draft.file).desired_width(340.0));
-                        if ui.button("Browse…").clicked() {
-                            if let Some(file) = rfd::FileDialog::new().add_filter("Windows setup", &["exe", "msi"]).pick_file() {
-                                draft.file = file.to_string_lossy().into_owned();
-                                if draft.name.trim().is_empty() {
-                                    draft.name = file.file_stem().unwrap_or_default().to_string_lossy().into_owned();
-                                }
+                        if ui.button("Browse…").clicked()
+                            && let Some(file) = rfd::FileDialog::new().add_filter("Windows setup", &["exe", "msi"]).pick_file()
+                        {
+                            draft.file = file.to_string_lossy().into_owned();
+                            if draft.name.trim().is_empty() {
+                                draft.name = file.file_stem().unwrap_or_default().to_string_lossy().into_owned();
                             }
                         }
                     });
                     ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
-                    ui.small("RiceWine creates a fresh prefix. Your existing Wine configuration is not modified.");
+                    ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
                     ui.add_space(12.0);
                     if ui.button(if draft.portable { "Add portable program" } else { "Run installer" }).clicked() {
                         submit = Some(InstallDraft {
@@ -420,7 +510,9 @@ impl RiceWineApp {
                     }
                 });
         }
-        if !keep_open { self.install = None; }
+        if !keep_open {
+            self.install = None;
+        }
         if let Some(draft) = submit {
             self.install = None;
             self.install_async(draft);
@@ -428,7 +520,9 @@ impl RiceWineApp {
     }
 
     fn remove_dialog(&mut self, ctx: &egui::Context) {
-        let Some(id) = self.remove_confirmation.clone() else { return };
+        let Some(id) = self.remove_confirmation.clone() else {
+            return;
+        };
         egui::Window::new("Remove from library?").collapsible(false).resizable(false).show(ctx, |ui| {
             ui.label("The catalog entry will be removed. The Wine prefix and installed files will remain on disk.");
             ui.horizontal(|ui| {
@@ -455,15 +549,25 @@ impl eframe::App for RiceWineApp {
         self.poll(ui.ctx());
         let height = ui.available_height();
         ui.horizontal_top(|ui| {
-            ui.allocate_ui_with_layout(egui::vec2(200.0, height), egui::Layout::top_down(egui::Align::Min), |ui| self.sidebar(ui));
+            ui.allocate_ui_with_layout(
+                egui::vec2(200.0, height),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| self.sidebar(ui),
+            );
             ui.separator();
             ui.vertical(|ui| {
                 ui.add_space(10.0);
-                if let Some((is_error, message)) = &self.notice {
-                    let color = if *is_error { Color32::DARK_RED } else { self.theme.accent() };
+                if let Some((is_error, message)) = self.notice.clone() {
+                    let color = if is_error {
+                        Color32::DARK_RED
+                    } else {
+                        self.theme.accent()
+                    };
                     ui.horizontal(|ui| {
                         ui.colored_label(color, message);
-                        if ui.small_button("×").clicked() { self.notice = None; }
+                        if ui.small_button("×").clicked() {
+                            self.notice = None;
+                        }
                     });
                     ui.separator();
                 }
@@ -483,8 +587,14 @@ impl eframe::App for RiceWineApp {
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,
-        viewport: egui::ViewportBuilder::default().with_inner_size([1080.0, 700.0]).with_min_inner_size([780.0, 500.0]),
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1080.0, 700.0])
+            .with_min_inner_size([780.0, 500.0]),
         ..Default::default()
     };
-    eframe::run_native("RiceWine", options, Box::new(|ctx| Ok(Box::new(RiceWineApp::new(ctx)))))
+    eframe::run_native(
+        "RiceWine",
+        options,
+        Box::new(|ctx| Ok(Box::new(RiceWineApp::new(ctx)))),
+    )
 }

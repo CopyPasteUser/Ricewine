@@ -143,11 +143,17 @@ pub fn task_header(ui: &mut egui::Ui, heading: &str) {
         Stroke::new(1.0, Color32::from_rgb(118, 159, 228)),
     );
     painter.line_segment(
-        [chevron + egui::vec2(-3.0, 1.0), chevron + egui::vec2(0.0, -2.0)],
+        [
+            chevron + egui::vec2(-3.0, 1.0),
+            chevron + egui::vec2(0.0, -2.0),
+        ],
         Stroke::new(1.5, NAV_BLUE),
     );
     painter.line_segment(
-        [chevron + egui::vec2(0.0, -2.0), chevron + egui::vec2(3.0, 1.0)],
+        [
+            chevron + egui::vec2(0.0, -2.0),
+            chevron + egui::vec2(3.0, 1.0),
+        ],
         Stroke::new(1.5, NAV_BLUE),
     );
 }
@@ -253,9 +259,11 @@ pub fn empty_library(ui: &mut egui::Ui) {
                     );
                     ui.add_space(3.0);
                     ui.label(
-                        RichText::new("To get started, choose Install a program in the Tasks pane.")
-                            .size(11.0)
-                            .color(Color32::from_rgb(85, 97, 117)),
+                        RichText::new(
+                            "To get started, choose Install a program in the Tasks pane.",
+                        )
+                        .size(11.0)
+                        .color(Color32::from_rgb(85, 97, 117)),
                     );
                 });
             });

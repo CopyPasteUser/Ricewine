@@ -2935,6 +2935,9 @@ impl RiceWineApp {
                     );
                 }
             });
+            luna::option_group(ui, "Health & diagnostics", luna::XpIcon::Info, |ui| {
+                self.doctor_controls(ui);
+            });
         });
     }
 
@@ -3076,6 +3079,8 @@ impl RiceWineApp {
                 );
             }
         }
+        ui.add_space(20.0);
+        self.doctor_controls(ui);
     }
 
     fn install_dialog(&mut self, ctx: &egui::Context) {
@@ -3594,7 +3599,7 @@ fn main() -> eframe::Result {
         let outcome = match args.as_slice() {
             [flag] if flag == "--help" => {
                 println!(
-                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE | --list | --diagnose | --verify-library | --snapshot-library | --register-menu | --unregister-menu | --unregister-open-with | --unregister-shortcuts | --version | --help]",
+                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE | --list | --diagnose | --doctor | --verify-library | --snapshot-library | --register-menu | --unregister-menu | --unregister-open-with | --unregister-shortcuts | --version | --help]",
                     env!("CARGO_PKG_VERSION")
                 );
                 Ok(())
@@ -3658,6 +3663,15 @@ fn main() -> eframe::Result {
                     }
                 })
             }
+            [flag] if flag == "--doctor" => core::Store::list_for_cli().and_then(|(_, apps)| {
+                let report = doctor::check(&apps, WineTools::detect().is_ok());
+                println!("{}", report.readable());
+                if report.has_errors() {
+                    Err("Doctor found launch blockers. No files were changed".into())
+                } else {
+                    Ok(())
+                }
+            }),
             [flag, id] if flag == "--launch" => {
                 core::Store::load_for_launch(id).and_then(|(root, app)| {
                     let profile = runtime::load_profile(&app.prefix)?;

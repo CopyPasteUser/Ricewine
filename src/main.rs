@@ -3806,7 +3806,9 @@ impl eframe::App for RiceWineApp {
             || self.troubleshoot_id.is_some()
             || self.compatibility_confirmation.is_some();
         if !dialog_open
-            && ui.ctx().input_mut(|input| input.consume_key(egui::Modifiers::CTRL, egui::Key::F))
+            && ui
+                .ctx()
+                .input_mut(|input| input.consume_key(egui::Modifiers::CTRL, egui::Key::F))
         {
             self.page = Page::Library;
             self.search_focus_requested = true;

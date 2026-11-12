@@ -1198,7 +1198,7 @@ impl RiceWineApp {
 
     fn luna_sidebar(&mut self, ui: &mut egui::Ui) {
         egui::Frame::new()
-            .fill(self.theme.sidebar())
+            .fill(self.theme.palette().sidebar)
             .inner_margin(egui::Margin::same(10))
             .stroke(egui::Stroke::new(1.0, Color32::from_rgb(89, 131, 207)))
             .show(ui, |ui| {

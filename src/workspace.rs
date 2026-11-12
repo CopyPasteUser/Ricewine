@@ -158,7 +158,6 @@ impl Workspace {
         });
         entries.into_iter().map(|entry| entry.0).collect()
     }
-
 }
 
 fn workspace_path(root: &Path) -> std::path::PathBuf {

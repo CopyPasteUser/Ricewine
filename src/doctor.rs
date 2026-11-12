@@ -68,7 +68,7 @@ impl DoctorReport {
                 self.omitted
             ));
         }
-        result.push_str("\nRead-only inspection. No Wine commands were executed or files changed.");
+        result.push_str("\nRead-only inspection. No Windows application or installer was launched; no files were changed.");
         result
     }
 }

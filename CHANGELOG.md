@@ -2,7 +2,13 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
-## 3.0.0-alpha.2 – guided troubleshooting and compatibility safety
+## 3.0.0-alpha.3 – keyboard search and backup-first updates
+
+- Add Ctrl+F to jump to Library and focus program search across all three Rices (no shortcut interception while install/recovery/confirmation dialogs are open).
+- The update-installer confirmation now offers a user-initiated prefix backup, shows the exact source path, disables update execution during backup, and never auto-runs a Windows update once the backup finishes.
+- Existing Wine, Proton, backup and Rices remain unchanged. Real Wine/Proton and keyboard accessibility acceptance remain open.
+
+## Previous milestone – 3.0.0-alpha.2 guided troubleshooting and compatibility safety
 
 - Add per-program **Diagnose & recover…** dialog shared across XP Luna Blue, macOS and Windows 10: read-only doctor, bounded Wine log preview, manual EXE recovery, runner navigation and prefix backups.
 - Interpose an explicit preview/confirmation before Winetricks changes. The user can cancel, create a backup first, or explicitly proceed without a backup. Creating a backup **never** automatically installs a component.

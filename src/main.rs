@@ -9,6 +9,7 @@ use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
 use ricewine::core::{self, Application, InstallMode, OperationControl, Store, WineTools};
 use ricewine::discovery::{self, LaunchCandidate};
+use ricewine::doctor;
 use ricewine::integration;
 #[cfg(unix)]
 use ricewine::ipc;
@@ -17,6 +18,7 @@ use ricewine::preferences::{self, Appearance, Preferences};
 use ricewine::runtime::{self, CompatibilityPreset, PrefixProfile, Runner, Template};
 use ricewine::storage::{self, CleanupPreview, DiskUsage};
 use ricewine::updates::{self, Release};
+use ricewine::workspace::{self, LibraryFilter, LibraryOrder, Workspace};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -368,6 +370,7 @@ enum Event {
     GeRemoved(PathBuf, Result<(), String>),
     AppReleaseChecked(String, Result<Release, String>),
     AppUpdated(String, Result<(), String>),
+    DoctorFinished(doctor::DoctorReport),
 }
 
 struct RiceWineApp {
@@ -376,6 +379,10 @@ struct RiceWineApp {
     wine: Option<WineTools>,
     theme: Theme,
     preferences: Preferences,
+    workspace: Workspace,
+    workspace_writable: bool,
+    doctor_report: String,
+    doctor_busy: bool,
     page: Page,
     about_open: bool,
     advanced_open: bool,
@@ -455,6 +462,19 @@ impl RiceWineApp {
             notice = Some((true, error.clone()));
         }
         let preferences = preferences_result.unwrap_or_default();
+        let workspace_result = store
+            .as_ref()
+            .ok()
+            .map(|s| workspace::load(s.root()))
+            .unwrap_or(Ok(Workspace::default()));
+        let workspace_writable = workspace_result.is_ok() && store.is_ok();
+        if let Err(error) = &workspace_result {
+            notice = Some((
+                true,
+                format!("Library favorites and recent history are read-only: {error}"),
+            ));
+        }
+        let workspace = workspace_result.unwrap_or_default();
         let theme: Theme = if preferences.follow_desktop {
             preferences::detect_desktop_appearance()
                 .unwrap_or(preferences.appearance)
@@ -503,6 +523,10 @@ impl RiceWineApp {
             wine: wine.ok(),
             theme,
             preferences,
+            workspace,
+            workspace_writable,
+            doctor_report: String::new(),
+            doctor_busy: false,
             page: Page::capture_override(),
             about_open: false,
             advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
@@ -636,8 +660,15 @@ impl RiceWineApp {
                 }
                 Event::Started(id, result) => match result {
                     Ok(pid) => {
-                        self.running.insert(id);
-                        self.notice = Some((false, format!("Program started (PID {pid})")));
+                        self.running.insert(id.clone());
+                        self.workspace.mark_launched(&id);
+                        self.notice = Some(match self.persist_workspace() {
+                            Ok(()) => (false, format!("Program started (PID {pid})")),
+                            Err(error) => (
+                                true,
+                                format!("Program started (PID {pid}), but recent history could not be saved: {error}"),
+                            ),
+                        });
                     }
                     Err(error) => {
                         self.running.remove(&id);
@@ -782,6 +813,10 @@ impl RiceWineApp {
                         Err(error) => (true, format!("Update installer: {error}")),
                     });
                 }
+                Event::DoctorFinished(report) => {
+                    self.doctor_busy = false;
+                    self.doctor_report = report.readable();
+                }
             }
         }
         if self.install.is_none()
@@ -804,6 +839,7 @@ impl RiceWineApp {
             || !self.storage_busy.is_empty()
             || self.ge_busy
             || !self.exe_scan_busy.is_empty()
+            || self.doctor_busy
         {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
@@ -814,6 +850,61 @@ impl RiceWineApp {
             && let Err(error) = preferences::save(store.root(), &self.preferences)
         {
             self.notice = Some((true, format!("Could not save appearance: {error}")));
+        }
+    }
+
+    fn persist_workspace(&self) -> Result<(), String> {
+        if !self.workspace_writable {
+            return Err("Workspace could not be loaded; the existing file is preserved".into());
+        }
+        let root = self.store.as_ref().ok_or("Library unavailable")?;
+        workspace::save(root.root(), &self.workspace)
+    }
+
+    fn scan_health(&mut self) {
+        if self.doctor_busy {
+            return;
+        }
+        let Some(store) = self.store.as_ref() else {
+            self.notice = Some((true, "Library unavailable; cannot run checks".into()));
+            return;
+        };
+        let apps = store.applications().to_vec();
+        let wine_available = self.wine.is_some();
+        let tx = self.sender.clone();
+        self.doctor_busy = true;
+        self.doctor_report.clear();
+        thread::spawn(move || {
+            let _ = tx.send(Event::DoctorFinished(doctor::check(&apps, wine_available)));
+        });
+    }
+
+    fn doctor_controls(&mut self, ui: &mut egui::Ui) {
+        if self.theme == Theme::Windows10 {
+            win10::section_heading(ui, "Health & diagnostics");
+        } else if self.theme != Theme::Luna {
+            ui.heading("Health & diagnostics");
+        }
+        ui.small("Check launch files, prefixes and Wine/Proton runners without changing anything.");
+        if ui
+            .add_enabled(!self.doctor_busy && self.store.is_some(), egui::Button::new("Check now"))
+            .clicked()
+        {
+            self.scan_health();
+        }
+        if self.doctor_busy {
+            ui.horizontal(|ui| {
+                ui.spinner();
+                ui.small("Checking applications…");
+            });
+        }
+        if !self.doctor_report.is_empty() {
+            ui.add(
+                egui::TextEdit::multiline(&mut self.doctor_report)
+                    .desired_rows(10)
+                    .desired_width(f32::INFINITY)
+                    .interactive(false),
+            );
         }
     }
 

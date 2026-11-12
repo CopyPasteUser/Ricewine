@@ -613,6 +613,10 @@ impl RiceWineApp {
                                 Ok(()) => {
                                     self.page = Page::Library;
                                     self.search.clear();
+                                    self.workspace.filter = LibraryFilter::All;
+                                    if let Err(error) = self.persist_workspace() {
+                                        self.notice = Some((true, format!("Could not save Library view: {error}")));
+                                    }
                                     self.sync_runner_draft();
                                     self.notice = Some((
                                         false,
@@ -710,6 +714,8 @@ impl RiceWineApp {
                                 match store.add(app) {
                                     Ok(()) => {
                                         self.selected = Some(id);
+                                        self.workspace.filter = LibraryFilter::All;
+                                        self.search.clear();
                                         self.sync_runner_draft();
                                         self.notice = Some((false, "Backup restored as a separate program; the original was preserved".into()));
                                     }
@@ -3321,6 +3327,7 @@ impl RiceWineApp {
                     self.selected = Some(id);
                     self.page = Page::Library;
                     self.search.clear();
+                    self.workspace.filter = LibraryFilter::All;
                     self.sync_runner_draft();
                     self.notice = Some((
                         false,
@@ -3362,6 +3369,10 @@ impl RiceWineApp {
                         match store.remove_from_library(&id) {
                             Ok(()) => {
                                 self.selected = store.applications().first().map(|app| app.id.clone());
+                                self.workspace.forget(&id);
+                                if let Err(error) = self.persist_workspace() {
+                                    self.notice = Some((true, format!("Program removed, but Library preferences were not saved: {error}")));
+                                }
                                 self.notice = Some(match integration::remove_shortcut(&id) {
                                     Ok(()) => (false, "Removed from library. Prefix preserved.".into()),
                                     Err(error) => (true, format!("Entry removed, but shortcut cleanup failed: {error}")),

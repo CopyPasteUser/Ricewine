@@ -1447,6 +1447,10 @@ impl RiceWineApp {
     }
 
     fn library(&mut self, ui: &mut egui::Ui) {
+        let luna_mode = self.theme == Theme::Luna;
+        if luna_mode {
+            luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
+        }
         ui.horizontal(|ui| {
             if self.theme != Theme::Luna {
                 ui.heading("Library");
@@ -1480,15 +1484,17 @@ impl RiceWineApp {
                 }
             }
         });
-        ui.add_space(10.0);
+        ui.add_space(if luna_mode { 5.0 } else { 10.0 });
         ui.horizontal(|ui| {
-            ui.label("Search");
+            ui.label(if luna_mode { "Search for:" } else { "Search" });
             ui.add(
                 egui::TextEdit::singleline(&mut self.search)
                     .hint_text("Filter installed programs…")
                     .desired_width(210.0),
             );
-            if !self.search.is_empty() && ui.button("Clear search").clicked() {
+            if !self.search.is_empty()
+                && luna::action(ui, "Clear", true, luna_mode).clicked()
+            {
                 self.search.clear();
             }
         });
@@ -1504,7 +1510,7 @@ impl RiceWineApp {
             .is_none_or(|s| s.applications().is_empty())
         {
             if self.theme == Theme::Luna {
-                ui.add_space(15.0);
+                ui.add_space(7.0);
                 luna::empty_library(ui);
             } else {
                 ui.add_space(45.0);
@@ -1759,26 +1765,48 @@ impl RiceWineApp {
     }
 
     fn prefixes(&mut self, ui: &mut egui::Ui) {
-        if self.theme != Theme::Luna {
+        let luna_mode = self.theme == Theme::Luna;
+        if luna_mode {
+            luna::section_heading(ui, "Wine prefix maintenance", luna::XpIcon::Prefix);
+            ui.small(
+                "Back up your Windows environments before changing runners or components.",
+            );
+        } else {
             ui.heading("Wine prefixes");
+            ui.label(
+                "Create a backup before runner changes. Restoring never overwrites a live prefix.",
+            );
         }
-        ui.label(
-            "Create a backup before runner changes. Restoring never overwrites a live prefix.",
-        );
-        ui.add_space(12.0);
+        ui.add_space(9.0);
         let apps = self
             .store
             .as_ref()
-            .map(|s| s.applications().to_vec())
+            .map(|store| store.applications().to_vec())
             .unwrap_or_default();
         egui::ScrollArea::vertical().show(ui, |ui| {
+            if apps.is_empty() && luna_mode {
+                egui::Frame::new()
+                    .fill(Color32::from_rgb(249, 250, 252))
+                    .stroke(egui::Stroke::new(
+                        1.0,
+                        Color32::from_rgb(170, 185, 205),
+                    ))
+                    .inner_margin(egui::Margin::same(12))
+                    .show(ui, |ui| {
+                        ui.label("No Wine prefixes are registered yet.");
+                        ui.small("Install or import a program from the Program tasks pane.");
+                    });
+            }
             for app in apps {
-                ui.group(|ui| {
-                    ui.label(
-                        RichText::new(&app.name)
-                            .strong()
-                            .color(self.theme.palette().text),
-                    );
+                let app_name = app.name.clone();
+                let render = |ui: &mut egui::Ui| {
+                    if !luna_mode {
+                        ui.label(
+                            RichText::new(&app.name)
+                                .strong()
+                                .color(self.theme.palette().text),
+                        );
+                    }
                     ui.small(core::readable_path(&app.prefix));
                     if let Some(usage) = self.disk_usage.get(&app.id) {
                         ui.label(format!(
@@ -1788,45 +1816,47 @@ impl RiceWineApp {
                         ));
                     }
                     if self.storage_busy.contains(&app.id) {
-                        ui.spinner();
-                        ui.small("Checking files…");
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.small("Checking files…");
+                        });
                     }
                     let idle = !self.busy
                         && !self.backup_busy
                         && !self.running.contains(&app.id)
                         && !self.compatibility_busy.contains(&app.id)
                         && !self.storage_busy.contains(&app.id);
-                    ui.horizontal(|ui| {
-                        if ui
-                            .add_enabled(idle, egui::Button::new("Calculate size"))
-                            .clicked()
-                        {
+                    ui.horizontal_wrapped(|ui| {
+                        if luna::action(ui, "Calculate size", idle, luna_mode).clicked() {
                             self.measure_storage(app.clone(), false);
                         }
-                        if ui
-                            .add_enabled(idle, egui::Button::new("Preview temp cleanup…"))
-                            .clicked()
-                        {
+                        if luna::action(ui, "Preview cleanup…", idle, luna_mode).clicked() {
                             self.measure_storage(app.clone(), true);
                         }
+                        let can_backup = !self.backup_busy
+                            && !self.running.contains(&app.id)
+                            && !self.compatibility_busy.contains(&app.id)
+                            && !self.busy;
+                        if luna::action(ui, "Back up prefix", can_backup, luna_mode).clicked() {
+                            self.backup_async(app.clone());
+                        }
                     });
-                    if ui
-                        .add_enabled(
-                            !self.backup_busy
-                                && !self.running.contains(&app.id)
-                                && !self.compatibility_busy.contains(&app.id)
-                                && !self.busy,
-                            egui::Button::new("Back up this prefix"),
-                        )
-                        .clicked()
-                    {
-                        self.backup_async(app.clone());
-                    }
-                });
+                };
+                if luna_mode {
+                    luna::option_group(ui, &app_name, luna::XpIcon::Prefix, render);
+                } else {
+                    ui.group(render);
+                    ui.add_space(8.0);
+                }
             }
-            ui.add_space(12.0);
-            ui.heading("Backups");
-            if ui.button("Refresh backup list").clicked()
+
+            if luna_mode {
+                luna::section_heading(ui, "Backup archives", luna::XpIcon::Disk);
+            } else {
+                ui.add_space(12.0);
+                ui.heading("Backups");
+            }
+            if luna::action(ui, "Refresh backup list", true, luna_mode).clicked()
                 && let Some(store) = &self.store
             {
                 match backup::list_backups(store.root()) {
@@ -1835,21 +1865,24 @@ impl RiceWineApp {
                 }
             }
             if self.backup_busy {
-                ui.spinner();
-                ui.label("Copying prefix files…");
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Copying prefix files…");
+                });
             }
             if self.backups.is_empty() {
-                ui.label("No backup snapshots yet.");
+                ui.small("No backup archives found.");
             }
             for entry in self.backups.clone() {
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(format!("{} — {}", entry.app_name, entry.created_unix));
-                    if ui
-                        .add_enabled(
-                            !self.backup_busy && !self.busy && self.running.is_empty(),
-                            egui::Button::new("Restore as new program"),
-                        )
-                        .clicked()
+                    if luna::action(
+                        ui,
+                        "Restore as new program",
+                        !self.backup_busy && !self.busy && self.running.is_empty(),
+                        luna_mode,
+                    )
+                    .clicked()
                     {
                         self.restore_async(entry.clone());
                     }

@@ -576,6 +576,8 @@ impl RiceWineApp {
                                 .add(app)
                             {
                                 Ok(()) => {
+                                    self.page = Page::Library;
+                                    self.search.clear();
                                     self.sync_runner_draft();
                                     self.notice = Some((
                                         false,
@@ -585,7 +587,7 @@ impl RiceWineApp {
                                             )
                                         } else {
                                             format!(
-                                                "{name} added. Scan or choose its launch EXE to enable Play."
+                                                "{name} added. Find its launch EXE automatically or choose one manually to start it."
                                             )
                                         },
                                     ))
@@ -2995,7 +2997,9 @@ impl RiceWineApp {
                         ui.separator();
                     }
                     ui.label("Program name");
-                    ui.text_edit_singleline(&mut draft.name);
+                    if ui.text_edit_singleline(&mut draft.name).changed() {
+                        draft.error = None;
+                    }
                     if luna_mode {
                         luna::section_heading(ui, "Existing environment", luna::XpIcon::Prefix);
                     }
@@ -3006,6 +3010,7 @@ impl RiceWineApp {
                             && let Some(path) = rfd::FileDialog::new().pick_folder()
                         {
                             draft.prefix = core::readable_path(&path);
+                            draft.error = None;
                         }
                     });
                     ui.label("Existing launch EXE");
@@ -3015,16 +3020,27 @@ impl RiceWineApp {
                             && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
                         {
                             draft.executable = core::readable_path(&path);
+                            if draft.name.trim().is_empty() {
+                                draft.name = InstallDraft::suggested_name(&path);
+                            }
+                            draft.error = None;
                         }
                     });
                     ui.small("Import only registers an existing prefix. Its files are never moved or deleted.");
+                    if let Some(error) = &draft.error {
+                        ui.add_space(5.0);
+                        ui.colored_label(Color32::DARK_RED, error);
+                    }
                     ui.add_space(8.0);
                     ui.separator();
                     ui.horizontal(|ui| {
+                        let ready = !draft.name.trim().is_empty()
+                            && !draft.prefix.trim().is_empty()
+                            && !draft.executable.trim().is_empty();
                         let start = if win10_mode {
-                            win10::primary_action(ui, "Import prefix", true)
+                            win10::primary_action(ui, "Import program", ready)
                         } else {
-                            luna::action(ui, "Import prefix", true, luna_mode)
+                            luna::action(ui, "Import program", ready, luna_mode)
                         };
                         if start.clicked() {
                             imported = Some(core::imported_application(
@@ -3058,6 +3074,8 @@ impl RiceWineApp {
             }) {
                 Ok(id) => {
                     self.selected = Some(id);
+                    self.page = Page::Library;
+                    self.search.clear();
                     self.sync_runner_draft();
                     self.notice = Some((
                         false,
@@ -3065,7 +3083,12 @@ impl RiceWineApp {
                     ));
                     self.import = None;
                 }
-                Err(error) => self.notice = Some((true, error)),
+                Err(error) => {
+                    self.notice = Some((true, error.clone()));
+                    if let Some(draft) = &mut self.import {
+                        draft.error = Some(error);
+                    }
+                },
             }
         }
     }

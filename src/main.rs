@@ -2660,33 +2660,44 @@ impl RiceWineApp {
             self.luna_settings(ui);
             return;
         }
-        // The macOS and Windows 10 shells already provide a page heading.
-        ui.label(
-            RichText::new("Rices")
-                .strong()
-                .color(self.theme.palette().text),
-        );
-        ui.small("Three maintained Rices. Switching never changes Wine or the desktop theme.");
-        ui.add_space(8.0);
-        ui.horizontal_wrapped(|ui| {
+        if self.theme == Theme::Windows10 {
+            win10::section_heading(ui, "Choose a RiceWine style");
+            ui.label(
+                RichText::new("Changes this application only. Your Linux desktop stays as it is.")
+                    .size(12.0)
+                    .color(win10::MUTED),
+            );
+            ui.add_space(14.0);
+            let mut selected = None;
             for theme in Theme::ALL {
-                let palette = theme.palette();
-                let selected = self.theme == theme;
-                let button = egui::Button::new(RichText::new(theme.label()).color(palette.text))
-                    .fill(palette.sidebar)
-                    .stroke(egui::Stroke::new(
-                        if selected { 2.0 } else { 1.0 },
-                        if selected {
-                            palette.accent
-                        } else {
-                            palette.border
-                        },
-                    ));
-                if ui.add_sized([143.0, 42.0], button).clicked() {
-                    self.set_theme(theme, ui.ctx());
+                if ui.radio(self.theme == theme, theme.label()).clicked() {
+                    selected = Some(theme);
                 }
+                ui.add_space(7.0);
             }
-        });
+            if let Some(theme) = selected {
+                self.set_theme(theme, ui.ctx());
+            }
+        } else {
+            ui.label(RichText::new("Rices").strong().color(self.theme.palette().text));
+            ui.small("Three maintained Rices. Switching never changes Wine or the desktop theme.");
+            ui.add_space(8.0);
+            ui.horizontal_wrapped(|ui| {
+                for theme in Theme::ALL {
+                    let palette = theme.palette();
+                    let selected = self.theme == theme;
+                    let button = egui::Button::new(RichText::new(theme.label()).color(palette.text))
+                        .fill(palette.sidebar)
+                        .stroke(egui::Stroke::new(
+                            if selected { 2.0 } else { 1.0 },
+                            if selected { palette.accent } else { palette.border },
+                        ));
+                    if ui.add_sized([143.0, 42.0], button).clicked() {
+                        self.set_theme(theme, ui.ctx());
+                    }
+                }
+            });
+        }
         ui.add_space(8.0);
         let mut follow = self.preferences.follow_desktop;
         if ui
@@ -2721,7 +2732,11 @@ impl RiceWineApp {
             }
         }
         ui.add_space(16.0);
-        ui.label("Desktop integration");
+        if self.theme == Theme::Windows10 {
+            win10::section_heading(ui, "Desktop integration");
+        } else {
+            ui.label("Desktop integration");
+        }
         if ui.button("Add RiceWine to Open With menu").clicked() {
             let result = std::env::current_exe()
                 .map_err(|e| e.to_string())
@@ -2737,7 +2752,11 @@ impl RiceWineApp {
         ui.small("Does not replace system file associations or change your default app.");
         ui.add_space(18.0);
         if let Some(store) = &self.store {
-            ui.label("Application data");
+            if self.theme == Theme::Windows10 {
+                win10::section_heading(ui, "Application data");
+            } else {
+                ui.label("Application data");
+            }
             ui.small(core::readable_path(store.root()));
             ui.small("Catalog changes are saved atomically. Removing a program from the library preserves its files.");
             ui.add_space(12.0);

@@ -87,7 +87,12 @@ fn maintained_rices_round_trip_and_legacy_values_remain_readable() {
         assert_eq!(result.appearance, Appearance::Luna);
         assert!(result.follow_desktop);
     }
-    for legacy in ["windows10", "windows10_dark", "windows10_light", "windows_10"] {
+    for legacy in [
+        "windows10",
+        "windows10_dark",
+        "windows10_light",
+        "windows_10",
+    ] {
         let json = format!(r#"{{"appearance":"{legacy}","follow_desktop":true}}"#);
         let result = serde_json::from_str::<Preferences>(&json).unwrap();
         assert_eq!(result.appearance, Appearance::Windows10);

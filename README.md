@@ -22,7 +22,28 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 
 **XP Luna Blue** now uses a dedicated XP-era application UI: functional Explorer menus and address navigation, shaded task panes, original application icons, beveled controls, compact classic forms, and consistent management pages. **The native titlebar and window borders are never replaced**; RiceBowl/the Linux compositor owns them.
 
-These are six genuine screenshots from the Linux build (including real, isolated install/import dialogs):
+### macOS Rice · Screenshots
+
+The gallery below is generated from **the actual Linux application** using an isolated Xvfb session. The screenshot workflow publishes the six macOS views to this repository after each relevant change on `main`. No mockup is presented as a running app.
+
+![RiceWine macOS Rice — application library](docs/screenshots/macos-library.webp)
+
+| Easy installation | Settings |
+| :---: | :---: |
+| ![RiceWine macOS Rice — install program](docs/screenshots/macos-install.webp) | ![RiceWine macOS Rice — preferences](docs/screenshots/macos-settings.webp) |
+
+<details>
+<summary>More macOS views: prefixes, runners and import</summary>
+
+| Wine prefixes | Wine and Proton runners | Import existing prefix |
+| :---: | :---: | :---: |
+| ![Wine prefix tools](docs/screenshots/macos-prefixes.webp) | ![Runner tools](docs/screenshots/macos-runners.webp) | ![Prefix import](docs/screenshots/macos-import.webp) |
+
+</details>
+
+### XP Luna Blue · Screenshots
+
+These six screenshots also come from a real Xvfb Linux application session:
 
 ![XP Luna Blue — program library](docs/screenshots/luna-library.webp)
 
@@ -50,7 +71,7 @@ sh scripts/install-user.sh
 
 RiceWine is installed to `~/.local/bin/ricewine` with a user-local application-menu entry. No `sudo` is needed. To run without installing, use `cargo run --release` from the repository.
 
-**First steps:** Select **Install program**, choose an EXE/MSI or portable EXE, then a runner. RiceWine attempts to identify the launch EXE automatically; verify it and use **Scan installed EXEs** or **Choose launch EXE** if needed. Use **Prefixes** for backups, disk usage and optional cleanup; **Runners** for compatibility presets, GE-Proton management and app updates.
+**First steps:** Select **Install program**, choose an EXE/MSI or portable EXE and start installation. The default is Standard + system Wine; special Proton/compatibility options are tucked under **Advanced settings**. RiceWine attempts to find the launch EXE automatically. Select the installed program and press **Play**; if the executable was not detected, use **Choose launch EXE**. The sidebar stays focused on **My programs** and **Settings**; expand **Advanced tools** only for prefix backups, disk usage, cleanup, runners or GE-Proton. Existing advanced features and per-program controls are preserved under **More options**.
 
 To remove RiceWine **without deleting your applications, prefixes or backups**:
 

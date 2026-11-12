@@ -2601,8 +2601,6 @@ impl RiceWineApp {
                         }
                     });
                 });
-                    }
-                });
         }
         if !keep_open || cancel_dialog {
             self.install = None;

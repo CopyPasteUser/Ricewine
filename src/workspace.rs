@@ -106,11 +106,15 @@ impl Workspace {
 
     /// Record only successfully spawned processes, never failed launch attempts.
     pub fn mark_launched(&mut self, id: &str) {
-        let seconds = SystemTime::now()
+        let millis = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
-            .as_secs();
-        self.last_launched.insert(id.to_owned(), seconds);
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64;
+        let previous = self.last_launched.values().copied().max().unwrap_or(0);
+        // Two programs launched within one millisecond must still have a clear order.
+        self.last_launched
+            .insert(id.to_owned(), millis.max(previous.saturating_add(1)));
     }
 
     pub fn forget(&mut self, id: &str) {
@@ -120,40 +124,41 @@ impl Workspace {
 
     pub fn ordered_indices(&self, apps: &[Application], search: &str) -> Vec<usize> {
         let term = search.trim().to_lowercase();
-        let mut indices: Vec<usize> = apps
+        // Decorate-sort-undecorate: normalize each name ONCE rather than for
+        // every comparison (important when scanning a large installed library).
+        let mut entries: Vec<(usize, String, bool, u64)> = apps
             .iter()
             .enumerate()
-            .filter(|(_, app)| {
-                (self.filter == LibraryFilter::All || self.is_favorite(&app.id))
-                    && (term.is_empty() || app.name.to_lowercase().contains(&term))
+            .filter_map(|(index, app)| {
+                let pinned = self.is_favorite(&app.id);
+                if self.filter == LibraryFilter::Favorites && !pinned {
+                    return None;
+                }
+                let name = app.name.to_lowercase();
+                if !term.is_empty() && !name.contains(&term) {
+                    return None;
+                }
+                Some((
+                    index,
+                    name,
+                    pinned,
+                    self.last_launched.get(&app.id).copied().unwrap_or(0),
+                ))
             })
-            .map(|(index, _)| index)
             .collect();
-        indices.sort_unstable_by(|&left, &right| {
-            let a = &apps[left];
-            let b = &apps[right];
-            let favorite = || self.is_favorite(&b.id).cmp(&self.is_favorite(&a.id));
-            let recent = || {
-                self.last_launched
-                    .get(&b.id)
-                    .copied()
-                    .unwrap_or(0)
-                    .cmp(&self.last_launched.get(&a.id).copied().unwrap_or(0))
-            };
-            let by_name = || {
-                a.name
-                    .to_ascii_lowercase()
-                    .cmp(&b.name.to_ascii_lowercase())
-                    .then_with(|| a.id.cmp(&b.id))
-            };
+        entries.sort_unstable_by(|a, b| {
+            let favorites = || b.2.cmp(&a.2);
+            let recent = || b.3.cmp(&a.3);
+            let name = || a.1.cmp(&b.1).then_with(|| apps[a.0].id.cmp(&apps[b.0].id));
             match self.order {
-                LibraryOrder::FavoritesFirst => favorite().then_with(by_name),
-                LibraryOrder::Name => by_name(),
-                LibraryOrder::Recent => recent().then_with(favorite).then_with(by_name),
+                LibraryOrder::FavoritesFirst => favorites().then_with(name),
+                LibraryOrder::Name => name(),
+                LibraryOrder::Recent => recent().then_with(favorites).then_with(name),
             }
         });
-        indices
+        entries.into_iter().map(|entry| entry.0).collect()
     }
+
 }
 
 fn workspace_path(root: &Path) -> std::path::PathBuf {
@@ -259,6 +264,10 @@ mod tests {
         state.mark_launched("c");
         state.order = LibraryOrder::Recent;
         assert_eq!(state.ordered_indices(&apps, ""), vec![2, 0, 1]);
+        state.mark_launched("a");
+        // The previous launch timestamp is always strictly older.
+        assert!(state.last_launched["a"] > state.last_launched["c"]);
+        assert_eq!(state.ordered_indices(&apps, ""), vec![1, 2, 0]);
         assert_eq!(state.ordered_indices(&apps, "ALP"), vec![1]);
         state.forget("b");
         assert!(!state.is_favorite("b"));

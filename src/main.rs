@@ -392,6 +392,7 @@ struct RiceWineApp {
     advanced_open: bool,
     selected: Option<String>,
     search: String,
+    search_focus_requested: bool,
     name_edit: String,
     launch_args_text: String,
     launch_env_text: String,
@@ -540,6 +541,7 @@ impl RiceWineApp {
             advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
             selected,
             search: String::new(),
+            search_focus_requested: false,
             name_edit: String::new(),
             launch_args_text: String::new(),
             launch_env_text: String::new(),
@@ -1911,13 +1913,13 @@ impl RiceWineApp {
         });
         ui.add_space(if luna_mode { 5.0 } else { 10.0 });
         if self.store.is_some() {
-            ui.small("Tip: Drop an EXE or MSI into this window to open its installation form.");
+            ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
         }
         ui.horizontal(|ui| {
             if !win10_mode {
                 ui.label(if luna_mode { "Search for:" } else { "Search" });
             }
-            ui.add(
+            let search_response = ui.add(
                 egui::TextEdit::singleline(&mut self.search)
                     .hint_text(if win10_mode {
                         "Search this list"
@@ -1926,6 +1928,10 @@ impl RiceWineApp {
                     })
                     .desired_width(if win10_mode { 280.0 } else { 210.0 }),
             );
+            if self.search_focus_requested {
+                search_response.request_focus();
+                self.search_focus_requested = false;
+            }
             if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
                 self.search.clear();
             }
@@ -3747,6 +3753,17 @@ impl RiceWineApp {
 impl eframe::App for RiceWineApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.poll(ui.ctx());
+        let dialog_open = self.install.is_some()
+            || self.import.is_some()
+            || self.remove_confirmation.is_some()
+            || self.troubleshoot_id.is_some()
+            || self.compatibility_confirmation.is_some();
+        if !dialog_open
+            && ui.ctx().input_mut(|input| input.consume_key(egui::Modifiers::CTRL, egui::Key::F))
+        {
+            self.page = Page::Library;
+            self.search_focus_requested = true;
+        }
         // Drag-and-drop is a shortcut to the same reviewable setup form,
         // never permission to execute a dropped Windows binary automatically.
         if self.install.is_none()

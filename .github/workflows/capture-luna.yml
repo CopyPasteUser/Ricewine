@@ -38,7 +38,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/screenshots/luna-library.webp docs/screenshots/luna-prefixes.webp docs/screenshots/luna-runners.webp docs/screenshots/luna-settings.webp
+          git add docs/screenshots/luna-*.webp
           if git diff --cached --quiet; then
             echo 'All screenshot frames are unchanged'
             exit 0

@@ -26,8 +26,10 @@ printf '{"appearance":"luna","follow_desktop":false}\n' > "$XDG_DATA_HOME/ricewi
 
 capture_page() {
     local page="$1"
+    local dialog="${2:-}"
+    local output_name="${3:-$page}"
     local window_id=''
-    RICEWINE_CAPTURE_PAGE="$page" ./target/release/ricewine &
+    RICEWINE_CAPTURE_PAGE="$page" RICEWINE_CAPTURE_DIALOG="$dialog" ./target/release/ricewine &
     ricewine_pid="$!"
     for _ in $(seq 1 80); do
         window_id="$(xdotool search --onlyvisible --name '^RiceWine$' 2>/dev/null | head -n 1 || true)"
@@ -40,7 +42,7 @@ capture_page() {
     xdotool windowsize "$window_id" 1080 700
     sleep 2
 
-    local output="docs/screenshots/luna-$page.webp"
+    local output="docs/screenshots/luna-$output_name.webp"
     import -window "$window_id" -quality 88 "$output"
     identify -format '%f %wx%h %b\n' "$output"
 
@@ -53,9 +55,11 @@ capture_page() {
 for page in library prefixes runners settings; do
     capture_page "$page"
 done
+capture_page library install install
+capture_page library import import
 
-unique_count="$(sha256sum docs/screenshots/luna-{library,prefixes,runners,settings}.webp | awk '{print $1}' | sort -u | wc -l)"
-if [[ "$unique_count" -ne 4 ]]; then
-    echo "Expected four distinct Luna screenshots, found $unique_count" >&2
+unique_count="$(sha256sum docs/screenshots/luna-{library,prefixes,runners,settings,install,import}.webp | awk '{print $1}' | sort -u | wc -l)"
+if [[ "$unique_count" -ne 6 ]]; then
+    echo "Expected six distinct Luna screenshots, found $unique_count" >&2
     exit 1
 fi

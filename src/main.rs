@@ -494,6 +494,8 @@ impl RiceWineApp {
                     None
                 }
             });
+        // Screenshot-only opt-in for real dialog captures. No fixture programs.
+        let capture_dialog = std::env::var("RICEWINE_CAPTURE_DIALOG").ok();
         let mut app = Self {
             store: store.ok(),
             wine: wine.ok(),
@@ -517,11 +519,17 @@ impl RiceWineApp {
             ge_control: None,
             ge_install_confirmation: false,
             ge_remove_confirmation: None,
-            install: initial_install.map(Self::install_draft_for_file),
+            install: initial_install
+                .map(Self::install_draft_for_file)
+                .or_else(|| {
+                    (capture_dialog.as_deref() == Some("install"))
+                        .then(InstallDraft::default)
+                }),
             queued_install_files: VecDeque::new(),
             #[cfg(unix)]
             ipc,
-            import: None,
+            import: (capture_dialog.as_deref() == Some("import"))
+                .then(ImportDraft::default),
             remove_confirmation: None,
             cancel_install_confirmation: false,
             stop_confirmation: None,

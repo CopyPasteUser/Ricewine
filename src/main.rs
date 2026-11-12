@@ -313,7 +313,12 @@ impl InstallDraft {
         }) {
             words.pop();
         }
-        words.join(" ")
+        let suggested = words.join(" ");
+        if suggested.is_empty() {
+            raw.replace(['_', '-'], " ").trim().to_owned()
+        } else {
+            suggested
+        }
     }
 
     fn choose_file(&mut self, path: PathBuf) {
@@ -3524,6 +3529,31 @@ mod rice_tests {
         let a = luminance(a);
         let b = luminance(b);
         (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn installation_suggests_names_without_erasing_manual_edits() {
+        let mut draft = InstallDraft::default();
+        draft.choose_file(PathBuf::from("/tmp/Example-App_Setup.exe"));
+        assert_eq!(draft.name, "Example App");
+        assert!(draft.file.ends_with("Example-App_Setup.exe"));
+
+        // Choosing another setup replaces only an automatically suggested name.
+        draft.choose_file(PathBuf::from("/tmp/Another_Program_installer.msi"));
+        assert_eq!(draft.name, "Another Program");
+
+        draft.name = "My custom title".into();
+        draft.choose_file(PathBuf::from("/tmp/Third-install.exe"));
+        assert_eq!(draft.name, "My custom title");
+
+        assert_eq!(
+            InstallDraft::suggested_name(std::path::Path::new("setup.exe")),
+            "setup"
+        );
+        assert_eq!(
+            InstallDraft::suggested_name(std::path::Path::new("My_App_1.2.3_Setup.exe")),
+            "My App 1.2.3"
+        );
     }
 
     #[test]

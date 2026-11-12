@@ -2,7 +2,13 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
-## 3.0.0-alpha.1 – personal library and read-only doctor
+## 3.0.0-alpha.2 – guided troubleshooting and compatibility safety
+
+- Add per-program **Diagnose & recover…** dialog shared across XP Luna Blue, macOS and Windows 10: read-only doctor, bounded Wine log preview, manual EXE recovery, runner navigation and prefix backups.
+- Interpose an explicit preview/confirmation before Winetricks changes. The user can cancel, create a backup first, or explicitly proceed without a backup. Creating a backup **never** automatically installs a component.
+- Preserve all existing runner execution paths, backup handling, permissions and window decorations. This is still a pre-release, not proof of compatibility.
+
+## Previous milestone – 3.0.0-alpha.1 personal library and read-only doctor
 
 - Add separate workspace.json with atomic bounded persistence of favorites, filters, ordering and successful launch history, with safe defaults for existing 2.x libraries.
 - Library views in XP Luna Blue, macOS and Windows 10 support Favorite/Unfavorite, All/Favorites filtering and Name/Favorites/Recent ordering without modifying the Wine catalog.

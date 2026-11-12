@@ -2,7 +2,7 @@
 
 **A lightweight Wine & Proton manager for Linux, built with Rust.**
 
-Install, organize and launch Windows applications in separate Wine prefixes — with a native desktop UI and two maintained Rices. Works standalone or alongside RiceBowl; no background service required.
+Install, organize and launch Windows applications in separate Wine prefixes — with a native desktop UI and three maintained Rices. Works standalone or alongside RiceBowl; no background service required.
 
 > **Version 2.0.0-beta.1** · Feature-complete software beta. Real Wine/Proton and X11/Wayland acceptance remains outstanding; this is **not** a stable release.
 
@@ -20,7 +20,9 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 
 **macOS** has its own Finder-inspired application shell with a grouped navigation sidebar, compact toolbar with real install/import actions, subtle list treatment and a status bar. It styles only RiceWine's interior; the compositor still renders the actual window decorations. This is a new implementation, pending real X11/Wayland visual acceptance.
 
-**XP Luna Blue** now uses a dedicated XP-era application UI: functional Explorer menus and address navigation, shaded task panes, original application icons, beveled controls, compact classic forms, and consistent management pages. **The native titlebar and window borders are never replaced**; RiceBowl/the Linux compositor owns them.
+**XP Luna Blue** uses a dedicated XP-era application UI: functional Explorer menus and address navigation, shaded task panes, original application icons, beveled controls, compact classic forms, and consistent management pages. **The native titlebar and window borders are never replaced**; RiceBowl/the Linux compositor owns them.
+
+**Windows 10** is a new native egui Rice with a flat Fluent-inspired Settings/Apps layout, square controls, neutral navigation, restrained blue action emphasis and a real program list. This is an independent app shell, not a recolored macOS UI. It uses locally drawn symbols and does not ship Microsoft's assets or change the native Linux titlebar.
 
 ### macOS Rice · Screenshots
 
@@ -41,6 +43,25 @@ The gallery below is generated from **the actual Linux application** using an is
 
 </details>
 
+### Windows 10 Rice · Screenshots
+
+These captures are generated from the actual Linux application on Xvfb, with the same six real interface states as macOS and Luna:
+
+![Windows 10 Rice — program library](docs/screenshots/win10-library.webp)
+
+| Installer | Settings |
+| :---: | :---: |
+| ![Windows 10 Rice install form](docs/screenshots/win10-install.webp) | ![Windows 10 Rice settings](docs/screenshots/win10-settings.webp) |
+
+<details>
+<summary>More Windows 10 Rice views</summary>
+
+| Prefixes | Runners | Import |
+| :---: | :---: | :---: |
+| ![Windows 10 prefixes](docs/screenshots/win10-prefixes.webp) | ![Windows 10 runners](docs/screenshots/win10-runners.webp) | ![Windows 10 import](docs/screenshots/win10-import.webp) |
+
+</details>
+
 ### XP Luna Blue · Screenshots
 
 These six screenshots also come from a real Xvfb Linux application session:
@@ -57,7 +78,7 @@ These six screenshots also come from a real Xvfb Linux application session:
 | :---: | :---: |
 | ![XP Luna Blue — install form](docs/screenshots/luna-install.webp) | ![XP Luna Blue — import form](docs/screenshots/luna-import.webp) |
 
-Only **macOS** and **XP Luna Blue** are offered in Settings. The incomplete Windows 10 Light/Dark and XP Luna Olive/Silver experiments were retired. Existing preferences referencing those variants automatically fall back to Luna Blue; the program catalog, prefixes, backups and runner settings are untouched. Manual selection persists across restarts and does not change the Linux desktop or Wine configuration.
+The maintained choices in Settings are **macOS**, **XP Luna Blue** and **Windows 10**. The old Windows 10 Light/Dark preference names are read as the new unified Windows 10 Rice; XP Luna Olive/Silver preference names still migrate to Luna Blue. No existing program, prefix, backup or runner is deleted. Manual selection persists across restarts and never changes your Linux desktop or Wine configuration.
 
 ## Install
 
@@ -71,7 +92,7 @@ sh scripts/install-user.sh
 
 RiceWine is installed to `~/.local/bin/ricewine` with a user-local application-menu entry. No `sudo` is needed. To run without installing, use `cargo run --release` from the repository.
 
-**First steps:** Select **Install program**, choose an EXE/MSI or portable EXE and start installation. The default is Standard + system Wine; special Proton/compatibility options are tucked under **Advanced settings**. RiceWine attempts to find the launch EXE automatically. Select the installed program and press **Play**; if the executable was not detected, use **Choose launch EXE**. The sidebar stays focused on **My programs** and **Settings**; expand **Advanced tools** only for prefix backups, disk usage, cleanup, runners or GE-Proton. Existing advanced features and per-program controls are preserved under **More options**.
+**First steps:** Select **Install program**, choose an EXE/MSI or portable EXE and start installation. The default is Standard + system Wine; special Proton/compatibility options are tucked under **Advanced settings**. RiceWine attempts to find the launch EXE automatically. Select the installed program and press **Play**; if the executable was not detected, use **Choose launch EXE**. The sidebar stays focused on **My programs** and **Settings**; expand **Advanced tools** only for prefix backups, disk usage, cleanup, runners or GE-Proton. The program list caches runner profiles rather than repeatedly reading TOML files during repaint; use **Refresh profiles** after manually changing profile files outside RiceWine. Existing advanced features and per-program controls are preserved under **More options**.
 
 To remove RiceWine **without deleting your applications, prefixes or backups**:
 

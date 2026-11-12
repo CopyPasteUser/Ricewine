@@ -17,15 +17,16 @@ pub enum Appearance {
     // Old experiments are retired. Deserialize them into the maintained Luna
     // Rice rather than rejecting existing preferences.json files at startup.
     #[default]
-    #[serde(
-        alias = "windows10",
-        alias = "windows10_dark",
-        alias = "luna_olive",
-        alias = "luna_silver"
-    )]
+    #[serde(alias = "luna_olive", alias = "luna_silver")]
     Luna,
     #[serde(rename = "macos", alias = "mac_os")]
     MacOS,
+    #[serde(
+        alias = "windows10_dark",
+        alias = "windows10_light",
+        alias = "windows_10"
+    )]
+    Windows10,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -79,6 +80,12 @@ pub fn appearance_for_theme(theme: &str) -> Option<Appearance> {
     let name = theme.to_ascii_lowercase();
     if name.contains("luna") || name.contains("winxp") || name.contains("windows-xp") {
         Some(Appearance::Luna)
+    } else if name.contains("windows-10")
+        || name.contains("windows10")
+        || name.contains("win10")
+        || name.contains("fluent")
+    {
+        Some(Appearance::Windows10)
     } else if name.contains("whitesur")
         || name.contains("macos")
         || name.contains("mac-os")
@@ -115,7 +122,7 @@ mod tests {
 
     #[test]
     fn old_appearances_are_migrated_without_losing_preferences() {
-        for legacy in ["windows10", "windows10_dark", "luna_olive", "luna_silver"] {
+        for legacy in ["luna_olive", "luna_silver"] {
             let json = format!(r#"{{"appearance":"{legacy}","follow_desktop":true}}"#);
             let loaded: Preferences = serde_json::from_str(&json).unwrap();
             assert_eq!(loaded.appearance, Appearance::Luna, "{legacy}");
@@ -125,7 +132,7 @@ mod tests {
 
     #[test]
     fn only_curated_rices_round_trip() {
-        for appearance in [Appearance::Luna, Appearance::MacOS] {
+        for appearance in [Appearance::Luna, Appearance::MacOS, Appearance::Windows10] {
             let json = serde_json::to_string(&appearance).unwrap();
             let decoded: Appearance = serde_json::from_str(&json).unwrap();
             assert_eq!(decoded, appearance);
@@ -143,7 +150,18 @@ mod tests {
             Some(Appearance::MacOS)
         );
         assert_eq!(appearance_for_theme("XP-Luna-Blue"), Some(Appearance::Luna));
-        assert_eq!(appearance_for_theme("Windows-10-Dark"), None);
+        assert_eq!(
+            appearance_for_theme("Windows-10-Dark"),
+            Some(Appearance::Windows10)
+        );
+        assert_eq!(
+            appearance_for_theme("Fluent-Light"),
+            Some(Appearance::Windows10)
+        );
+        assert_eq!(
+            serde_json::from_str::<Appearance>(r#""windows10_dark""#).unwrap(),
+            Appearance::Windows10
+        );
         assert_eq!(appearance_for_theme("Adwaita"), None);
     }
 }

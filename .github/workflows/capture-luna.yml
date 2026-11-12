@@ -10,6 +10,8 @@ on:
       - src/luna.rs
       - src/luna_icons.rs
       - src/mac.rs
+      - src/win10.rs
+      - src/preferences.rs
   workflow_dispatch:
 
 # Do not publish an older page capture after a newer visual commit.
@@ -37,11 +39,12 @@ jobs:
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh luna
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh macos
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh windows10
       - name: Publish screenshots
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/screenshots/luna-*.webp docs/screenshots/macos-*.webp
+          git add docs/screenshots/luna-*.webp docs/screenshots/macos-*.webp docs/screenshots/win10-*.webp
           if git diff --cached --quiet; then
             echo 'All screenshot frames are unchanged'
             exit 0
@@ -52,5 +55,5 @@ jobs:
             echo 'Source commit was superseded; skip stale screenshots'
             exit 0
           fi
-          git commit -m 'docs: capture real Luna and macOS Rice desktop screens'
+          git commit -m 'docs: capture Luna, macOS and Windows 10 desktop screens'
           git push origin HEAD:main

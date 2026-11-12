@@ -346,6 +346,7 @@ impl InstallDraft {
 
 enum Event {
     Installed(Result<(Application, bool), String>),
+    ExecutablesScanned(String, Result<Vec<LaunchCandidate>, String>),
     Started(String, Result<u32, String>),
     Exited(String, Result<String, String>),
     CompatibilityFinished(String, String, Result<(), String>),
@@ -400,6 +401,7 @@ struct RiceWineApp {
     running_controls: HashMap<String, OperationControl>,
     exe_candidates: Vec<LaunchCandidate>,
     exe_candidate_for: Option<String>,
+    exe_scan_busy: HashSet<String>,
     compatibility_busy: HashSet<String>,
     backup_busy: bool,
     backups: Vec<BackupEntry>,
@@ -530,6 +532,7 @@ impl RiceWineApp {
             running_controls: HashMap::new(),
             exe_candidates: Vec::new(),
             exe_candidate_for: None,
+            exe_scan_busy: HashSet::new(),
             compatibility_busy: HashSet::new(),
             backup_busy: false,
             backups,
@@ -596,6 +599,27 @@ impl RiceWineApp {
                             }
                         }
                         Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::ExecutablesScanned(id, result) => {
+                    self.exe_scan_busy.remove(&id);
+                    if self.selected.as_deref() == Some(id.as_str()) {
+                        match result {
+                            Ok(candidates) => {
+                                let count = candidates.len();
+                                self.exe_candidate_for = Some(id);
+                                self.exe_candidates = candidates;
+                                self.notice = Some((
+                                    false,
+                                    if count == 0 {
+                                        "No launch EXE found. Choose one manually.".into()
+                                    } else {
+                                        format!("Found {count} possible launch files. Choose the correct one.")
+                                    },
+                                ));
+                            }
+                            Err(error) => self.notice = Some((true, format!("EXE search: {error}"))),
+                        }
                     }
                 }
                 Event::Started(id, result) => match result {
@@ -767,6 +791,7 @@ impl RiceWineApp {
             || !self.compatibility_busy.is_empty()
             || !self.storage_busy.is_empty()
             || self.ge_busy
+            || !self.exe_scan_busy.is_empty()
         {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
@@ -910,6 +935,53 @@ impl RiceWineApp {
                     .collect()
             })
             .unwrap_or_default();
+    }
+
+    /// Bounded prefix scans may traverse thousands of files; never block egui.
+    fn scan_executables_async(&mut self, app: &Application) {
+        if !self.exe_scan_busy.insert(app.id.clone()) {
+            return;
+        }
+        self.exe_candidates.clear();
+        self.exe_candidate_for = None;
+        let id = app.id.clone();
+        let prefix = app.prefix.clone();
+        let name = app.name.clone();
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let result = discovery::scan_executables(&prefix, &name);
+            let _ = sender.send(Event::ExecutablesScanned(id, result));
+        });
+    }
+
+    /// This is the same picker used in the normal first-run flow and advanced tools.
+    fn show_exe_candidates(&mut self, ui: &mut egui::Ui, app: &Application) {
+        if self.exe_candidate_for.as_deref() != Some(app.id.as_str()) {
+            return;
+        }
+        let mut selected = None;
+        for candidate in self.exe_candidates.iter().take(12) {
+            let name = candidate.path.file_name().unwrap_or_default().to_string_lossy();
+            if ui
+                .button(format!("Use {name}"))
+                .on_hover_text(core::readable_path(&candidate.path))
+                .clicked()
+            {
+                selected = Some(candidate.path.clone());
+            }
+        }
+        if let Some(path) = selected
+            && let Some(store) = self.store.as_mut()
+        {
+            match store.set_executable(&app.id, path) {
+                Ok(()) => {
+                    self.exe_candidates.clear();
+                    self.exe_candidate_for = None;
+                    self.notice = Some((false, "Launch EXE selected. You can now start the program.".into()));
+                }
+                Err(error) => self.notice = Some((true, error)),
+            }
+        }
     }
 
     fn sync_runner_draft(&mut self) {

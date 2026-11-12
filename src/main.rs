@@ -95,16 +95,16 @@ impl Theme {
             },
             Self::Luna => RicePalette {
                 accent: rgb(25, 73, 171),
-                sidebar: rgb(182, 207, 249),
-                panel: rgb(255, 253, 244),
-                button: rgb(229, 237, 251),
-                hover: rgb(196, 218, 254),
+                sidebar: rgb(160, 191, 239),
+                panel: rgb(255, 255, 255),
+                button: rgb(236, 237, 233),
+                hover: rgb(255, 245, 205),
                 input: rgb(255, 255, 255),
                 text: rgb(28, 46, 81),
                 muted: rgb(75, 91, 118),
-                border: rgb(106, 145, 211),
+                border: rgb(119, 150, 195),
                 dark: false,
-                corner_radius: 4,
+                corner_radius: 3,
             },
             Self::LunaOlive => RicePalette {
                 accent: rgb(77, 106, 43),
@@ -225,10 +225,29 @@ impl Theme {
                 egui::vec2(8.0, 10.0)
             };
             style.spacing.button_padding = if self == Self::Luna {
-                egui::vec2(10.0, 5.0)
+                egui::vec2(8.0, 4.0)
             } else {
                 egui::vec2(12.0, 7.0)
             };
+            style.spacing.interact_size = if self == Self::Luna {
+                egui::vec2(36.0, 24.0)
+            } else {
+                egui::vec2(40.0, 28.0)
+            };
+            let (body, heading, button, small, monospace) = if self == Self::Luna {
+                (12.0, 17.0, 12.0, 11.0, 11.0)
+            } else {
+                (14.0, 19.0, 14.0, 12.0, 13.0)
+            };
+            for (kind, size, family) in [
+                (egui::TextStyle::Body, body, egui::FontFamily::Proportional),
+                (egui::TextStyle::Heading, heading, egui::FontFamily::Proportional),
+                (egui::TextStyle::Button, button, egui::FontFamily::Proportional),
+                (egui::TextStyle::Small, small, egui::FontFamily::Proportional),
+                (egui::TextStyle::Monospace, monospace, egui::FontFamily::Monospace),
+            ] {
+                style.text_styles.insert(kind, egui::FontId::new(size, family));
+            }
         });
     }
 }
@@ -1224,18 +1243,18 @@ impl RiceWineApp {
     fn luna_sidebar(&mut self, ui: &mut egui::Ui) {
         egui::Frame::new()
             .fill(self.theme.sidebar())
-            .inner_margin(13.0)
-            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(87, 135, 221)))
+            .inner_margin(egui::Margin::same(10))
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(89, 131, 207)))
             .show(ui, |ui| {
-                ui.set_min_width(191.0);
-                ui.set_min_height((ui.available_height() - 26.0).max(360.0));
+                ui.set_min_width(194.0);
+                ui.set_min_height((ui.available_height() - 22.0).max(300.0));
                 luna::brand(ui);
                 luna::task_panel(ui, |ui| {
-                    luna::task_header(ui, "Programs");
-                    ui.add_space(7.0);
+                    luna::task_header(ui, "Program tasks");
+                    ui.add_space(4.0);
                     if luna::task_link(
                         ui,
-                        "Library",
+                        "Program library",
                         luna::XpIcon::Programs,
                         self.page == Page::Library,
                     )
@@ -1245,7 +1264,7 @@ impl RiceWineApp {
                     }
                     if ui
                         .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
-                            luna::task_link(ui, "Install a program", luna::XpIcon::Install, false)
+                            luna::task_link(ui, "Install program", luna::XpIcon::Install, false)
                         })
                         .inner
                         .clicked()
@@ -1254,52 +1273,66 @@ impl RiceWineApp {
                     }
                     if ui
                         .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
-                            luna::task_link(ui, "Import a Wine prefix", luna::XpIcon::Import, false)
+                            luna::task_link(ui, "Import prefix", luna::XpIcon::Import, false)
                         })
                         .inner
                         .clicked()
                     {
                         self.import = Some(ImportDraft::default());
                     }
-                    ui.add_space(7.0);
+                    ui.add_space(5.0);
                 });
-                ui.add_space(17.0);
+                ui.add_space(11.0);
                 luna::task_panel(ui, |ui| {
-                    luna::task_header(ui, "Wine Environments");
-                    ui.add_space(7.0);
-                    for page in [Page::Prefixes, Page::Runners, Page::Settings] {
-                        let icon = match page {
-                            Page::Prefixes => luna::XpIcon::Prefix,
-                            Page::Runners => luna::XpIcon::Runner,
-                            Page::Settings => luna::XpIcon::Settings,
-                            Page::Library => luna::XpIcon::Programs,
-                        };
+                    luna::task_header(ui, "Other places");
+                    ui.add_space(4.0);
+                    for (page, icon) in [
+                        (Page::Prefixes, luna::XpIcon::Prefix),
+                        (Page::Runners, luna::XpIcon::Runner),
+                        (Page::Settings, luna::XpIcon::Settings),
+                    ] {
                         if luna::task_link(ui, page.label(), icon, self.page == page).clicked() {
                             self.page = page;
                         }
                     }
-                    ui.add_space(7.0);
+                    ui.add_space(5.0);
                 });
-                ui.add_space((ui.available_height() - 88.0).max(16.0));
-                ui.label(
-                    RichText::new("APPEARANCE")
-                        .size(10.0)
-                        .strong()
-                        .color(Color32::from_rgb(32, 74, 154)),
-                );
-                egui::ComboBox::from_id_salt("luna_sidebar_rice")
-                    .width(ui.available_width())
-                    .selected_text(self.theme.label())
-                    .show_ui(ui, |ui| {
-                        for theme in Theme::ALL {
-                            if ui
-                                .selectable_label(self.theme == theme, theme.label())
-                                .clicked()
-                            {
-                                self.set_theme(theme, ui.ctx());
-                            }
-                        }
+                ui.add_space(11.0);
+                luna::task_panel(ui, |ui| {
+                    luna::task_header(ui, "RiceWine");
+                    ui.add_space(4.0);
+                    if luna::task_link(ui, "About", luna::XpIcon::Info, false).clicked() {
+                        self.about_open = true;
+                    }
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        ui.add_space(10.0);
+                        ui.label(RichText::new("Visual style").size(11.0));
                     });
+                    ui.horizontal(|ui| {
+                        ui.add_space(9.0);
+                        egui::ComboBox::from_id_salt("luna_sidebar_rice")
+                            .width(157.0)
+                            .selected_text(self.theme.label())
+                            .show_ui(ui, |ui| {
+                                for theme in Theme::ALL {
+                                    if ui
+                                        .selectable_label(self.theme == theme, theme.label())
+                                        .clicked()
+                                    {
+                                        self.set_theme(theme, ui.ctx());
+                                    }
+                                }
+                            });
+                    });
+                    ui.add_space(8.0);
+                });
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("Windows compatibility manager")
+                        .size(10.0)
+                        .color(Color32::from_rgb(41, 71, 119)),
+                );
             });
     }
 
@@ -1364,16 +1397,16 @@ impl RiceWineApp {
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| self.luna_sidebar(ui),
             );
-            ui.add_space(8.0);
+            ui.add_space(6.0);
             let content_width = ui.available_width().max(390.0);
             ui.allocate_ui_with_layout(
                 egui::vec2(content_width, available_height),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
                     egui::Frame::new()
-                        .fill(Color32::from_rgb(255, 255, 252))
-                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(104, 148, 218)))
-                        .inner_margin(13.0)
+                        .fill(Color32::WHITE)
+                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(117, 145, 191)))
+                        .inner_margin(11.0)
                         .corner_radius(egui::CornerRadius::same(2))
                         .show(ui, |ui| {
                             ui.set_min_height((available_height - 28.0).max(380.0));
@@ -1393,7 +1426,7 @@ impl RiceWineApp {
                                 ),
                             };
                             luna::content_heading(ui, title, subtitle);
-                            ui.add_space(15.0);
+                            ui.add_space(9.0);
                             self.page_body(ui);
                         });
                 },

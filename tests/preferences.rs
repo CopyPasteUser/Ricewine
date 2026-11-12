@@ -56,12 +56,20 @@ fn ricebowl_theme_detection_is_explicit_and_does_not_guess() {
         Some(Appearance::MacOS)
     );
     assert_eq!(preferences::appearance_for_theme("RiceHub-Ten"), None);
+    assert_eq!(
+        preferences::appearance_for_theme("Windows-10-Dark"),
+        Some(Appearance::Windows10)
+    );
+    assert_eq!(
+        preferences::appearance_for_theme("Windows10-Fluent"),
+        Some(Appearance::Windows10)
+    );
     assert_eq!(preferences::appearance_for_theme("Adwaita"), None);
 }
 
 #[test]
 fn maintained_rices_round_trip_and_legacy_values_remain_readable() {
-    for appearance in [Appearance::Luna, Appearance::MacOS] {
+    for appearance in [Appearance::Luna, Appearance::MacOS, Appearance::Windows10] {
         let preferences = Preferences {
             appearance,
             follow_desktop: false,
@@ -73,10 +81,16 @@ fn maintained_rices_round_trip_and_legacy_values_remain_readable() {
         );
     }
 
-    for old_name in ["windows10", "windows10_dark", "luna_olive", "luna_silver"] {
+    for old_name in ["luna_olive", "luna_silver"] {
         let json = format!(r#"{{"appearance":"{old_name}","follow_desktop":true}}"#);
         let result = serde_json::from_str::<Preferences>(&json).unwrap();
         assert_eq!(result.appearance, Appearance::Luna);
+        assert!(result.follow_desktop);
+    }
+    for legacy in ["windows10", "windows10_dark", "windows10_light", "windows_10"] {
+        let json = format!(r#"{{"appearance":"{legacy}","follow_desktop":true}}"#);
+        let result = serde_json::from_str::<Preferences>(&json).unwrap();
+        assert_eq!(result.appearance, Appearance::Windows10);
         assert!(result.follow_desktop);
     }
 }

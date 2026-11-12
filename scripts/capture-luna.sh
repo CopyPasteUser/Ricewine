@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# Capture each real Luna page in its own isolated app process.
+# Capture each real Rice page in its own isolated app process.
 set -Eeuo pipefail
+
+theme="${1:-luna}"
+case "$theme" in
+    luna|macos) ;;
+    *) echo "Usage: $0 [luna|macos]" >&2; exit 2 ;;
+esac
 
 for command in xdotool import identify sha256sum; do
     command -v "$command" >/dev/null || { echo "Missing command: $command" >&2; exit 1; }
@@ -22,7 +28,7 @@ trap cleanup EXIT
 export XDG_DATA_HOME="$preview_dir"
 export LIBGL_ALWAYS_SOFTWARE=1
 mkdir -p "$XDG_DATA_HOME/ricewine" docs/screenshots
-printf '{"appearance":"luna","follow_desktop":false}\n' > "$XDG_DATA_HOME/ricewine/preferences.json"
+printf '{"appearance":"%s","follow_desktop":false}\n' "$theme" > "$XDG_DATA_HOME/ricewine/preferences.json"
 
 capture_page() {
     local page="$1"
@@ -42,7 +48,7 @@ capture_page() {
     xdotool windowsize "$window_id" 1080 700
     sleep 2
 
-    local output="docs/screenshots/luna-$output_name.webp"
+    local output="docs/screenshots/${theme}-$output_name.webp"
     import -window "$window_id" -quality 88 "$output"
     identify -format '%f %wx%h %b\n' "$output"
 
@@ -58,8 +64,8 @@ done
 capture_page library install install
 capture_page library import import
 
-unique_count="$(sha256sum docs/screenshots/luna-{library,prefixes,runners,settings,install,import}.webp | awk '{print $1}' | sort -u | wc -l)"
+unique_count="$(sha256sum docs/screenshots/"$theme"-{library,prefixes,runners,settings,install,import}.webp | awk '{print $1}' | sort -u | wc -l)"
 if [[ "$unique_count" -ne 6 ]]; then
-    echo "Expected six distinct Luna screenshots, found $unique_count" >&2
+    echo "Expected six distinct $theme screenshots, found $unique_count" >&2
     exit 1
 fi

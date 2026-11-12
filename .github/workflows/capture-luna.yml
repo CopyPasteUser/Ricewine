@@ -1,4 +1,4 @@
-name: Capture Luna screenshots
+name: Capture maintained Rice screenshots
 
 on:
   push:
@@ -9,11 +9,12 @@ on:
       - src/main.rs
       - src/luna.rs
       - src/luna_icons.rs
+      - src/mac.rs
   workflow_dispatch:
 
 # Do not publish an older page capture after a newer visual commit.
 concurrency:
-  group: ricewine-luna-capture-${{ github.ref }}
+  group: ricewine-rices-capture-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -33,12 +34,14 @@ jobs:
       - name: Build current application
         run: cargo build --release --locked
       - name: Capture real desktop frames
-        run: xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh
+        run: |
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh luna
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh macos
       - name: Publish screenshots
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/screenshots/luna-*.webp
+          git add docs/screenshots/luna-*.webp docs/screenshots/macos-*.webp
           if git diff --cached --quiet; then
             echo 'All screenshot frames are unchanged'
             exit 0
@@ -49,5 +52,5 @@ jobs:
             echo 'Source commit was superseded; skip stale screenshots'
             exit 0
           fi
-          git commit -m 'docs: capture actual XP Luna Blue desktop screens'
+          git commit -m 'docs: capture real Luna and macOS Rice desktop screens'
           git push origin HEAD:main

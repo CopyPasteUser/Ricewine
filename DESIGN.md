@@ -4,12 +4,24 @@
 
 Native Linux tool for people who want to install and launch Windows software without configuring Wine commands by hand. The main action is **Install program**, followed by selecting the installed EXE and **Play**.
 
-## Visual directions
+## Maintained Rices
 
-- **Windows 10:** clean flat controls, Segoe-like sans-serif, square geometry, white surface, gray navigation, accent `#0078D7`.
-- **XP Luna Blue:** a dedicated Windows XP Explorer-inspired application surface, not a color-only variation. The *native window title bar and borders stay entirely under the desktop compositor/RiceBowl*. Within the application: compact pale toolbar, blue-gradient Explorer task groups, warm document surface and folder headings, bordered classic beveled controls and compact Explorer-style library. The primary install/import actions live in the task pane and File menu. Dialogs are shared with other Rices and remain functional when Luna is selected.
-- **XP Luna Olive and Silver:** retain the lightweight shared shell for now. They are intentionally *not* reskinned to the blue layout until that design has been accepted.
-- The five styles remain selectable. Windows 10 Light/Dark and Luna Olive/Silver are unchanged in this visual sprint. The Luna Blue shell is visually tested in a desktop preview; real Wine/Proton and X11/Wayland acceptance remains outstanding before 2.0 stable.
+- **macOS:** Finder-inspired app interior with sidebar, restrained toolbar, application rows and status bar. Only RiceWine's interior is themed; Linux window decorations remain native.
+- **XP Luna Blue:** Explorer-inspired task panels, classic controls, application icons and menus, without replacing the compositor titlebar. No Microsoft artwork is bundled.
+- Experimental Windows 10, Luna Olive and Luna Silver Rices were removed; legacy preferences migrate to Luna Blue.
+
+## Simple by default
+
+1. Navigation initially exposes only **My programs** and **Settings**, with clearly named **Advanced tools** to reveal **Prefixes** and **Runners**. The XP File/View menus retain full navigation.
+2. A single prominent **Install program** action is the main path. In the macOS Rice, a dedicated empty-library action starts the same existing flow; importing a prefix is secondary.
+3. The install form shows name, EXE/MSI and portable mode. Standard + system Wine is the default; templates, Proton and custom Wine remain in the **Advanced settings** disclosure.
+4. A selected program exposes **Play** and **Stop** immediately; a missing launch EXE gets a direct file-selection action. Rename, runner details, executable rescans, shortcuts and removal are under **More options**.
+5. Library status uses plain-language labels in macOS: **Ready**, **Running**, **Choose EXE**, **Check runner**. Technical runtime names remain available through advanced tools.
+6. All existing operations and confirmation boundaries remain unchanged. Collapsed controls are still keyboard accessible.
+
+## Visual documentation
+
+`scripts/capture-luna.sh luna` and `scripts/capture-luna.sh macos` capture the **real running application**, on Xvfb with isolated test preferences. Each style captures Library, Prefixes, Runners, Settings, Install and Import. CI rejects duplicate frames and, on `main`, publishes both series to `docs/screenshots/` for the README gallery. Visual screenshots are evidence of rendering, not Wine/Proton runtime acceptance.
 
 ## Interaction contracts
 

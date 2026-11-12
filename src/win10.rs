@@ -1,151 +1,184 @@
-//! Windows 10-inspired RiceWine application interior.
-//! Native title bars and window controls remain owned by the compositor.
-//! All visuals are drawn with egui; no Microsoft assets or font files.
+//! A Windows 10 (1809–1909)-era Settings-inspired Rice for RiceWine.
+//! Only egui application content is styled: Linux window borders remain native.
+//! All UI art is drawn with primitives; no Windows fonts, bitmaps or trademarks.
 
-use eframe::egui::{self, Color32, RichText};
+use eframe::egui::{self, Align2, Color32, FontId, Rect, Response, RichText, Sense, Stroke, Vec2};
 
 pub const SIDEBAR: Color32 = Color32::from_rgb(242, 242, 242);
-pub const TOOLBAR: Color32 = Color32::from_rgb(255, 255, 255);
-pub const CANVAS: Color32 = Color32::from_rgb(255, 255, 255);
-const SELECTED: Color32 = Color32::from_rgb(224, 239, 253);
-const BORDER: Color32 = Color32::from_rgb(210, 210, 210);
-const TEXT: Color32 = Color32::from_rgb(30, 30, 30);
-const MUTED: Color32 = Color32::from_rgb(83, 83, 83);
-const BLUE: Color32 = Color32::from_rgb(0, 103, 184);
+pub const CANVAS: Color32 = Color32::WHITE;
+pub const ACCENT: Color32 = Color32::from_rgb(0, 103, 184);
+pub const TEXT: Color32 = Color32::from_rgb(33, 33, 33);
+pub const MUTED: Color32 = Color32::from_rgb(93, 93, 93);
+pub const HAIRLINE: Color32 = Color32::from_rgb(224, 224, 224);
+const HOVER: Color32 = Color32::from_rgb(229, 229, 229);
+const SELECTED: Color32 = Color32::from_rgb(218, 235, 249);
 
-pub fn brand(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        // Simple four-tile glyph, independently drawn rather than bundled artwork.
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(26.0, 26.0), egui::Sense::hover());
-        let w = 11.0;
-        let space = 3.0;
-        for row in 0..2 {
-            for col in 0..2 {
-                let origin =
-                    rect.min + egui::vec2(col as f32 * (w + space), row as f32 * (w + space));
-                ui.painter().rect_filled(
-                    egui::Rect::from_min_size(origin, egui::vec2(w, w)),
-                    0.0,
-                    BLUE,
-                );
-            }
-        }
-        ui.add_space(6.0);
-        ui.vertical(|ui| {
-            ui.label(RichText::new("RiceWine").size(19.0).strong().color(TEXT));
-            ui.label(
-                RichText::new("Windows apps on Linux")
-                    .size(11.0)
-                    .color(MUTED),
-            );
-        });
-    });
+pub fn sidebar_heading(ui: &mut egui::Ui) {
+    ui.label(RichText::new("Settings").size(23.0).color(TEXT));
 }
 
-pub fn section(ui: &mut egui::Ui, title: &str) {
+pub fn section_label(ui: &mut egui::Ui, label: &str) {
+    ui.add_space(20.0);
+    ui.label(RichText::new(label).size(12.0).strong().color(TEXT));
+    ui.add_space(8.0);
+}
+
+/// Full-width Settings navigation: neutral hover fill + thin blue selection rail.
+pub fn navigation(ui: &mut egui::Ui, label: &str, selected: bool) -> Response {
+    let response = ui.add_sized(
+        [ui.available_width(), 39.0],
+        egui::Button::new(RichText::new(label).size(13.0).color(TEXT))
+            .fill(if selected { SELECTED } else { SIDEBAR })
+            .stroke(Stroke::NONE),
+    );
+    if selected {
+        let rail = Rect::from_min_size(response.rect.min, Vec2::new(3.0, response.rect.height()));
+        ui.painter().rect_filled(rail, 0.0, ACCENT);
+    }
+    response
+}
+
+pub fn page_heading(ui: &mut egui::Ui, title: &str) {
+    ui.label(RichText::new(title).size(29.0).color(TEXT));
+}
+
+pub fn section_heading(ui: &mut egui::Ui, title: &str) {
     ui.add_space(14.0);
+    ui.label(RichText::new(title).size(18.0).color(TEXT));
+    ui.add_space(8.0);
+}
+
+pub fn link_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> Response {
+    ui.add_enabled(
+        enabled,
+        egui::Button::new(RichText::new(label).size(13.0).color(ACCENT))
+            .fill(Color32::TRANSPARENT)
+            .stroke(Stroke::NONE),
+    )
+}
+
+/// Small rectangular Windows 10 pushbutton, not a large modern SaaS CTA.
+pub fn primary_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> Response {
+    ui.add_enabled(
+        enabled,
+        egui::Button::new(RichText::new(label).size(13.0).color(Color32::WHITE))
+            .fill(ACCENT)
+            .stroke(Stroke::new(1.0, ACCENT)),
+    )
+}
+
+pub fn secondary_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> Response {
+    ui.add_enabled(
+        enabled,
+        egui::Button::new(RichText::new(label).size(12.5).color(TEXT))
+            .fill(Color32::from_rgb(236, 236, 236))
+            .stroke(Stroke::new(1.0, Color32::from_rgb(173, 173, 173))),
+    )
+}
+
+/// Draws a row with two independent text hierarchies and a locally rendered
+/// app glyph. Its hit target is a single egui clickable region.
+pub fn app_row(
+    ui: &mut egui::Ui,
+    name: &str,
+    runtime: &str,
+    status: &str,
+    selected: bool,
+) -> Response {
+    let width = ui.available_width().max(260.0);
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 63.0), Sense::click());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(
+        rect,
+        0.0,
+        if selected {
+            SELECTED
+        } else if response.hovered() {
+            HOVER
+        } else {
+            CANVAS
+        },
+    );
+    painter.line_segment(
+        [rect.left_bottom(), rect.right_bottom()],
+        Stroke::new(1.0, HAIRLINE),
+    );
+
+    // Flat 32×32 application glyph with a simple window motif.
+    let icon_rect = Rect::from_min_size(rect.min + Vec2::new(12.0, 14.0), Vec2::splat(32.0));
+    painter.rect_filled(icon_rect, 0.0, ACCENT);
+    painter.rect_stroke(
+        Rect::from_min_max(
+            icon_rect.min + Vec2::splat(7.0),
+            icon_rect.max - Vec2::splat(7.0),
+        ),
+        0.0,
+        Stroke::new(1.6, Color32::WHITE),
+        egui::StrokeKind::Inside,
+    );
+    painter.line_segment(
+        [
+            icon_rect.min + Vec2::new(7.0, 12.0),
+            icon_rect.min + Vec2::new(25.0, 12.0),
+        ],
+        Stroke::new(1.2, Color32::WHITE),
+    );
+
+    let right_column = 96.0;
+    let text_clip = Rect::from_min_max(
+        rect.min + Vec2::new(57.0, 2.0),
+        rect.max - Vec2::new(right_column, 2.0),
+    );
+    let text_painter = painter.with_clip_rect(text_clip);
+    text_painter.text(
+        rect.min + Vec2::new(58.0, 15.0),
+        Align2::LEFT_TOP,
+        name,
+        FontId::proportional(14.0),
+        TEXT,
+    );
+    text_painter.text(
+        rect.min + Vec2::new(58.0, 37.0),
+        Align2::LEFT_TOP,
+        runtime,
+        FontId::proportional(11.5),
+        MUTED,
+    );
+    painter.text(
+        rect.right_center() - Vec2::new(14.0, 0.0),
+        Align2::RIGHT_CENTER,
+        status,
+        FontId::proportional(11.5),
+        if status == "Ready" { ACCENT } else { MUTED },
+    );
+    response.on_hover_text(name)
+}
+
+pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
+    let mut install = false;
+    ui.add_space(18.0);
+    ui.separator();
+    ui.add_space(22.0);
     ui.label(
-        RichText::new(title.to_uppercase())
-            .size(10.0)
-            .strong()
-            .color(MUTED),
+        RichText::new("No Windows programs are installed yet")
+            .size(16.0)
+            .color(TEXT),
     );
     ui.add_space(6.0);
-}
-
-pub fn navigation(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
-    ui.add_sized(
-        [ui.available_width(), 39.0],
-        egui::Button::selectable(selected, RichText::new(label).size(13.5).color(TEXT))
-            .fill(if selected { SELECTED } else { SIDEBAR })
-            .stroke(if selected {
-                egui::Stroke::new(1.0, BLUE)
-            } else {
-                egui::Stroke::NONE
-            }),
-    )
-}
-
-pub fn heading(ui: &mut egui::Ui, title: &str, description: &str) {
-    ui.vertical(|ui| {
-        ui.label(RichText::new(title).size(23.0).color(TEXT));
-        ui.label(RichText::new(description).size(12.0).color(MUTED));
-    });
-}
-
-pub fn primary_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response {
-    let button = egui::Button::new(RichText::new(label).size(13.0).color(if enabled {
-        Color32::WHITE
-    } else {
-        MUTED
-    }))
-    .fill(if enabled { BLUE } else { SIDEBAR })
-    .stroke(egui::Stroke::NONE);
-    ui.add_enabled(enabled, button)
-}
-
-pub fn list_header(ui: &mut egui::Ui) {
-    egui::Frame::new()
-        .fill(SIDEBAR)
-        .stroke(egui::Stroke::new(1.0, BORDER))
-        .inner_margin(egui::Margin::symmetric(12, 9))
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("NAME").size(10.5).strong().color(MUTED));
-                ui.add_space(100.0);
-                ui.label(RichText::new("STATUS").size(10.5).strong().color(MUTED));
-            });
-        });
-}
-
-pub fn program_row(ui: &mut egui::Ui, name: &str, selected: bool, width: f32) -> egui::Response {
-    ui.add_sized(
-        [width, 39.0],
-        egui::Button::selectable(selected, RichText::new(format!("▣   {name}")).size(13.0))
-            .fill(if selected { SELECTED } else { Color32::WHITE }),
-    )
-}
-
-pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
-    let mut clicked = false;
-    ui.add_space(42.0);
-    ui.vertical_centered(|ui| {
-        ui.label(RichText::new("Your Windows apps").size(25.0).color(TEXT));
-        ui.add_space(10.0);
-        ui.label(
-            RichText::new("Install an EXE or MSI to keep your programs in one place.")
-                .size(13.0)
-                .color(MUTED),
-        );
-        ui.add_space(18.0);
-        if primary_action(ui, "＋  Install a program", can_install).clicked() {
-            clicked = true;
-        }
-        ui.add_space(10.0);
-        ui.label(
-            RichText::new("Already have a Wine prefix? Choose More → Import.")
-                .size(11.0)
-                .color(MUTED),
-        );
-    });
-    clicked
-}
-
-pub fn status_bar(ui: &mut egui::Ui, status: &str) {
-    egui::Frame::new()
-        .fill(SIDEBAR)
-        .stroke(egui::Stroke::new(1.0, BORDER))
-        .inner_margin(egui::Margin::symmetric(16, 6))
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(status).size(11.0).color(MUTED));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(
-                        RichText::new("RiceWine · Windows 10")
-                            .size(11.0)
-                            .color(MUTED),
-                    );
-                });
-            });
-        });
+    ui.label(
+        RichText::new("Choose an EXE or MSI to install it using Wine.")
+            .size(13.0)
+            .color(MUTED),
+    );
+    ui.add_space(16.0);
+    if primary_action(ui, "Install a program", enabled).clicked() {
+        install = true;
+    }
+    ui.add_space(8.0);
+    ui.label(
+        RichText::new("Existing Wine prefix? Use Import existing prefix.")
+            .size(11.5)
+            .color(MUTED),
+    );
+    install
 }

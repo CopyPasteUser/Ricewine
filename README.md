@@ -22,7 +22,7 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 
 **XP Luna Blue** uses a dedicated XP-era application UI: functional Explorer menus and address navigation, shaded task panes, original application icons, beveled controls, compact classic forms, and consistent management pages. **The native titlebar and window borders are never replaced**; RiceBowl/the Linux compositor owns them.
 
-**Windows 10** is a new native egui Rice with a flat Fluent-inspired Settings/Apps layout, square controls, neutral navigation, restrained blue action emphasis and a real program list. This is an independent app shell, not a recolored macOS UI. It uses locally drawn symbols and does not ship Microsoft's assets or change the native Linux titlebar.
+**Windows 10** now follows the classic Windows 10 **Settings → Apps & features** layout (1809–1909 era): a light-gray Settings sidebar with an active blue selection rail, full-width app list, two-level app metadata, and in-page management controls. Appearance selection uses ordinary radio controls, while installer/import actions use small, flat Windows-style buttons. This is an independent app shell, **not** a recolored macOS UI. The icons are locally drawn, and the Linux compositor keeps the native window titlebar.
 
 ### macOS Rice · Screenshots
 

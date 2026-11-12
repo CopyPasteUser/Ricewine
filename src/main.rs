@@ -1252,18 +1252,25 @@ impl RiceWineApp {
                 ui.set_min_width(192.0);
                 ui.set_min_height((height - 42.0).max(320.0));
                 ui.horizontal(|ui| {
-                    if ui.button("←").on_hover_text("Back to Apps & features").clicked() {
+                    if ui
+                        .button("←")
+                        .on_hover_text("Back to Apps & features")
+                        .clicked()
+                    {
                         self.page = Page::Library;
                     }
                     ui.add_space(8.0);
                     win10::sidebar_heading(ui);
                 });
                 ui.add_space(26.0);
-                if ui.add(
-                    egui::TextEdit::singleline(&mut self.search)
-                        .hint_text("Find an app")
-                        .desired_width(ui.available_width()),
-                ).changed() {
+                if ui
+                    .add(
+                        egui::TextEdit::singleline(&mut self.search)
+                            .hint_text("Find an app")
+                            .desired_width(ui.available_width()),
+                    )
+                    .changed()
+                {
                     self.page = Page::Library;
                 }
                 win10::section_label(ui, "Apps");
@@ -1556,14 +1563,18 @@ impl RiceWineApp {
                                         ui,
                                         "＋  Install a Windows program",
                                         !self.busy && self.store.is_some(),
-                                    ).clicked() {
+                                    )
+                                    .clicked()
+                                    {
                                         self.install = Some(InstallDraft::default());
                                     }
                                     if win10::link_action(
                                         ui,
                                         "Import existing prefix",
                                         !self.busy && self.store.is_some(),
-                                    ).clicked() {
+                                    )
+                                    .clicked()
+                                    {
                                         self.import = Some(ImportDraft::default());
                                     }
                                 });
@@ -1579,7 +1590,9 @@ impl RiceWineApp {
         let status = match self.page {
             Page::Library => format!(
                 "{} installed programs",
-                self.store.as_ref().map_or(0, |store| store.applications().len())
+                self.store
+                    .as_ref()
+                    .map_or(0, |store| store.applications().len())
             ),
             Page::Prefixes => "Windows environments are stored locally".to_owned(),
             Page::Runners => "Wine and Proton profiles".to_owned(),
@@ -1691,7 +1704,11 @@ impl RiceWineApp {
             }
             ui.add(
                 egui::TextEdit::singleline(&mut self.search)
-                    .hint_text(if win10_mode { "Search this list" } else { "Filter installed programs…" })
+                    .hint_text(if win10_mode {
+                        "Search this list"
+                    } else {
+                        "Filter installed programs…"
+                    })
                     .desired_width(if win10_mode { 280.0 } else { 210.0 }),
             );
             if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
@@ -1757,7 +1774,11 @@ impl RiceWineApp {
         };
         let mut next_selected: Option<String> = None;
         let display = |ui: &mut egui::Ui| {
-            let list_height = if win10_mode { 254.0 } else { ui.available_height() };
+            let list_height = if win10_mode {
+                254.0
+            } else {
+                ui.available_height()
+            };
             ui.allocate_ui_with_layout(
                 egui::vec2(width, list_height),
                 egui::Layout::top_down(egui::Align::Min),
@@ -1805,13 +1826,20 @@ impl RiceWineApp {
                                     "Ready"
                                 };
                                 if win10_mode {
-                                    if win10::app_row(ui, &app.name, runtime, status, selected).clicked() {
+                                    if win10::app_row(ui, &app.name, runtime, status, selected)
+                                        .clicked()
+                                    {
                                         next_selected = Some(app.id.clone());
                                     }
                                 } else {
                                     ui.horizontal(|ui| {
                                         let response = if luna_mode {
-                                            luna::program_row(ui, &app.name, selected, width - 112.0)
+                                            luna::program_row(
+                                                ui,
+                                                &app.name,
+                                                selected,
+                                                width - 112.0,
+                                            )
                                         } else {
                                             mac::program_row(ui, &app.name, selected, width - 112.0)
                                         };
@@ -1844,11 +1872,10 @@ impl RiceWineApp {
                     } else {
                         ui.heading(&app.name);
                     }
-                    let selected_profile = self
-                        .profile_cache
-                        .get(&app.id)
-                        .cloned()
-                        .unwrap_or_else(|| Err("Runner profile not loaded; refresh profiles".into()));
+                    let selected_profile =
+                        self.profile_cache.get(&app.id).cloned().unwrap_or_else(|| {
+                            Err("Runner profile not loaded; refresh profiles".into())
+                        });
                     ui.add_space(8.0);
                     let can_play = !self.busy
                         && !self.compatibility_busy.contains(&app.id)
@@ -1861,7 +1888,11 @@ impl RiceWineApp {
                     } else {
                         luna::action(
                             ui,
-                            if luna_mode { "Play program" } else { "▶ Play" },
+                            if luna_mode {
+                                "Play program"
+                            } else {
+                                "▶ Play"
+                            },
                             can_play,
                             luna_mode,
                         )
@@ -2679,19 +2710,28 @@ impl RiceWineApp {
                 self.set_theme(theme, ui.ctx());
             }
         } else {
-            ui.label(RichText::new("Rices").strong().color(self.theme.palette().text));
+            ui.label(
+                RichText::new("Rices")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
             ui.small("Three maintained Rices. Switching never changes Wine or the desktop theme.");
             ui.add_space(8.0);
             ui.horizontal_wrapped(|ui| {
                 for theme in Theme::ALL {
                     let palette = theme.palette();
                     let selected = self.theme == theme;
-                    let button = egui::Button::new(RichText::new(theme.label()).color(palette.text))
-                        .fill(palette.sidebar)
-                        .stroke(egui::Stroke::new(
-                            if selected { 2.0 } else { 1.0 },
-                            if selected { palette.accent } else { palette.border },
-                        ));
+                    let button =
+                        egui::Button::new(RichText::new(theme.label()).color(palette.text))
+                            .fill(palette.sidebar)
+                            .stroke(egui::Stroke::new(
+                                if selected { 2.0 } else { 1.0 },
+                                if selected {
+                                    palette.accent
+                                } else {
+                                    palette.border
+                                },
+                            ));
                     if ui.add_sized([143.0, 42.0], button).clicked() {
                         self.set_theme(theme, ui.ctx());
                     }

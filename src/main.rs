@@ -1376,7 +1376,13 @@ impl RiceWineApp {
                         .inner_margin(egui::Margin::same(18))
                         .show(ui, |ui| {
                             ui.set_min_height((available_height - 36.0).max(300.0));
-                            self.page_body(ui);
+                            if self.page == Page::Settings {
+                                egui::ScrollArea::vertical()
+                                    .auto_shrink([false, false])
+                                    .show(ui, |ui| self.page_body(ui));
+                            } else {
+                                self.page_body(ui);
+                            }
                         });
                 },
             );

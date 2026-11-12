@@ -309,7 +309,10 @@ impl InstallDraft {
         let normalized = raw.replace(['_', '-'], " ");
         let mut words: Vec<&str> = normalized.split_whitespace().collect();
         if words.last().is_some_and(|word| {
-            matches!(word.to_ascii_lowercase().as_str(), "setup" | "installer" | "install")
+            matches!(
+                word.to_ascii_lowercase().as_str(),
+                "setup" | "installer" | "install"
+            )
         }) {
             words.pop();
         }
@@ -619,11 +622,15 @@ impl RiceWineApp {
                                     if count == 0 {
                                         "No launch EXE found. Choose one manually.".into()
                                     } else {
-                                        format!("Found {count} possible launch files. Choose the correct one.")
+                                        format!(
+                                            "Found {count} possible launch files. Choose the correct one."
+                                        )
                                     },
                                 ));
                             }
-                            Err(error) => self.notice = Some((true, format!("EXE search: {error}"))),
+                            Err(error) => {
+                                self.notice = Some((true, format!("EXE search: {error}")))
+                            }
                         }
                     }
                 }
@@ -966,7 +973,11 @@ impl RiceWineApp {
         }
         let mut selected = None;
         for candidate in self.exe_candidates.iter().take(12) {
-            let name = candidate.path.file_name().unwrap_or_default().to_string_lossy();
+            let name = candidate
+                .path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy();
             if ui
                 .button(format!("Use {name}"))
                 .on_hover_text(core::readable_path(&candidate.path))
@@ -982,7 +993,10 @@ impl RiceWineApp {
                 Ok(()) => {
                     self.exe_candidates.clear();
                     self.exe_candidate_for = None;
-                    self.notice = Some((false, "Launch EXE selected. You can now start the program.".into()));
+                    self.notice = Some((
+                        false,
+                        "Launch EXE selected. You can now start the program.".into(),
+                    ));
                 }
                 Err(error) => self.notice = Some((true, error)),
             }
@@ -2007,7 +2021,9 @@ impl RiceWineApp {
                                 && let Some(store) = self.store.as_mut()
                             {
                                 self.notice = Some(match store.set_executable(&app.id, path) {
-                                    Ok(()) => (false, "Launch EXE selected. Ready to start.".into()),
+                                    Ok(()) => {
+                                        (false, "Launch EXE selected. Ready to start.".into())
+                                    }
                                     Err(error) => (true, error),
                                 });
                             }
@@ -2039,7 +2055,9 @@ impl RiceWineApp {
                                     let updated = store.get(&app.id).cloned();
                                     if let Some(updated) = updated
                                         && let Ok(path) = integration::application_directory()
-                                        && path.join(format!("ricewine-{}.desktop", app.id)).exists()
+                                        && path
+                                            .join(format!("ricewine-{}.desktop", app.id))
+                                            .exists()
                                         && let Ok(binary) = std::env::current_exe()
                                         && let Err(error) =
                                             integration::install_shortcut(&updated, &binary)
@@ -2110,7 +2128,9 @@ impl RiceWineApp {
                                 .map_err(|e| e.to_string())
                                 .and_then(|bin| integration::install_shortcut(&app, &bin));
                             self.notice = Some(match outcome {
-                                Ok(file) => (false, format!("Shortcut created: {}", file.display())),
+                                Ok(file) => {
+                                    (false, format!("Shortcut created: {}", file.display()))
+                                }
                                 Err(error) => (true, error),
                             });
                         }
@@ -3171,7 +3191,7 @@ impl RiceWineApp {
                     if let Some(draft) = &mut self.import {
                         draft.error = Some(error);
                     }
-                },
+                }
             }
         }
     }
@@ -3337,18 +3357,30 @@ impl eframe::App for RiceWineApp {
         self.poll(ui.ctx());
         // Drag-and-drop is a shortcut to the same reviewable setup form,
         // never permission to execute a dropped Windows binary automatically.
-        if self.install.is_none() && !self.busy && self.store.is_some()
+        if self.install.is_none()
+            && !self.busy
+            && self.store.is_some()
             && let Some(path) = ui.ctx().input(|input| {
-                input.raw.dropped_files.iter().find_map(|file| file.path.clone())
+                input
+                    .raw
+                    .dropped_files
+                    .iter()
+                    .find_map(|file| file.path.clone())
             })
         {
-            let supported = path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| {
-                ext.eq_ignore_ascii_case("exe") || ext.eq_ignore_ascii_case("msi")
-            });
+            let supported = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| {
+                    ext.eq_ignore_ascii_case("exe") || ext.eq_ignore_ascii_case("msi")
+                });
             if supported {
                 self.install = Some(Self::install_draft_for_file(path));
             } else {
-                self.notice = Some((true, "Drop a Windows EXE or MSI to open the installation form.".into()));
+                self.notice = Some((
+                    true,
+                    "Drop a Windows EXE or MSI to open the installation form.".into(),
+                ));
             }
         }
         let panel = if self.theme == Theme::Luna {

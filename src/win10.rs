@@ -182,4 +182,3 @@ pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
     );
     install
 }
-

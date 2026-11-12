@@ -2698,14 +2698,23 @@ impl RiceWineApp {
     }
 
     fn remove_dialog(&mut self, ctx: &egui::Context) {
+        let luna_mode = self.theme == Theme::Luna;
         let Some(id) = self.remove_confirmation.clone() else {
             return;
         };
         egui::Window::new("Remove from library?").collapsible(false).resizable(false).show(ctx, |ui| {
+            if luna_mode {
+                luna::dialog_intro(
+                    ui,
+                    luna::XpIcon::Warning,
+                    "Remove library entry?",
+                    "The installed Windows files and Wine prefix remain on disk.",
+                );
+            }
             ui.label("The catalog entry will be removed. The Wine prefix and installed files will remain on disk.");
             ui.horizontal(|ui| {
-                if ui.button("Cancel").clicked() { self.remove_confirmation = None; }
-                if ui.button("Remove entry").clicked() {
+                if luna::action(ui, "Cancel", true, luna_mode).clicked() { self.remove_confirmation = None; }
+                if luna::action(ui, "Remove entry", true, luna_mode).clicked() {
                     if let Some(store) = &mut self.store {
                         match store.remove_from_library(&id) {
                             Ok(()) => {
@@ -2725,13 +2734,17 @@ impl RiceWineApp {
     }
 
     fn process_dialogs(&mut self, ctx: &egui::Context) {
+        let luna_mode = self.theme == Theme::Luna;
         if let Some(path) = self.ge_remove_confirmation.clone() {
             egui::Window::new("Remove managed GE-Proton runner?")
                 .collapsible(false).resizable(false).show(ctx, |ui| {
+                    if luna_mode {
+                        luna::dialog_intro(ui, luna::XpIcon::Warning, "Remove managed runner?", "This operation deletes only the managed runner.");
+                    }
                     ui.label(core::readable_path(&path));
                     ui.label("Only this RiceWine-downloaded runner will be deleted permanently. Prefixes stay intact, but removed runner files cannot be restored automatically.");
                     ui.horizontal(|ui| {
-                        if ui.button("Keep runner").clicked() { self.ge_remove_confirmation = None; }
+                        if luna::action(ui, "Keep runner", true, luna_mode).clicked() { self.ge_remove_confirmation = None; }
                         if ui.add_enabled(!self.runner_in_use(&path), egui::Button::new("Delete managed runner")).clicked() {
                             self.ge_remove_confirmation = None;
                             self.remove_managed_runner_async(path);
@@ -2741,11 +2754,14 @@ impl RiceWineApp {
         }
         if let Some((id, installer)) = self.update_install_confirmation.clone() {
             egui::Window::new("Run Windows update installer?").collapsible(false).resizable(false).show(ctx, |ui| {
+                if luna_mode {
+                    luna::dialog_intro(ui, luna::XpIcon::Install, "Run a Windows update?", "Back up the prefix before installing updates.");
+                }
                 ui.label(core::readable_path(&installer));
                 ui.label("The installer runs with the existing application's runner and prefix. Back up the prefix first; only install updates from trusted publishers.");
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() { self.update_install_confirmation = None; }
-                    if ui.button("Run update now").clicked() {
+                    if luna::action(ui, "Run update now", true, luna_mode).clicked() {
                         self.update_install_confirmation = None;
                         if let Some(app) = self.store.as_ref().and_then(|store| store.get(&id)).cloned() {
                             self.update_app_async(app, installer);
@@ -2756,10 +2772,13 @@ impl RiceWineApp {
         }
         if self.ge_install_confirmation {
             egui::Window::new("Download GE-Proton?").collapsible(false).resizable(false).show(ctx, |ui| {
+                if luna_mode {
+                    luna::dialog_intro(ui, luna::XpIcon::Install, "Install GE-Proton?", "The archive will be downloaded and verified.");
+                }
                 ui.label("The official release archive can be large. RiceWine verifies SHA512 before extraction and never overwrites an existing runner.");
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() { self.ge_install_confirmation = false; }
-                    if ui.button("Download and install").clicked() {
+                    if luna::action(ui, "Download and install", true, luna_mode).clicked() {
                         self.ge_install_confirmation = false;
                         if let Some(release) = self.ge_release.clone() { self.install_ge_async(release); }
                     }
@@ -2768,10 +2787,13 @@ impl RiceWineApp {
         }
         if let Some((id, preview)) = self.cleanup_preview.clone() {
             egui::Window::new("Clean old temporary files?").collapsible(false).resizable(false).show(ctx, |ui| {
+                if luna_mode {
+                    luna::dialog_intro(ui, luna::XpIcon::Disk, "Temporary files", "Review the eligible files before cleaning.");
+                }
                 ui.label(format!("{} files / {} eligible (older than 7 days)", preview.files.len(), storage::human_size(preview.bytes)));
                 ui.label("Only regular files inside temporary folders of a RiceWine-owned prefix. No program files, prefixes, directories or links are removed.");
                 ui.horizontal(|ui| {
-                    if ui.button("Keep files").clicked() { self.cleanup_preview = None; }
+                    if luna::action(ui, "Keep files", true, luna_mode).clicked() { self.cleanup_preview = None; }
                     let app = self.store.as_ref().and_then(|store| store.get(&id)).cloned();
                     if ui.add_enabled(!preview.files.is_empty() && app.is_some() && !self.running.contains(&id), egui::Button::new("Delete listed temp files")).clicked() {
                         self.cleanup_preview = None;
@@ -2782,10 +2804,13 @@ impl RiceWineApp {
         }
         if self.cancel_install_confirmation {
             egui::Window::new("Cancel installation?").collapsible(false).resizable(false).show(ctx, |ui| {
+                if luna_mode {
+                    luna::dialog_intro(ui, luna::XpIcon::Warning, "Cancel installation?", "Partial prefix data will be preserved.");
+                }
                 ui.label("Stop the installer and its process group. Partial Wine prefix data will be kept for recovery.");
                 ui.horizontal(|ui| {
-                    if ui.button("Keep installing").clicked() { self.cancel_install_confirmation = false; }
-                    if ui.button("Stop installer").clicked() {
+                    if luna::action(ui, "Keep installing", true, luna_mode).clicked() { self.cancel_install_confirmation = false; }
+                    if luna::action(ui, "Stop installer", true, luna_mode).clicked() {
                         if let Some(control) = &self.install_control { control.cancel(); }
                         self.cancel_install_confirmation = false;
                         self.notice = Some((false, "Stopping installer…".into()));
@@ -2798,12 +2823,15 @@ impl RiceWineApp {
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
+                    if luna_mode {
+                        luna::dialog_intro(ui, luna::XpIcon::Warning, "Stop Windows program?", "Any unsaved changes may be lost.");
+                    }
                     ui.label("Unsaved changes in the Windows program may be lost.");
                     ui.horizontal(|ui| {
-                        if ui.button("Keep running").clicked() {
+                        if luna::action(ui, "Keep running", true, luna_mode).clicked() {
                             self.stop_confirmation = None;
                         }
-                        if ui.button("Stop program").clicked() {
+                        if luna::action(ui, "Stop program", true, luna_mode).clicked() {
                             if let Some(control) = self.running_controls.get(&id) {
                                 control.cancel();
                                 self.notice = Some((false, "Stopping program…".into()));

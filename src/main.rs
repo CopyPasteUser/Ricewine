@@ -2663,7 +2663,7 @@ impl RiceWineApp {
                 .strong()
                 .color(self.theme.palette().text),
         );
-        ui.small("Two maintained Rices. Switching never changes Wine or the desktop theme.");
+        ui.small("Three maintained Rices. Switching never changes Wine or the desktop theme.");
         ui.add_space(8.0);
         ui.horizontal_wrapped(|ui| {
             for theme in Theme::ALL {

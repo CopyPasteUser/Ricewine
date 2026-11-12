@@ -156,11 +156,9 @@ pub fn app_row(
 
 pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
     let mut install = false;
-    ui.add_space(10.0);
-    ui.label(RichText::new("Installed apps").size(18.0).color(TEXT));
-    ui.add_space(12.0);
+    ui.add_space(18.0);
     ui.separator();
-    ui.add_space(26.0);
+    ui.add_space(22.0);
     ui.label(
         RichText::new("No Windows programs are installed yet")
             .size(16.0)
@@ -185,12 +183,3 @@ pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
     install
 }
 
-pub fn status_bar(ui: &mut egui::Ui, status: &str) {
-    egui::Frame::new()
-        .fill(SIDEBAR)
-        .stroke(Stroke::new(1.0, HAIRLINE))
-        .inner_margin(egui::Margin::symmetric(14, 4))
-        .show(ui, |ui| {
-            ui.label(RichText::new(status).size(10.5).color(MUTED));
-        });
-}

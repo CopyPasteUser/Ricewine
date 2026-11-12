@@ -1270,7 +1270,8 @@ impl RiceWineApp {
                             (Page::Prefixes, luna::XpIcon::Prefix),
                             (Page::Runners, luna::XpIcon::Runner),
                         ] {
-                            if luna::task_link(ui, page.label(), icon, self.page == page).clicked() {
+                            if luna::task_link(ui, page.label(), icon, self.page == page).clicked()
+                            {
                                 self.page = page;
                             }
                         }
@@ -1736,119 +1737,119 @@ impl RiceWineApp {
                     }
                     ui.add_space(14.0);
                     ui.collapsing("More options · rename, runner, files, remove", |ui| {
-                    ui.label("Display name");
-                    ui.text_edit_singleline(&mut self.name_edit);
-                    if luna::action(
-                        ui,
-                        "Save name",
-                        !self.busy && !self.running.contains(&app.id),
-                        luna_mode,
-                    )
-                    .clicked()
-                        && let Some(store) = &mut self.store
-                    {
-                        match store.rename(&app.id, &self.name_edit) {
-                            Ok(()) => {
-                                self.notice = Some((false, "Program name updated".into()));
-                                let updated = store.get(&app.id).cloned();
-                                if let Some(updated) = updated
-                                    && let Ok(path) = integration::application_directory()
-                                    && path.join(format!("ricewine-{}.desktop", app.id)).exists()
-                                    && let Ok(binary) = std::env::current_exe()
-                                    && let Err(error) =
-                                        integration::install_shortcut(&updated, &binary)
+                        ui.label("Display name");
+                        ui.text_edit_singleline(&mut self.name_edit);
+                        if luna::action(
+                            ui,
+                            "Save name",
+                            !self.busy && !self.running.contains(&app.id),
+                            luna_mode,
+                        )
+                        .clicked()
+                            && let Some(store) = &mut self.store
+                        {
+                            match store.rename(&app.id, &self.name_edit) {
+                                Ok(()) => {
+                                    self.notice = Some((false, "Program name updated".into()));
+                                    let updated = store.get(&app.id).cloned();
+                                    if let Some(updated) = updated
+                                        && let Ok(path) = integration::application_directory()
+                                        && path.join(format!("ricewine-{}.desktop", app.id)).exists()
+                                        && let Ok(binary) = std::env::current_exe()
+                                        && let Err(error) =
+                                            integration::install_shortcut(&updated, &binary)
+                                    {
+                                        self.notice = Some((
+                                            true,
+                                            format!("Name saved, shortcut update failed: {error}"),
+                                        ));
+                                    }
+                                }
+                                Err(error) => self.notice = Some((true, error)),
+                            }
+                        }
+                        ui.add_space(8.0);
+                        ui.label(
+                            RichText::new("Runner")
+                                .small()
+                                .strong()
+                                .color(self.theme.palette().text),
+                        );
+                        match &selected_profile {
+                            Ok(profile) => ui.label(profile.runner.label()),
+                            Err(error) => ui.colored_label(self.theme.error(), error),
+                        };
+                        ui.add_space(5.0);
+                        ui.label(
+                            RichText::new("Prefix")
+                                .small()
+                                .strong()
+                                .color(self.theme.palette().text),
+                        );
+                        ui.small(core::readable_path(&app.prefix));
+                        ui.add_space(12.0);
+                        if app.executable.is_none() {
+                            ui.small("Find or choose the installed EXE to enable Play.");
+                        }
+                        if luna::action(ui, "Scan installed EXEs", true, luna_mode).clicked() {
+                            match discovery::scan_executables(&app.prefix, &app.name) {
+                                Ok(candidates) => {
+                                    self.exe_candidates = candidates;
+                                    self.exe_candidate_for = Some(app.id.clone());
+                                    if self.exe_candidates.is_empty() {
+                                        self.notice = Some((
+                                            false,
+                                            "No program executables detected; choose a file manually"
+                                                .into(),
+                                        ));
+                                    }
+                                }
+                                Err(error) => self.notice = Some((true, error)),
+                            }
+                        }
+                        if self.exe_candidate_for.as_deref() == Some(&app.id) {
+                            for candidate in self.exe_candidates.iter().take(12) {
+                                let chosen = candidate.path.clone();
+                                let label = chosen.file_name().unwrap_or_default().to_string_lossy();
+                                if ui
+                                    .add(egui::Button::new(format!("Use {label}")))
+                                    .on_hover_text(core::readable_path(&chosen))
+                                    .clicked()
+                                    && let Some(store) = self.store.as_mut()
                                 {
-                                    self.notice = Some((
-                                        true,
-                                        format!("Name saved, shortcut update failed: {error}"),
-                                    ));
+                                    self.notice = Some(match store.set_executable(&app.id, chosen) {
+                                        Ok(()) => (false, "Launch EXE selected".into()),
+                                        Err(error) => (true, error),
+                                    });
                                 }
                             }
-                            Err(error) => self.notice = Some((true, error)),
                         }
-                    }
-                    ui.add_space(8.0);
-                    ui.label(
-                        RichText::new("Runner")
-                            .small()
-                            .strong()
-                            .color(self.theme.palette().text),
-                    );
-                    match &selected_profile {
-                        Ok(profile) => ui.label(profile.runner.label()),
-                        Err(error) => ui.colored_label(self.theme.error(), error),
-                    };
-                    ui.add_space(5.0);
-                    ui.label(
-                        RichText::new("Prefix")
-                            .small()
-                            .strong()
-                            .color(self.theme.palette().text),
-                    );
-                    ui.small(core::readable_path(&app.prefix));
-                    ui.add_space(12.0);
-                    if app.executable.is_none() {
-                        ui.small("Find or choose the installed EXE to enable Play.");
-                    }
-                    if luna::action(ui, "Scan installed EXEs", true, luna_mode).clicked() {
-                        match discovery::scan_executables(&app.prefix, &app.name) {
-                            Ok(candidates) => {
-                                self.exe_candidates = candidates;
-                                self.exe_candidate_for = Some(app.id.clone());
-                                if self.exe_candidates.is_empty() {
-                                    self.notice = Some((
-                                        false,
-                                        "No program executables detected; choose a file manually"
-                                            .into(),
-                                    ));
-                                }
-                            }
-                            Err(error) => self.notice = Some((true, error)),
-                        }
-                    }
-                    if self.exe_candidate_for.as_deref() == Some(&app.id) {
-                        for candidate in self.exe_candidates.iter().take(12) {
-                            let chosen = candidate.path.clone();
-                            let label = chosen.file_name().unwrap_or_default().to_string_lossy();
-                            if ui
-                                .add(egui::Button::new(format!("Use {label}")))
-                                .on_hover_text(core::readable_path(&chosen))
-                                .clicked()
-                                && let Some(store) = self.store.as_mut()
-                            {
-                                self.notice = Some(match store.set_executable(&app.id, chosen) {
-                                    Ok(()) => (false, "Launch EXE selected".into()),
-                                    Err(error) => (true, error),
-                                });
+                        if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
+                            && let Some(path) = rfd::FileDialog::new()
+                                .add_filter("Windows program", &["exe"])
+                                .pick_file()
+                            && let Some(store) = self.store.as_mut()
+                        {
+                            if let Err(error) = store.set_executable(&app.id, path) {
+                                self.notice = Some((true, error));
+                            } else {
+                                self.notice = Some((false, "Launch executable saved".into()));
                             }
                         }
-                    }
-                    if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
-                        && let Some(path) = rfd::FileDialog::new()
-                            .add_filter("Windows program", &["exe"])
-                            .pick_file()
-                        && let Some(store) = self.store.as_mut()
-                    {
-                        if let Err(error) = store.set_executable(&app.id, path) {
-                            self.notice = Some((true, error));
-                        } else {
-                            self.notice = Some((false, "Launch executable saved".into()));
+                        if luna::action(ui, "Add menu shortcut", true, luna_mode).clicked() {
+                            let outcome = std::env::current_exe()
+                                .map_err(|e| e.to_string())
+                                .and_then(|bin| integration::install_shortcut(&app, &bin));
+                            self.notice = Some(match outcome {
+                                Ok(file) => (false, format!("Shortcut created: {}", file.display())),
+                                Err(error) => (true, error),
+                            });
                         }
-                    }
-                    if luna::action(ui, "Add menu shortcut", true, luna_mode).clicked() {
-                        let outcome = std::env::current_exe()
-                            .map_err(|e| e.to_string())
-                            .and_then(|bin| integration::install_shortcut(&app, &bin));
-                        self.notice = Some(match outcome {
-                            Ok(file) => (false, format!("Shortcut created: {}", file.display())),
-                            Err(error) => (true, error),
-                        });
-                    }
-                    ui.add_space(18.0);
-                    if luna::action(ui, "Remove from library…", true, luna_mode).clicked() {
-                        self.remove_confirmation = Some(app.id);
-                    }
-                    ui.small("This never deletes the Wine prefix.");
+                        ui.add_space(18.0);
+                        if luna::action(ui, "Remove from library…", true, luna_mode).clicked() {
+                            self.remove_confirmation = Some(app.id);
+                        }
+                        ui.small("This never deletes the Wine prefix.");
                     });
                 } else {
                     ui.label("Select a program to view details.");
@@ -2642,30 +2643,30 @@ impl RiceWineApp {
                     ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
                     ui.add_space(8.0);
                     ui.collapsing("Advanced settings · Wine, Proton and compatibility", |ui| {
-                    if luna_mode {
-                        luna::section_heading(ui, "Compatibility", luna::XpIcon::Runner);
-                    }
-                    ui.label("Installation template");
-                    egui::ComboBox::from_id_salt("installation_template")
-                        .selected_text(draft.template.label())
-                        .show_ui(ui, |ui| {
-                            for template in [Template::Standard, Template::Games, Template::Legacy32] {
-                                ui.selectable_value(&mut draft.template, template, template.label());
+                        if luna_mode {
+                            luna::section_heading(ui, "Compatibility", luna::XpIcon::Runner);
+                        }
+                        ui.label("Installation template");
+                        egui::ComboBox::from_id_salt("installation_template")
+                            .selected_text(draft.template.label())
+                            .show_ui(ui, |ui| {
+                                for template in [Template::Standard, Template::Games, Template::Legacy32] {
+                                    ui.selectable_value(&mut draft.template, template, template.label());
+                                }
+                            });
+                        if draft.template == Template::Legacy32 {
+                            ui.small("Creates a 32-bit Wine prefix. Requires 32-bit Wine support. Cannot be changed later.");
+                        }
+                        if draft.template == Template::Games {
+                            ui.small("Games preset. DXVK/VKD3D can be added from Runners as needed.");
+                        }
+                        ui.label("Runner for this program");
+                        ui.horizontal_wrapped(|ui| {
+                            for (index, label) in ["System Wine", "Custom Wine", "Proton / umu"].iter().enumerate() {
+                                ui.radio_value(&mut draft.runner_kind, index, *label);
                             }
                         });
-                    if draft.template == Template::Legacy32 {
-                        ui.small("Creates a 32-bit Wine prefix. Requires 32-bit Wine support. Cannot be changed later.");
-                    }
-                    if draft.template == Template::Games {
-                        ui.small("Games preset. DXVK/VKD3D can be added from Runners as needed.");
-                    }
-                    ui.label("Runner for this program");
-                    ui.horizontal_wrapped(|ui| {
-                        for (index, label) in ["System Wine", "Custom Wine", "Proton / umu"].iter().enumerate() {
-                            ui.radio_value(&mut draft.runner_kind, index, *label);
-                        }
-                    });
-                    Self::runner_fields(ui, draft);
+                        Self::runner_fields(ui, draft);
                     });
                     ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
                     ui.add_space(9.0);

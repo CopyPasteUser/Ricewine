@@ -73,7 +73,7 @@ pub fn list_header(ui: &mut egui::Ui) {
                 );
                 ui.add_space(75.0);
                 ui.label(
-                    RichText::new("RUNTIME")
+                    RichText::new("STATUS")
                         .size(10.0)
                         .strong()
                         .color(SECONDARY),
@@ -89,7 +89,8 @@ pub fn program_row(ui: &mut egui::Ui, name: &str, selected: bool, width: f32) ->
     )
 }
 
-pub fn empty_library(ui: &mut egui::Ui) {
+pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
+    let mut install_clicked = false;
     ui.add_space(30.0);
     egui::Frame::new()
         .fill(Color32::WHITE)
@@ -110,10 +111,18 @@ pub fn empty_library(ui: &mut egui::Ui) {
                     RichText::new("Install a Windows program or import an existing Wine prefix.")
                         .color(SECONDARY),
                 );
-                ui.add_space(5.0);
-                ui.small("Use the toolbar above to get started.");
+                ui.add_space(14.0);
+                if ui
+                    .add_enabled(can_install, egui::Button::new("＋ Install your first program"))
+                    .clicked()
+                {
+                    install_clicked = true;
+                }
+                ui.add_space(6.0);
+                ui.small("Already have a Wine prefix? Use More → Import existing prefix.");
             });
         });
+    install_clicked
 }
 
 pub fn status_bar(ui: &mut egui::Ui, status: &str) {

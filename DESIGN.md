@@ -8,12 +8,13 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 - **macOS:** Finder-inspired app interior with sidebar, restrained toolbar, application rows and status bar. Only RiceWine's interior is themed; Linux window decorations remain native.
 - **XP Luna Blue:** Explorer-inspired task panels, classic controls, application icons and menus, without replacing the compositor titlebar. No Microsoft artwork is bundled.
-- Experimental Windows 10, Luna Olive and Luna Silver Rices were removed; legacy preferences migrate to Luna Blue.
+- **Windows 10:** dedicated flat app shell with sidebar navigation, Apps & features header, compact program rows and blue primary action. Square controls and neutral typography; Linux compositor still renders all native decorations.
+- XP Luna Olive and Silver remain retired and migrate to Luna. Previous Windows 10 Light/Dark preferences migrate into the new unified Windows 10 Rice. No Microsoft artwork is bundled.
 
 ## Simple by default
 
 1. Navigation initially exposes only **My programs** and **Settings**, with clearly named **Advanced tools** to reveal **Prefixes** and **Runners**. The XP File/View menus retain full navigation.
-2. A single prominent **Install program** action is the main path. In the macOS Rice, a dedicated empty-library action starts the same existing flow; importing a prefix is secondary.
+2. A single prominent **Install program** action is the main path. In macOS and Windows 10 Rices, a dedicated empty-library action starts the same existing flow; importing a prefix is secondary.
 3. The install form shows name, EXE/MSI and portable mode. Standard + system Wine is the default; templates, Proton and custom Wine remain in the **Advanced settings** disclosure.
 4. A selected program exposes **Play** and **Stop** immediately; a missing launch EXE gets a direct file-selection action. Rename, runner details, executable rescans, shortcuts and removal are under **More options**.
 5. Library status uses plain-language labels in macOS: **Ready**, **Running**, **Choose EXE**, **Check runner**. Technical runtime names remain available through advanced tools.
@@ -21,7 +22,7 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 ## Visual documentation
 
-`scripts/capture-luna.sh luna` and `scripts/capture-luna.sh macos` capture the **real running application**, on Xvfb with isolated test preferences. Each style captures Library, Prefixes, Runners, Settings, Install and Import. CI rejects duplicate frames and, on `main`, publishes both series to `docs/screenshots/` for the README gallery. Visual screenshots are evidence of rendering, not Wine/Proton runtime acceptance.
+`scripts/capture-luna.sh luna`, `scripts/capture-luna.sh macos` and `scripts/capture-luna.sh windows10` capture the **real running application**, on Xvfb with isolated test preferences. Each style captures Library, Prefixes, Runners, Settings, Install and Import. CI rejects duplicate frames and, on `main`, publishes all three series to `docs/screenshots/` for the README gallery. Visual screenshots are evidence of rendering, not Wine/Proton runtime acceptance.
 
 ## Interaction contracts
 

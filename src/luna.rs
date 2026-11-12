@@ -98,8 +98,7 @@ pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
                     action = MenuAction::Library;
                 }
                 ui.separator();
-                let (icon, _) =
-                    ui.allocate_exact_size(egui::vec2(18.0, 18.0), Sense::hover());
+                let (icon, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), Sense::hover());
                 paint_icon(ui.painter(), icon.min, XpIcon::Programs, 16.0);
                 ui.label(RichText::new("Address").size(12.0));
                 egui::Frame::new()
@@ -132,12 +131,7 @@ pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
 }
 
 /// Reusable XP action control. Other Rices retain native egui controls.
-pub fn action(
-    ui: &mut egui::Ui,
-    label: &str,
-    enabled: bool,
-    luna: bool,
-) -> egui::Response {
+pub fn action(ui: &mut egui::Ui, label: &str, enabled: bool, luna: bool) -> egui::Response {
     if luna {
         xp_button(ui, label, enabled)
     } else {
@@ -149,18 +143,11 @@ pub fn action(
 pub fn section_heading(ui: &mut egui::Ui, title: &str, icon: XpIcon) {
     ui.add_space(6.0);
     ui.horizontal(|ui| {
-        let (rect, _) =
-            ui.allocate_exact_size(egui::vec2(20.0, 20.0), Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), Sense::hover());
         paint_icon(ui.painter(), rect.min, icon, 18.0);
-        ui.label(
-            RichText::new(title)
-                .size(13.0)
-                .strong()
-                .color(NAV_BLUE),
-        );
+        ui.label(RichText::new(title).size(13.0).strong().color(NAV_BLUE));
     });
-    let (rect, _) =
-        ui.allocate_exact_size(egui::vec2(ui.available_width(), 2.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 2.0), Sense::hover());
     ui.painter().line_segment(
         [rect.left_top(), rect.right_top()],
         Stroke::new(1.0, Color32::from_rgb(147, 176, 221)),
@@ -182,8 +169,7 @@ pub fn notice(ui: &mut egui::Ui, error: bool, message: &str) -> bool {
         .inner_margin(egui::Margin::symmetric(8, 6))
         .show(ui, |ui| {
             ui.horizontal(|ui| {
-                let (rect, _) =
-                    ui.allocate_exact_size(egui::vec2(19.0, 19.0), Sense::hover());
+                let (rect, _) = ui.allocate_exact_size(egui::vec2(19.0, 19.0), Sense::hover());
                 paint_icon(
                     ui.painter(),
                     rect.min,

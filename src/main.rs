@@ -241,12 +241,30 @@ impl Theme {
             };
             for (kind, size, family) in [
                 (egui::TextStyle::Body, body, egui::FontFamily::Proportional),
-                (egui::TextStyle::Heading, heading, egui::FontFamily::Proportional),
-                (egui::TextStyle::Button, button, egui::FontFamily::Proportional),
-                (egui::TextStyle::Small, small, egui::FontFamily::Proportional),
-                (egui::TextStyle::Monospace, monospace, egui::FontFamily::Monospace),
+                (
+                    egui::TextStyle::Heading,
+                    heading,
+                    egui::FontFamily::Proportional,
+                ),
+                (
+                    egui::TextStyle::Button,
+                    button,
+                    egui::FontFamily::Proportional,
+                ),
+                (
+                    egui::TextStyle::Small,
+                    small,
+                    egui::FontFamily::Proportional,
+                ),
+                (
+                    egui::TextStyle::Monospace,
+                    monospace,
+                    egui::FontFamily::Monospace,
+                ),
             ] {
-                style.text_styles.insert(kind, egui::FontId::new(size, family));
+                style
+                    .text_styles
+                    .insert(kind, egui::FontId::new(size, family));
             }
         });
     }
@@ -1492,9 +1510,7 @@ impl RiceWineApp {
                     .hint_text("Filter installed programs…")
                     .desired_width(210.0),
             );
-            if !self.search.is_empty()
-                && luna::action(ui, "Clear", true, luna_mode).clicked()
-            {
+            if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
                 self.search.clear();
             }
         });
@@ -1676,7 +1692,11 @@ impl RiceWineApp {
                     ui.add_space(12.0);
                     if luna::action(
                         ui,
-                        if luna_mode { "Play program" } else { "▶ Play" },
+                        if luna_mode {
+                            "Play program"
+                        } else {
+                            "▶ Play"
+                        },
                         !self.busy
                             && !self.compatibility_busy.contains(&app.id)
                             && app.executable.is_some()
@@ -1779,9 +1799,7 @@ impl RiceWineApp {
         let luna_mode = self.theme == Theme::Luna;
         if luna_mode {
             luna::section_heading(ui, "Wine prefix maintenance", luna::XpIcon::Prefix);
-            ui.small(
-                "Back up your Windows environments before changing runners or components.",
-            );
+            ui.small("Back up your Windows environments before changing runners or components.");
         } else {
             ui.heading("Wine prefixes");
             ui.label(
@@ -1798,10 +1816,7 @@ impl RiceWineApp {
             if apps.is_empty() && luna_mode {
                 egui::Frame::new()
                     .fill(Color32::from_rgb(249, 250, 252))
-                    .stroke(egui::Stroke::new(
-                        1.0,
-                        Color32::from_rgb(170, 185, 205),
-                    ))
+                    .stroke(egui::Stroke::new(1.0, Color32::from_rgb(170, 185, 205)))
                     .inner_margin(egui::Margin::same(12))
                     .show(ui, |ui| {
                         ui.label("No Wine prefixes are registered yet.");
@@ -1915,10 +1930,7 @@ impl RiceWineApp {
         if luna_mode {
             egui::Frame::new()
                 .fill(Color32::from_rgb(248, 250, 254))
-                .stroke(egui::Stroke::new(
-                    1.0,
-                    Color32::from_rgb(170, 187, 212),
-                ))
+                .stroke(egui::Stroke::new(1.0, Color32::from_rgb(170, 187, 212)))
                 .inner_margin(egui::Margin::same(10))
                 .show(ui, |ui| {
                     ui.set_min_width((ui.available_width() - 20.0).max(0.0));
@@ -1943,15 +1955,12 @@ impl RiceWineApp {
         }
         ui.small("Opt-in official GE-Proton releases. Downloads are SHA512-verified and installed only under RiceWine's data directory; no sudo or Steam changes.");
         ui.horizontal(|ui| {
-            if luna::action(ui, "Check latest GE-Proton", !self.ge_busy, luna_mode)
-                .clicked()
-            {
+            if luna::action(ui, "Check latest GE-Proton", !self.ge_busy, luna_mode).clicked() {
                 self.check_ge_release();
             }
             if let Some(release) = &self.ge_release {
                 ui.label(format!("Latest: {}", release.tag));
-                if luna::action(ui, "Install verified release…", !self.ge_busy, luna_mode)
-                    .clicked()
+                if luna::action(ui, "Install verified release…", !self.ge_busy, luna_mode).clicked()
                 {
                     self.ge_install_confirmation = true;
                 }
@@ -1967,8 +1976,13 @@ impl RiceWineApp {
             }
         });
         ui.small("Requires curl, tar, sha512sum and (for launching) umu-run. Existing installations are not overwritten.");
-        if luna::action(ui, "Find locally installed Proton versions", true, luna_mode)
-            .clicked()
+        if luna::action(
+            ui,
+            "Find locally installed Proton versions",
+            true,
+            luna_mode,
+        )
+        .clicked()
         {
             self.detected_proton = std::env::var_os("HOME")
                 .map(|home| runtime::discover_proton(&PathBuf::from(home)))
@@ -2822,7 +2836,12 @@ impl RiceWineApp {
                 .resizable(false)
                 .show(ctx, |ui| {
                     if luna_mode {
-                        luna::dialog_intro(ui, luna::XpIcon::Warning, "Stop Windows program?", "Any unsaved changes may be lost.");
+                        luna::dialog_intro(
+                            ui,
+                            luna::XpIcon::Warning,
+                            "Stop Windows program?",
+                            "Any unsaved changes may be lost.",
+                        );
                     }
                     ui.label("Unsaved changes in the Windows program may be lost.");
                     ui.horizontal(|ui| {

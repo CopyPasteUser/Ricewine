@@ -383,6 +383,10 @@ struct RiceWineApp {
     workspace_writable: bool,
     doctor_report: String,
     doctor_busy: bool,
+    troubleshoot_id: Option<String>,
+    troubleshoot_report: String,
+    troubleshoot_log: String,
+    compatibility_confirmation: Option<(String, String)>,
     page: Page,
     about_open: bool,
     advanced_open: bool,
@@ -527,6 +531,10 @@ impl RiceWineApp {
             workspace_writable,
             doctor_report: String::new(),
             doctor_busy: false,
+            troubleshoot_id: None,
+            troubleshoot_report: String::new(),
+            troubleshoot_log: String::new(),
+            compatibility_confirmation: None,
             page: Page::capture_override(),
             about_open: false,
             advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
@@ -888,6 +896,13 @@ impl RiceWineApp {
         thread::spawn(move || {
             let _ = tx.send(Event::DoctorFinished(doctor::check(&apps, wine_available)));
         });
+    }
+
+    fn open_troubleshooter(&mut self, app: &Application) {
+        self.troubleshoot_id = Some(app.id.clone());
+        self.troubleshoot_report =
+            doctor::check(std::slice::from_ref(app), self.wine.is_some()).readable();
+        self.troubleshoot_log.clear();
     }
 
     fn doctor_controls(&mut self, ui: &mut egui::Ui) {
@@ -2135,6 +2150,9 @@ impl RiceWineApp {
                             self.notice = Some((true, format!("Could not save favorite: {error}")));
                         }
                     }
+                    if ui.button("Diagnose & recover…").clicked() {
+                        self.open_troubleshooter(&app);
+                    }
                     let selected_profile =
                         self.profile_cache.get(&app.id).cloned().unwrap_or_else(|| {
                             Err("Runner profile not loaded; refresh profiles".into())
@@ -2786,10 +2804,10 @@ impl RiceWineApp {
                 .add_enabled(!working, egui::Button::new("Apply with Winetricks"))
                 .clicked()
             {
-                self.compatibility_async(
-                    app.clone(),
+                self.compatibility_confirmation = Some((
+                    app.id.clone(),
                     runtime::WINETRICKS_VERBS[self.winetricks_verb].to_owned(),
-                );
+                ));
             }
             if self.compatibility_busy.contains(&app.id) {
                 ui.spinner();

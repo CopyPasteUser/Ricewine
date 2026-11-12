@@ -3501,6 +3501,9 @@ impl RiceWineApp {
                     if ui.button("Runner settings").clicked() {
                         action = 4;
                     }
+                    if ui.button("Open backups").clicked() {
+                        action = 7;
+                    }
                     if ui
                         .add_enabled(can_backup, egui::Button::new("Back up prefix"))
                         .clicked()
@@ -3544,6 +3547,9 @@ impl RiceWineApp {
                 self.selected = Some(app.id.clone());
                 self.workspace.filter = LibraryFilter::All;
                 self.search.clear();
+                if let Err(error) = self.persist_workspace() {
+                    self.notice = Some((true, format!("Could not save Library view: {error}")));
+                }
                 self.scan_executables_async(&app);
             }
             4 => {
@@ -3554,6 +3560,10 @@ impl RiceWineApp {
             }
             5 => {
                 self.backup_async(app);
+            }
+            7 => {
+                self.troubleshoot_id = None;
+                self.page = Page::Prefixes;
             }
             _ => {}
         }

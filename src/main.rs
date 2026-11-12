@@ -1909,6 +1909,38 @@ impl RiceWineApp {
                 self.sync_runner_draft();
             }
         });
+        let mut workspace_changed = false;
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Show:");
+            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                egui::ComboBox::from_id_salt("ricewine_3_filter")
+                    .selected_text(self.workspace.filter.label())
+                    .show_ui(ui, |ui| {
+                        for filter in LibraryFilter::ALL {
+                            workspace_changed |= ui
+                                .selectable_value(&mut self.workspace.filter, filter, filter.label())
+                                .changed();
+                        }
+                    });
+            });
+            ui.label("Order:");
+            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                egui::ComboBox::from_id_salt("ricewine_3_order")
+                    .selected_text(self.workspace.order.label())
+                    .show_ui(ui, |ui| {
+                        for order in LibraryOrder::ALL {
+                            workspace_changed |= ui
+                                .selectable_value(&mut self.workspace.order, order, order.label())
+                                .changed();
+                        }
+                    });
+            });
+        });
+        if workspace_changed
+            && let Err(error) = self.persist_workspace()
+        {
+            self.notice = Some((true, format!("Could not save Library view: {error}")));
+        }
         if self.store.is_none() {
             ui.add_space(28.0);
             ui.heading("Library unavailable");
@@ -1932,25 +1964,19 @@ impl RiceWineApp {
             }
             return;
         }
-        let term = self.search.trim().to_lowercase();
-        // Only lightweight indexes are allocated per frame. Full Application
-        // objects (with multiple paths/strings) are not cloned for the list.
+        // Filters and sort are in-memory; catalog and profile files are not touched.
         let matching_indices: Vec<usize> = self
             .store
             .as_ref()
-            .map(|store| {
-                store
-                    .applications()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, app)| term.is_empty() || app.name.to_lowercase().contains(&term))
-                    .map(|(index, _)| index)
-                    .collect()
-            })
+            .map(|store| self.workspace.ordered_indices(store.applications(), &self.search))
             .unwrap_or_default();
         ui.small(format!("{} matching program(s)", matching_indices.len()));
         if matching_indices.is_empty() {
-            ui.label("No matching programs. Clear the search to show the library.");
+            if self.workspace.filter == LibraryFilter::Favorites {
+                ui.label("No favorite programs match. Choose 'All programs' or mark one as favorite.");
+            } else {
+                ui.label("No matching programs. Clear the search to show the library.");
+            }
             return;
         }
         let width = if win10_mode {
@@ -2000,6 +2026,11 @@ impl RiceWineApp {
                                     .and_then(|result| result.as_ref().ok())
                                     .map(|profile| profile.runner.label())
                                     .unwrap_or("Invalid profile");
+                                let display_name = if self.workspace.is_favorite(&app.id) {
+                                    format!("★ {}", app.name)
+                                } else {
+                                    app.name.clone()
+                                };
                                 let status = if runtime == "Invalid profile" {
                                     "Check runner"
                                 } else if app.executable.is_none() {
@@ -2012,7 +2043,7 @@ impl RiceWineApp {
                                     "Ready"
                                 };
                                 if win10_mode {
-                                    if win10::app_row(ui, &app.name, runtime, status, selected)
+                                    if win10::app_row(ui, &display_name, runtime, status, selected)
                                         .clicked()
                                     {
                                         next_selected = Some(app.id.clone());
@@ -2022,12 +2053,12 @@ impl RiceWineApp {
                                         let response = if luna_mode {
                                             luna::program_row(
                                                 ui,
-                                                &app.name,
+                                                &display_name,
                                                 selected,
                                                 width - 112.0,
                                             )
                                         } else {
-                                            mac::program_row(ui, &app.name, selected, width - 112.0)
+                                            mac::program_row(ui, &display_name, selected, width - 112.0)
                                         };
                                         if response.clicked() {
                                             next_selected = Some(app.id.clone());
@@ -2049,6 +2080,10 @@ impl RiceWineApp {
                     .selected
                     .as_ref()
                     .and_then(|id| self.store.as_ref()?.get(id))
+                    .filter(|app| {
+                        self.workspace.filter == LibraryFilter::All
+                            || self.workspace.is_favorite(&app.id)
+                    })
                     .cloned();
                 if let Some(app) = selected {
                     if luna_mode {
@@ -2057,6 +2092,22 @@ impl RiceWineApp {
                         ui.label(RichText::new(&app.name).size(17.0).color(win10::TEXT));
                     } else {
                         ui.heading(&app.name);
+                    }
+                    if ui
+                        .add_enabled(
+                            self.workspace_writable,
+                            egui::Button::new(if self.workspace.is_favorite(&app.id) {
+                                "★ Remove favorite"
+                            } else {
+                                "☆ Add to favorites"
+                            }),
+                        )
+                        .clicked()
+                    {
+                        self.workspace.toggle_favorite(&app.id);
+                        if let Err(error) = self.persist_workspace() {
+                            self.notice = Some((true, format!("Could not save favorite: {error}")));
+                        }
                     }
                     let selected_profile =
                         self.profile_cache.get(&app.id).cloned().unwrap_or_else(|| {

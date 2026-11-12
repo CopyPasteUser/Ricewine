@@ -40,7 +40,9 @@ pub struct DoctorReport {
 
 impl DoctorReport {
     pub fn has_errors(&self) -> bool {
-        self.findings.iter().any(|item| item.severity == Severity::Error)
+        self.findings
+            .iter()
+            .any(|item| item.severity == Severity::Error)
     }
 
     pub fn readable(&self) -> String {
@@ -118,15 +120,16 @@ pub fn check(apps: &[Application], wine_available: bool) -> DoctorReport {
                 format!("Missing Wine environment: {}", app.prefix.display()),
                 "Restore the prefix from a backup or re-import an existing installation.",
             );
-        } else if !app.prefix.join("drive_c").is_dir()
-            || !app.prefix.join("system.reg").is_file()
-        {
+        } else if !app.prefix.join("drive_c").is_dir() || !app.prefix.join("system.reg").is_file() {
             issue(
                 &mut report,
                 Severity::Warning,
                 name,
                 "PREFIX_INCOMPLETE",
-                format!("Environment is not fully initialized: {}", app.prefix.display()),
+                format!(
+                    "Environment is not fully initialized: {}",
+                    app.prefix.display()
+                ),
                 "Verify the existing prefix or restore a known-good backup before starting this app.",
             );
         }
@@ -152,7 +155,10 @@ pub fn check(apps: &[Application], wine_available: bool) -> DoctorReport {
                 Severity::Warning,
                 name,
                 "LAUNCH_EXE_TYPE",
-                format!("Launch target does not have an EXE extension: {}", path.display()),
+                format!(
+                    "Launch target does not have an EXE extension: {}",
+                    path.display()
+                ),
                 "Review and choose the program's actual .exe launch file.",
             ),
             _ => {}
@@ -272,10 +278,18 @@ mod tests {
         let report = check(&[app], false);
         assert!(report.findings.iter().any(|f| f.code == "LAUNCH_EXE_UNSET"));
         assert!(report.findings.iter().any(|f| f.code == "PROFILE_INVALID"));
-        assert!(report.findings.iter().any(|f| f.code == "SYSTEM_WINE_MISSING"));
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|f| f.code == "SYSTEM_WINE_MISSING")
+        );
         assert!(report.has_errors());
         assert!(report.readable().contains("Next step"));
-        assert_eq!(fs::read_to_string(temp.0.join(".ricewine.toml")).unwrap(), "not toml [");
+        assert_eq!(
+            fs::read_to_string(temp.0.join(".ricewine.toml")).unwrap(),
+            "not toml ["
+        );
     }
 
     #[test]

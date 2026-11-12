@@ -2920,9 +2920,7 @@ impl eframe::App for RiceWineApp {
                     ui.heading("RiceWine");
                     ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
                     ui.label("Windows programs on Linux, managed with Wine and Proton.");
-                    ui.label(
-                        "Rices style RiceWine only. The compositor owns window decorations.",
-                    );
+                    ui.label("Rices style RiceWine only. The compositor owns window decorations.");
                 });
         }
     }

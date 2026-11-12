@@ -4,7 +4,7 @@
 
 Install, organize and launch Windows applications in separate Wine prefixes — with a native desktop UI and three maintained Rices. Works standalone or alongside RiceBowl; no background service required.
 
-> **Version 3.0.0-alpha.2 (development)** · Personal library and read-only health diagnostics. Wine/Proton compatibility and real X11/Wayland acceptance remain outstanding; this is **not** a stable release.
+> **Version 3.0.0-alpha.3 (development)** · Personal library and read-only health diagnostics. Wine/Proton compatibility and real X11/Wayland acceptance remain outstanding; this is **not** a stable release.
 
 **3.0 roadmap:** [ROADMAP-3.0.md](ROADMAP-3.0.md). Milestones 1–2 are implemented; guided recovery and real-device acceptance remain open.
 
@@ -13,6 +13,7 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 - **3.0 personal workspace:** favorites, recently successfully launched apps, saved program filters and sorting. Metadata lives in a separate, atomic, user-local workspace.json and does not modify Wine prefixes or catalog schemas.
 - **3.0 read-only diagnostics:** Settings → Health & diagnostics and **ricewine --doctor** report missing launch EXEs, incomplete prefixes and invalid runners, with suggested manual next steps. No repairs, installations or deletions are triggered.
 - **3.0 guided recovery:** Select a program → **Diagnose & recover…** to check its prefix, view at most 12 KiB of recent Wine logs, open runner settings, find its launch EXE, or create/open backups. Before Winetricks changes RiceWine now asks for explicit confirmation and offers **Back up first** (never silently applies the component afterward).
+- **3.0 everyday shortcuts & safer updates:** **Ctrl+F** opens the Library and focuses search from any of the three Rices. Windows application updates now offer **Back up prefix first**, and block update execution while a backup is running. Neither an EXE download nor update execution is automatic.
 - **Application library:** install EXE/MSI files, register portable apps, search, rename, launch and stop programs. Cancel setup without deleting its partial prefix; automatically detect obvious launch EXEs and review ambiguous ones.
 - **Runners:** system Wine, custom Wine and Proton via [`umu-run`](https://github.com/Open-Wine-Components/umu-launcher). Discover installed Proton builds or download the latest **SHA512-verified GE-Proton** into a managed user-local folder. Remove managed, unused builds with confirmation.
 - **Compatibility:** isolated prefixes, five launch presets, custom arguments, allowlisted environment overrides and Winetricks components (including DXVK/VKD3D where available).

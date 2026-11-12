@@ -1537,7 +1537,7 @@ impl RiceWineApp {
             Page::Runners => "Wine & Proton",
             Page::Settings => "Appearance",
         };
-        let available_height = (ui.available_height() - 25.0).max(300.0);
+        let available_height = ui.available_height().max(300.0);
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(
                 egui::vec2(235.0, available_height),
@@ -1587,18 +1587,6 @@ impl RiceWineApp {
                 },
             );
         });
-        let status = match self.page {
-            Page::Library => format!(
-                "{} installed programs",
-                self.store
-                    .as_ref()
-                    .map_or(0, |store| store.applications().len())
-            ),
-            Page::Prefixes => "Windows environments are stored locally".to_owned(),
-            Page::Runners => "Wine and Proton profiles".to_owned(),
-            Page::Settings => "Only RiceWine's appearance is changed".to_owned(),
-        };
-        win10::status_bar(ui, &status);
     }
 
     fn luna_shell(&mut self, ui: &mut egui::Ui) {

@@ -2,11 +2,18 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
-## Unreleased – curated Rices and macOS interface
+## Unreleased – Windows 10 Rice and lighter library rendering
+
+- Add a dedicated Windows 10 style alongside XP Luna Blue and macOS. Flat navigation, a new apps view, a compact status/list layout and a primary installation action use native egui controls while leaving Linux window decorations untouched.
+- Make legacy Windows 10 appearance names round-trip to the unified Windows 10 Rice. Luna Olive/Silver preferences still migrate to Luna Blue.
+- Load per-program Wine runner profiles once and cache them while rendering; refresh automatically when selecting a program or saving its runner, or manually after changing TOML files outside RiceWine. This eliminates repeated profile filesystem I/O from visible program rows and selected-program details.
+- Expand real Xvfb screenshot capture to all three Rices and add a Windows 10 gallery. Automated UI capture is not real Wine/Proton compatibility testing.
+
+## Previous development – curated Rices and macOS interface
 
 - Add a Finder-inspired macOS application shell with dedicated navigation, toolbar, program list and status surfaces. The Linux compositor remains responsible for native window borders.
-- Retire the incomplete Windows 10 Light/Dark and XP Luna Olive/Silver variants. Keep the thoroughly developed XP Luna Blue Rice; the picker now contains exactly two Rices.
-- Transparently migrate saved legacy appearance names to Luna Blue. Add serialized appearance, migration and desktop-detection regression tests. Existing program and prefix data is not changed.
+- Retire the incomplete Windows 10 Light/Dark and XP Luna Olive/Silver experiments at this stage; the previous picker contained two Rices. Windows 10 later returned as a newly implemented single maintained Rice.
+- At this milestone saved legacy appearance names were mapped to Luna Blue. The subsequent Windows 10 Rice now restores mapping for the Windows 10 aliases without touching program or prefix data.
 - Update user documentation and manual desktop-acceptance coverage; visual and functional acceptance on real X11/Wayland systems remains outstanding.
 
 ## Previous development – XP Luna Blue application UI overhaul

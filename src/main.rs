@@ -9,6 +9,7 @@ use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
 use ricewine::core::{self, Application, InstallMode, OperationControl, Store, WineTools};
 use ricewine::discovery::{self, LaunchCandidate};
+use ricewine::doctor;
 use ricewine::integration;
 #[cfg(unix)]
 use ricewine::ipc;
@@ -17,6 +18,7 @@ use ricewine::preferences::{self, Appearance, Preferences};
 use ricewine::runtime::{self, CompatibilityPreset, PrefixProfile, Runner, Template};
 use ricewine::storage::{self, CleanupPreview, DiskUsage};
 use ricewine::updates::{self, Release};
+use ricewine::workspace::{self, LibraryFilter, LibraryOrder, Workspace};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -368,6 +370,7 @@ enum Event {
     GeRemoved(PathBuf, Result<(), String>),
     AppReleaseChecked(String, Result<Release, String>),
     AppUpdated(String, Result<(), String>),
+    DoctorFinished(doctor::DoctorReport),
 }
 
 struct RiceWineApp {
@@ -376,6 +379,10 @@ struct RiceWineApp {
     wine: Option<WineTools>,
     theme: Theme,
     preferences: Preferences,
+    workspace: Workspace,
+    workspace_writable: bool,
+    doctor_report: String,
+    doctor_busy: bool,
     page: Page,
     about_open: bool,
     advanced_open: bool,
@@ -455,6 +462,19 @@ impl RiceWineApp {
             notice = Some((true, error.clone()));
         }
         let preferences = preferences_result.unwrap_or_default();
+        let workspace_result = store
+            .as_ref()
+            .ok()
+            .map(|s| workspace::load(s.root()))
+            .unwrap_or(Ok(Workspace::default()));
+        let workspace_writable = workspace_result.is_ok() && store.is_ok();
+        if let Err(error) = &workspace_result {
+            notice = Some((
+                true,
+                format!("Library favorites and recent history are read-only: {error}"),
+            ));
+        }
+        let workspace = workspace_result.unwrap_or_default();
         let theme: Theme = if preferences.follow_desktop {
             preferences::detect_desktop_appearance()
                 .unwrap_or(preferences.appearance)
@@ -503,6 +523,10 @@ impl RiceWineApp {
             wine: wine.ok(),
             theme,
             preferences,
+            workspace,
+            workspace_writable,
+            doctor_report: String::new(),
+            doctor_busy: false,
             page: Page::capture_override(),
             about_open: false,
             advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
@@ -589,6 +613,13 @@ impl RiceWineApp {
                                 Ok(()) => {
                                     self.page = Page::Library;
                                     self.search.clear();
+                                    self.workspace.filter = LibraryFilter::All;
+                                    if let Err(error) = self.persist_workspace() {
+                                        self.notice = Some((
+                                            true,
+                                            format!("Could not save Library view: {error}"),
+                                        ));
+                                    }
                                     self.sync_runner_draft();
                                     self.notice = Some((
                                         false,
@@ -636,8 +667,17 @@ impl RiceWineApp {
                 }
                 Event::Started(id, result) => match result {
                     Ok(pid) => {
-                        self.running.insert(id);
-                        self.notice = Some((false, format!("Program started (PID {pid})")));
+                        self.running.insert(id.clone());
+                        self.workspace.mark_launched(&id);
+                        self.notice = Some(match self.persist_workspace() {
+                            Ok(()) => (false, format!("Program started (PID {pid})")),
+                            Err(error) => (
+                                true,
+                                format!(
+                                    "Program started (PID {pid}), but recent history could not be saved: {error}"
+                                ),
+                            ),
+                        });
                     }
                     Err(error) => {
                         self.running.remove(&id);
@@ -679,6 +719,8 @@ impl RiceWineApp {
                                 match store.add(app) {
                                     Ok(()) => {
                                         self.selected = Some(id);
+                                        self.workspace.filter = LibraryFilter::All;
+                                        self.search.clear();
                                         self.sync_runner_draft();
                                         self.notice = Some((false, "Backup restored as a separate program; the original was preserved".into()));
                                     }
@@ -782,6 +824,10 @@ impl RiceWineApp {
                         Err(error) => (true, format!("Update installer: {error}")),
                     });
                 }
+                Event::DoctorFinished(report) => {
+                    self.doctor_busy = false;
+                    self.doctor_report = report.readable();
+                }
             }
         }
         if self.install.is_none()
@@ -804,6 +850,7 @@ impl RiceWineApp {
             || !self.storage_busy.is_empty()
             || self.ge_busy
             || !self.exe_scan_busy.is_empty()
+            || self.doctor_busy
         {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
@@ -814,6 +861,64 @@ impl RiceWineApp {
             && let Err(error) = preferences::save(store.root(), &self.preferences)
         {
             self.notice = Some((true, format!("Could not save appearance: {error}")));
+        }
+    }
+
+    fn persist_workspace(&self) -> Result<(), String> {
+        if !self.workspace_writable {
+            return Err("Workspace could not be loaded; the existing file is preserved".into());
+        }
+        let root = self.store.as_ref().ok_or("Library unavailable")?;
+        workspace::save(root.root(), &self.workspace)
+    }
+
+    fn scan_health(&mut self) {
+        if self.doctor_busy {
+            return;
+        }
+        let Some(store) = self.store.as_ref() else {
+            self.notice = Some((true, "Library unavailable; cannot run checks".into()));
+            return;
+        };
+        let apps = store.applications().to_vec();
+        let wine_available = self.wine.is_some();
+        let tx = self.sender.clone();
+        self.doctor_busy = true;
+        self.doctor_report.clear();
+        thread::spawn(move || {
+            let _ = tx.send(Event::DoctorFinished(doctor::check(&apps, wine_available)));
+        });
+    }
+
+    fn doctor_controls(&mut self, ui: &mut egui::Ui) {
+        if self.theme == Theme::Windows10 {
+            win10::section_heading(ui, "Health & diagnostics");
+        } else if self.theme != Theme::Luna {
+            ui.heading("Health & diagnostics");
+        }
+        ui.small("Check launch files, prefixes and Wine/Proton runners without changing anything.");
+        if ui
+            .add_enabled(
+                !self.doctor_busy && self.store.is_some(),
+                egui::Button::new("Check now"),
+            )
+            .clicked()
+        {
+            self.scan_health();
+        }
+        if self.doctor_busy {
+            ui.horizontal(|ui| {
+                ui.spinner();
+                ui.small("Checking applications…");
+            });
+        }
+        if !self.doctor_report.is_empty() {
+            ui.add(
+                egui::TextEdit::multiline(&mut self.doctor_report)
+                    .desired_rows(10)
+                    .desired_width(f32::INFINITY)
+                    .interactive(false),
+            );
         }
     }
 
@@ -1818,6 +1923,40 @@ impl RiceWineApp {
                 self.sync_runner_draft();
             }
         });
+        let mut workspace_changed = false;
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Show:");
+            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                egui::ComboBox::from_id_salt("ricewine_3_filter")
+                    .selected_text(self.workspace.filter.label())
+                    .show_ui(ui, |ui| {
+                        for filter in LibraryFilter::ALL {
+                            workspace_changed |= ui
+                                .selectable_value(
+                                    &mut self.workspace.filter,
+                                    filter,
+                                    filter.label(),
+                                )
+                                .changed();
+                        }
+                    });
+            });
+            ui.label("Order:");
+            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                egui::ComboBox::from_id_salt("ricewine_3_order")
+                    .selected_text(self.workspace.order.label())
+                    .show_ui(ui, |ui| {
+                        for order in LibraryOrder::ALL {
+                            workspace_changed |= ui
+                                .selectable_value(&mut self.workspace.order, order, order.label())
+                                .changed();
+                        }
+                    });
+            });
+        });
+        if workspace_changed && let Err(error) = self.persist_workspace() {
+            self.notice = Some((true, format!("Could not save Library view: {error}")));
+        }
         if self.store.is_none() {
             ui.add_space(28.0);
             ui.heading("Library unavailable");
@@ -1841,25 +1980,24 @@ impl RiceWineApp {
             }
             return;
         }
-        let term = self.search.trim().to_lowercase();
-        // Only lightweight indexes are allocated per frame. Full Application
-        // objects (with multiple paths/strings) are not cloned for the list.
+        // Filters and sort are in-memory; catalog and profile files are not touched.
         let matching_indices: Vec<usize> = self
             .store
             .as_ref()
             .map(|store| {
-                store
-                    .applications()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, app)| term.is_empty() || app.name.to_lowercase().contains(&term))
-                    .map(|(index, _)| index)
-                    .collect()
+                self.workspace
+                    .ordered_indices(store.applications(), &self.search)
             })
             .unwrap_or_default();
         ui.small(format!("{} matching program(s)", matching_indices.len()));
         if matching_indices.is_empty() {
-            ui.label("No matching programs. Clear the search to show the library.");
+            if self.workspace.filter == LibraryFilter::Favorites {
+                ui.label(
+                    "No favorite programs match. Choose 'All programs' or mark one as favorite.",
+                );
+            } else {
+                ui.label("No matching programs. Clear the search to show the library.");
+            }
             return;
         }
         let width = if win10_mode {
@@ -1909,6 +2047,11 @@ impl RiceWineApp {
                                     .and_then(|result| result.as_ref().ok())
                                     .map(|profile| profile.runner.label())
                                     .unwrap_or("Invalid profile");
+                                let display_name = if self.workspace.is_favorite(&app.id) {
+                                    format!("★ {}", app.name)
+                                } else {
+                                    app.name.clone()
+                                };
                                 let status = if runtime == "Invalid profile" {
                                     "Check runner"
                                 } else if app.executable.is_none() {
@@ -1921,7 +2064,7 @@ impl RiceWineApp {
                                     "Ready"
                                 };
                                 if win10_mode {
-                                    if win10::app_row(ui, &app.name, runtime, status, selected)
+                                    if win10::app_row(ui, &display_name, runtime, status, selected)
                                         .clicked()
                                     {
                                         next_selected = Some(app.id.clone());
@@ -1931,12 +2074,17 @@ impl RiceWineApp {
                                         let response = if luna_mode {
                                             luna::program_row(
                                                 ui,
-                                                &app.name,
+                                                &display_name,
                                                 selected,
                                                 width - 112.0,
                                             )
                                         } else {
-                                            mac::program_row(ui, &app.name, selected, width - 112.0)
+                                            mac::program_row(
+                                                ui,
+                                                &display_name,
+                                                selected,
+                                                width - 112.0,
+                                            )
                                         };
                                         if response.clicked() {
                                             next_selected = Some(app.id.clone());
@@ -1958,6 +2106,10 @@ impl RiceWineApp {
                     .selected
                     .as_ref()
                     .and_then(|id| self.store.as_ref()?.get(id))
+                    .filter(|app| {
+                        self.workspace.filter == LibraryFilter::All
+                            || self.workspace.is_favorite(&app.id)
+                    })
                     .cloned();
                 if let Some(app) = selected {
                     if luna_mode {
@@ -1966,6 +2118,22 @@ impl RiceWineApp {
                         ui.label(RichText::new(&app.name).size(17.0).color(win10::TEXT));
                     } else {
                         ui.heading(&app.name);
+                    }
+                    if ui
+                        .add_enabled(
+                            self.workspace_writable,
+                            egui::Button::new(if self.workspace.is_favorite(&app.id) {
+                                "★ Remove favorite"
+                            } else {
+                                "☆ Add to favorites"
+                            }),
+                        )
+                        .clicked()
+                    {
+                        self.workspace.toggle_favorite(&app.id);
+                        if let Err(error) = self.persist_workspace() {
+                            self.notice = Some((true, format!("Could not save favorite: {error}")));
+                        }
                     }
                     let selected_profile =
                         self.profile_cache.get(&app.id).cloned().unwrap_or_else(|| {
@@ -2787,6 +2955,9 @@ impl RiceWineApp {
                     );
                 }
             });
+            luna::option_group(ui, "Health & diagnostics", luna::XpIcon::Info, |ui| {
+                self.doctor_controls(ui);
+            });
         });
     }
 
@@ -2928,6 +3099,8 @@ impl RiceWineApp {
                 );
             }
         }
+        ui.add_space(20.0);
+        self.doctor_controls(ui);
     }
 
     fn install_dialog(&mut self, ctx: &egui::Context) {
@@ -3179,6 +3352,7 @@ impl RiceWineApp {
                     self.selected = Some(id);
                     self.page = Page::Library;
                     self.search.clear();
+                    self.workspace.filter = LibraryFilter::All;
                     self.sync_runner_draft();
                     self.notice = Some((
                         false,
@@ -3220,6 +3394,10 @@ impl RiceWineApp {
                         match store.remove_from_library(&id) {
                             Ok(()) => {
                                 self.selected = store.applications().first().map(|app| app.id.clone());
+                                self.workspace.forget(&id);
+                                if let Err(error) = self.persist_workspace() {
+                                    self.notice = Some((true, format!("Program removed, but Library preferences were not saved: {error}")));
+                                }
                                 self.notice = Some(match integration::remove_shortcut(&id) {
                                     Ok(()) => (false, "Removed from library. Prefix preserved.".into()),
                                     Err(error) => (true, format!("Entry removed, but shortcut cleanup failed: {error}")),
@@ -3441,7 +3619,7 @@ fn main() -> eframe::Result {
         let outcome = match args.as_slice() {
             [flag] if flag == "--help" => {
                 println!(
-                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE | --list | --diagnose | --verify-library | --snapshot-library | --register-menu | --unregister-menu | --unregister-open-with | --unregister-shortcuts | --version | --help]",
+                    "RiceWine {}\nUsage: ricewine [--launch APPLICATION_ID | --install-file FILE | --list | --diagnose | --doctor | --verify-library | --snapshot-library | --register-menu | --unregister-menu | --unregister-open-with | --unregister-shortcuts | --version | --help]",
                     env!("CARGO_PKG_VERSION")
                 );
                 Ok(())
@@ -3505,6 +3683,15 @@ fn main() -> eframe::Result {
                     }
                 })
             }
+            [flag] if flag == "--doctor" => core::Store::list_for_cli().and_then(|(_, apps)| {
+                let report = doctor::check(&apps, WineTools::detect().is_ok());
+                println!("{}", report.readable());
+                if report.has_errors() {
+                    Err("Doctor found launch blockers. No files were changed".into())
+                } else {
+                    Ok(())
+                }
+            }),
             [flag, id] if flag == "--launch" => {
                 core::Store::load_for_launch(id).and_then(|(root, app)| {
                     let profile = runtime::load_profile(&app.prefix)?;

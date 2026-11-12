@@ -2,7 +2,15 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
-## Unreleased – simpler install, import and first run
+## 3.0.0-alpha.1 – personal library and read-only doctor
+
+- Add separate workspace.json with atomic bounded persistence of favorites, filters, ordering and successful launch history, with safe defaults for existing 2.x libraries.
+- Library views in XP Luna Blue, macOS and Windows 10 support Favorite/Unfavorite, All/Favorites filtering and Name/Favorites/Recent ordering without modifying the Wine catalog.
+- Offer a background read-only health check in Settings and an independent --doctor CLI using the same diagnostic engine. Problems include missing executables, incomplete/missing prefixes, invalid runner profiles and missing system Wine.
+- Preserve all three designed Rices, native Linux decorations, existing profiles, catalog and prefix data. Add workspace/doctor regression tests; no new dependencies.
+- 3.0 is **alpha**, not stable: no automatic repair, publisher verification claims, or real X11/Wayland Wine/Proton acceptance.
+
+## Previous development – simpler install, import and first run
 
 - Guide installations through file selection, automatic app-name suggestion and the default Wine setup; preserve edited names and show validation errors inside the dialog without discarding inputs.
 - Support drag-and-drop EXE/MSI to prefill the existing installation review, never to auto-run Windows code.

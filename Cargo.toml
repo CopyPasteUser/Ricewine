@@ -1,6 +1,6 @@
 [package]
 name = "ricewine"
-version = "2.0.0-beta.1"
+version = "3.0.0-alpha.1"
 edition = "2024"
 description = "A lightweight Wine manager for Linux"
 repository = "https://github.com/CopyPasteUser/Ricewine"

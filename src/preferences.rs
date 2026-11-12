@@ -21,7 +21,11 @@ pub enum Appearance {
     Luna,
     #[serde(rename = "macos", alias = "mac_os")]
     MacOS,
-    #[serde(alias = "windows10_dark", alias = "windows10_light", alias = "windows_10")]
+    #[serde(
+        alias = "windows10_dark",
+        alias = "windows10_light",
+        alias = "windows_10"
+    )]
     Windows10,
 }
 
@@ -150,7 +154,10 @@ mod tests {
             appearance_for_theme("Windows-10-Dark"),
             Some(Appearance::Windows10)
         );
-        assert_eq!(appearance_for_theme("Fluent-Light"), Some(Appearance::Windows10));
+        assert_eq!(
+            appearance_for_theme("Fluent-Light"),
+            Some(Appearance::Windows10)
+        );
         assert_eq!(
             serde_json::from_str::<Appearance>(r#""windows10_dark""#).unwrap(),
             Appearance::Windows10

@@ -4,8 +4,8 @@ set -Eeuo pipefail
 
 theme="${1:-luna}"
 case "$theme" in
-    luna|macos) ;;
-    *) echo "Usage: $0 [luna|macos]" >&2; exit 2 ;;
+    luna|macos|windows10) ;;
+    *) echo "Usage: $0 [luna|macos|windows10]" >&2; exit 2 ;;
 esac
 
 for command in xdotool import identify sha256sum; do
@@ -48,7 +48,9 @@ capture_page() {
     xdotool windowsize "$window_id" 1080 700
     sleep 2
 
-    local output="docs/screenshots/${theme}-$output_name.webp"
+    local prefix="$theme"
+    [[ "$prefix" != "windows10" ]] || prefix="win10"
+    local output="docs/screenshots/${prefix}-$output_name.webp"
     import -window "$window_id" -quality 88 "$output"
     identify -format '%f %wx%h %b\n' "$output"
 
@@ -64,7 +66,9 @@ done
 capture_page library install install
 capture_page library import import
 
-unique_count="$(sha256sum docs/screenshots/"$theme"-{library,prefixes,runners,settings,install,import}.webp | awk '{print $1}' | sort -u | wc -l)"
+prefix="$theme"
+[[ "$prefix" != "windows10" ]] || prefix="win10"
+unique_count="$(sha256sum docs/screenshots/"$prefix"-{library,prefixes,runners,settings,install,import}.webp | awk '{print $1}' | sort -u | wc -l)"
 if [[ "$unique_count" -ne 6 ]]; then
     echo "Expected six distinct $theme screenshots, found $unique_count" >&2
     exit 1

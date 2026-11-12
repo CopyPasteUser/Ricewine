@@ -3361,14 +3361,10 @@ impl eframe::App for RiceWineApp {
             && !self.busy
             && self.store.is_some()
             && let Some(path) = ui.ctx().input(|input| {
-                input
-                    .raw
-                    .dropped_files
-                    .iter()
-                    .find_map(|file| {
-                        let path = file.path();
-                        (!path.as_os_str().is_empty()).then(|| path.to_path_buf())
-                    })
+                input.raw.dropped_files.iter().find_map(|file| {
+                    let path = file.path();
+                    (!path.as_os_str().is_empty()).then(|| path.to_path_buf())
+                })
             })
         {
             let supported = path

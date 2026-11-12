@@ -22,7 +22,7 @@
 - [x] Unit tests for missing launch files, invalid profiles, missing Wine and healthy prefixes.
 - [ ] Granular repair previews with explicit backups and rollback before any change.
 
-**Acceptance:** Checks must not run Wine or rewrite user data. Missing system Wine must not make valid Proton profiles appear broken.
+**Acceptance:** Checks must not launch Windows executables/installers or rewrite user data; a read-only Wine version probe is acceptable. Missing system Wine must not make valid Proton profiles appear broken.
 
 ## Milestone 3 · Recovery and compatibility — 3.0 beta
 

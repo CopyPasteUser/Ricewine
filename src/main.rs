@@ -1980,18 +1980,37 @@ impl RiceWineApp {
                         }
                     }
                     if app.executable.is_none() {
-                        ui.small("Choose the program's EXE file to enable Play.");
-                        if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
-                            && let Some(path) = rfd::FileDialog::new()
-                                .add_filter("Windows program", &["exe"])
-                                .pick_file()
-                            && let Some(store) = self.store.as_mut()
-                        {
-                            self.notice = Some(match store.set_executable(&app.id, path) {
-                                Ok(()) => (false, "Launch executable saved".into()),
-                                Err(error) => (true, error),
+                        ui.small("One step left: select the EXE that starts this program.");
+                        ui.horizontal_wrapped(|ui| {
+                            if luna::action(
+                                ui,
+                                "Find EXE automatically",
+                                !self.exe_scan_busy.contains(&app.id),
+                                luna_mode,
+                            )
+                            .clicked()
+                            {
+                                self.scan_executables_async(&app);
+                            }
+                            if luna::action(ui, "Choose EXE manually…", true, luna_mode).clicked()
+                                && let Some(path) = rfd::FileDialog::new()
+                                    .add_filter("Windows program", &["exe"])
+                                    .pick_file()
+                                && let Some(store) = self.store.as_mut()
+                            {
+                                self.notice = Some(match store.set_executable(&app.id, path) {
+                                    Ok(()) => (false, "Launch EXE selected. Ready to start.".into()),
+                                    Err(error) => (true, error),
+                                });
+                            }
+                        });
+                        if self.exe_scan_busy.contains(&app.id) {
+                            ui.horizontal(|ui| {
+                                ui.spinner();
+                                ui.small("Looking for installed programs…");
                             });
                         }
+                        self.show_exe_candidates(ui, &app);
                     }
                     ui.add_space(14.0);
                     ui.collapsing("More options · rename, runner, files, remove", |ui| {
@@ -2047,40 +2066,24 @@ impl RiceWineApp {
                         ui.small(core::readable_path(&app.prefix));
                         ui.add_space(12.0);
                         if app.executable.is_none() {
-                            ui.small("Find or choose the installed EXE to enable Play.");
+                            ui.small("Use the quick EXE finder above to finish setup.");
                         }
-                        if luna::action(ui, "Scan installed EXEs", true, luna_mode).clicked() {
-                            match discovery::scan_executables(&app.prefix, &app.name) {
-                                Ok(candidates) => {
-                                    self.exe_candidates = candidates;
-                                    self.exe_candidate_for = Some(app.id.clone());
-                                    if self.exe_candidates.is_empty() {
-                                        self.notice = Some((
-                                            false,
-                                            "No program executables detected; choose a file manually"
-                                                .into(),
-                                        ));
-                                    }
-                                }
-                                Err(error) => self.notice = Some((true, error)),
-                            }
+                        if luna::action(
+                            ui,
+                            "Scan installed EXEs",
+                            !self.exe_scan_busy.contains(&app.id),
+                            luna_mode,
+                        )
+                        .clicked()
+                        {
+                            self.scan_executables_async(&app);
                         }
-                        if self.exe_candidate_for.as_deref() == Some(&app.id) {
-                            for candidate in self.exe_candidates.iter().take(12) {
-                                let chosen = candidate.path.clone();
-                                let label = chosen.file_name().unwrap_or_default().to_string_lossy();
-                                if ui
-                                    .add(egui::Button::new(format!("Use {label}")))
-                                    .on_hover_text(core::readable_path(&chosen))
-                                    .clicked()
-                                    && let Some(store) = self.store.as_mut()
-                                {
-                                    self.notice = Some(match store.set_executable(&app.id, chosen) {
-                                        Ok(()) => (false, "Launch EXE selected".into()),
-                                        Err(error) => (true, error),
-                                    });
-                                }
-                            }
+                        if self.exe_scan_busy.contains(&app.id) {
+                            ui.spinner();
+                            ui.small("Scanning prefix…");
+                        }
+                        if app.executable.is_some() {
+                            self.show_exe_candidates(ui, &app);
                         }
                         if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new()

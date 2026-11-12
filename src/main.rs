@@ -181,25 +181,25 @@ impl Theme {
         visuals.menu_corner_radius = egui::CornerRadius::same(palette.corner_radius);
         ctx.set_visuals(visuals);
         ctx.global_style_mut(|style| {
-            style.spacing.item_spacing = if self == Self::Luna {
-                egui::vec2(6.0, 7.0)
-            } else {
-                egui::vec2(8.0, 10.0)
+            style.spacing.item_spacing = match self {
+                Self::Luna => egui::vec2(6.0, 7.0),
+                Self::MacOS => egui::vec2(8.0, 10.0),
+                Self::Windows10 => egui::vec2(8.0, 7.0),
             };
-            style.spacing.button_padding = if self == Self::Luna {
-                egui::vec2(8.0, 4.0)
-            } else {
-                egui::vec2(12.0, 7.0)
+            style.spacing.button_padding = match self {
+                Self::Luna => egui::vec2(8.0, 4.0),
+                Self::MacOS => egui::vec2(12.0, 7.0),
+                Self::Windows10 => egui::vec2(12.0, 5.0),
             };
-            style.spacing.interact_size = if self == Self::Luna {
-                egui::vec2(36.0, 24.0)
-            } else {
-                egui::vec2(40.0, 28.0)
+            style.spacing.interact_size = match self {
+                Self::Luna => egui::vec2(36.0, 24.0),
+                Self::MacOS => egui::vec2(40.0, 28.0),
+                Self::Windows10 => egui::vec2(40.0, 30.0),
             };
-            let (body, heading, button, small, monospace) = if self == Self::Luna {
-                (12.0, 17.0, 12.0, 11.0, 11.0)
-            } else {
-                (14.0, 19.0, 14.0, 12.0, 13.0)
+            let (body, heading, button, small, monospace) = match self {
+                Self::Luna => (12.0, 17.0, 12.0, 11.0, 11.0),
+                Self::MacOS => (14.0, 19.0, 14.0, 12.0, 13.0),
+                Self::Windows10 => (13.0, 26.0, 13.0, 11.5, 12.0),
             };
             for (kind, size, family) in [
                 (egui::TextStyle::Body, body, egui::FontFamily::Proportional),
@@ -1247,45 +1247,39 @@ impl RiceWineApp {
         let height = ui.available_height();
         egui::Frame::new()
             .fill(win10::SIDEBAR)
-            .inner_margin(egui::Margin::symmetric(15, 17))
+            .inner_margin(egui::Margin::symmetric(14, 21))
             .show(ui, |ui| {
-                ui.set_min_width(183.0);
-                ui.set_min_height((height - 34.0).max(320.0));
-                win10::brand(ui);
-                win10::section(ui, "Navigation");
-                if win10::navigation(ui, "▦   My programs", self.page == Page::Library).clicked()
-                {
+                ui.set_min_width(192.0);
+                ui.set_min_height((height - 42.0).max(320.0));
+                ui.horizontal(|ui| {
+                    if ui.button("←").on_hover_text("Back to Apps & features").clicked() {
+                        self.page = Page::Library;
+                    }
+                    ui.add_space(8.0);
+                    win10::sidebar_heading(ui);
+                });
+                ui.add_space(26.0);
+                if ui.add(
+                    egui::TextEdit::singleline(&mut self.search)
+                        .hint_text("Find an app")
+                        .desired_width(ui.available_width()),
+                ).changed() {
                     self.page = Page::Library;
                 }
-                if win10::navigation(ui, "⚙   Settings", self.page == Page::Settings).clicked() {
-                    self.page = Page::Settings;
-                }
-                win10::section(ui, "Tools");
-                if ui
-                    .button(if self.advanced_open {
-                        "−  Hide advanced tools"
-                    } else {
-                        "＋  Show advanced tools"
-                    })
-                    .clicked()
-                {
-                    self.advanced_open = !self.advanced_open;
-                }
-                if self.advanced_open {
-                    if win10::navigation(ui, "◫   Wine prefixes", self.page == Page::Prefixes)
-                        .clicked()
-                    {
-                        self.page = Page::Prefixes;
-                    }
-                    if win10::navigation(ui, "◎   Wine & Proton", self.page == Page::Runners)
-                        .clicked()
-                    {
-                        self.page = Page::Runners;
+                win10::section_label(ui, "Apps");
+                for (page, label) in [
+                    (Page::Library, "Apps & features"),
+                    (Page::Prefixes, "Wine environments"),
+                    (Page::Runners, "Wine & Proton"),
+                    (Page::Settings, "Appearance"),
+                ] {
+                    if win10::navigation(ui, label, self.page == page).clicked() {
+                        self.page = page;
                     }
                 }
-                ui.add_space(20.0);
+                ui.add_space(24.0);
                 ui.separator();
-                if ui.link("About RiceWine").clicked() {
+                if win10::link_action(ui, "About RiceWine", true).clicked() {
                     self.about_open = true;
                 }
             });
@@ -1530,55 +1524,20 @@ impl RiceWineApp {
     }
 
     fn win10_shell(&mut self, ui: &mut egui::Ui) {
-        let (title, subtitle) = match self.page {
-            Page::Library => ("Apps & features", "Your Windows applications"),
-            Page::Prefixes => ("Wine environments", "Back up and manage prefixes"),
-            Page::Runners => ("Wine & Proton", "Compatibility and runtime settings"),
-            Page::Settings => ("Settings", "Choose appearance and integration"),
+        let title = match self.page {
+            Page::Library => "Apps & features",
+            Page::Prefixes => "Wine environments",
+            Page::Runners => "Wine & Proton",
+            Page::Settings => "Appearance",
         };
-        egui::Frame::new()
-            .fill(win10::TOOLBAR)
-            .stroke(egui::Stroke::new(1.0, self.theme.palette().border))
-            .inner_margin(egui::Margin::symmetric(22, 14))
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    win10::heading(ui, title, subtitle);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if win10::primary_action(
-                            ui,
-                            "＋  Install program",
-                            !self.busy && self.store.is_some(),
-                        )
-                        .clicked()
-                        {
-                            self.install = Some(InstallDraft::default());
-                        }
-                        ui.menu_button("More ▾", |ui| {
-                            if ui
-                                .add_enabled(
-                                    !self.busy && self.store.is_some(),
-                                    egui::Button::new("Import existing prefix…"),
-                                )
-                                .clicked()
-                            {
-                                self.import = Some(ImportDraft::default());
-                                ui.close();
-                            }
-                            if ui.button("Show settings").clicked() {
-                                self.page = Page::Settings;
-                                ui.close();
-                            }
-                        });
-                    });
-                });
-            });
-        let available_height = (ui.available_height() - 33.0).max(280.0);
+        let available_height = (ui.available_height() - 25.0).max(300.0);
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(
-                egui::vec2(214.0, available_height),
+                egui::vec2(235.0, available_height),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| self.win10_sidebar(ui),
             );
+            ui.separator();
             let content_width = ui.available_width();
             ui.allocate_ui_with_layout(
                 egui::vec2(content_width, available_height),
@@ -1586,10 +1545,31 @@ impl RiceWineApp {
                 |ui| {
                     egui::Frame::new()
                         .fill(win10::CANVAS)
-                        .inner_margin(egui::Margin::same(20))
+                        .inner_margin(egui::Margin::symmetric(27, 22))
                         .show(ui, |ui| {
-                            ui.set_min_height((available_height - 40.0).max(300.0));
-                            if self.page == Page::Settings {
+                            ui.set_min_height((available_height - 44.0).max(250.0));
+                            win10::page_heading(ui, title);
+                            if self.page == Page::Library {
+                                ui.add_space(10.0);
+                                ui.horizontal_wrapped(|ui| {
+                                    if win10::link_action(
+                                        ui,
+                                        "＋  Install a Windows program",
+                                        !self.busy && self.store.is_some(),
+                                    ).clicked() {
+                                        self.install = Some(InstallDraft::default());
+                                    }
+                                    if win10::link_action(
+                                        ui,
+                                        "Import existing prefix",
+                                        !self.busy && self.store.is_some(),
+                                    ).clicked() {
+                                        self.import = Some(ImportDraft::default());
+                                    }
+                                });
+                            }
+                            ui.add_space(10.0);
+                            if matches!(self.page, Page::Settings | Page::Prefixes | Page::Runners) {
                                 egui::ScrollArea::vertical()
                                     .auto_shrink([false, false])
                                     .show(ui, |ui| self.page_body(ui));
@@ -1602,14 +1582,12 @@ impl RiceWineApp {
         });
         let status = match self.page {
             Page::Library => format!(
-                "{} programs",
-                self.store
-                    .as_ref()
-                    .map_or(0, |store| store.applications().len())
+                "{} installed programs",
+                self.store.as_ref().map_or(0, |store| store.applications().len())
             ),
-            Page::Prefixes => "Wine prefix management".to_owned(),
-            Page::Runners => "Compatibility tools".to_owned(),
-            Page::Settings => "Preferences saved locally".to_owned(),
+            Page::Prefixes => "Windows environments are stored locally".to_owned(),
+            Page::Runners => "Wine and Proton profiles".to_owned(),
+            Page::Settings => "Only RiceWine's appearance is changed".to_owned(),
         };
         win10::status_bar(ui, &status);
     }

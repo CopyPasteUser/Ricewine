@@ -1771,6 +1771,9 @@ impl RiceWineApp {
             }
         });
         ui.add_space(if luna_mode { 5.0 } else { 10.0 });
+        if self.store.is_some() {
+            ui.small("Tip: Drop an EXE or MSI into this window to open its installation form.");
+        }
         ui.horizontal(|ui| {
             if !win10_mode {
                 ui.label(if luna_mode { "Search for:" } else { "Search" });
@@ -3327,6 +3330,22 @@ impl RiceWineApp {
 impl eframe::App for RiceWineApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.poll(ui.ctx());
+        // Drag-and-drop is a shortcut to the same reviewable setup form,
+        // never permission to execute a dropped Windows binary automatically.
+        if self.install.is_none() && !self.busy && self.store.is_some()
+            && let Some(path) = ui.ctx().input(|input| {
+                input.raw.dropped_files.iter().find_map(|file| file.path.clone())
+            })
+        {
+            let supported = path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| {
+                ext.eq_ignore_ascii_case("exe") || ext.eq_ignore_ascii_case("msi")
+            });
+            if supported {
+                self.install = Some(Self::install_draft_for_file(path));
+            } else {
+                self.notice = Some((true, "Drop a Windows EXE or MSI to open the installation form.".into()));
+            }
+        }
         let panel = if self.theme == Theme::Luna {
             egui::CentralPanel::default().frame(
                 egui::Frame::new()

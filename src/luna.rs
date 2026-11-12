@@ -35,40 +35,48 @@ pub enum MenuAction {
 /// A genuine application menu bar, below the native window decoration.
 pub fn application_menu(ui: &mut egui::Ui) -> MenuAction {
     let mut action = MenuAction::None;
+    let full_width = ui.available_width();
     egui::Frame::new()
         .fill(Color32::from_rgb(242, 240, 235))
         .stroke(Stroke::new(1.0, Color32::from_rgb(178, 179, 175)))
         .inner_margin(egui::Margin::symmetric(8, 2))
         .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("Install program…").clicked() {
-                        action = MenuAction::Install;
-                        ui.close();
-                    }
-                    if ui.button("Import existing prefix…").clicked() {
-                        action = MenuAction::Import;
-                        ui.close();
-                    }
-                });
-                ui.menu_button("View", |ui| {
-                    for (label, next) in [
-                        ("Library", MenuAction::Library),
-                        ("Prefixes", MenuAction::Prefixes),
-                        ("Runners", MenuAction::Runners),
-                        ("Settings", MenuAction::Settings),
-                    ] {
-                        if ui.button(label).clicked() {
-                            action = next;
+            ui.set_min_width((full_width - 18.0).max(0.0));
+            ui.scope(|ui| {
+                // Old Windows menu bars use plain labels, not framed buttons.
+                ui.style_mut().visuals.widgets.inactive.bg_fill = Color32::TRANSPARENT;
+                ui.style_mut().visuals.widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+                ui.style_mut().visuals.widgets.inactive.bg_stroke = Stroke::NONE;
+                ui.horizontal(|ui| {
+                    ui.menu_button("File", |ui| {
+                        if ui.button("Install program…").clicked() {
+                            action = MenuAction::Install;
                             ui.close();
                         }
-                    }
-                });
-                ui.menu_button("Help", |ui| {
-                    if ui.button("About RiceWine…").clicked() {
-                        action = MenuAction::About;
-                        ui.close();
-                    }
+                        if ui.button("Import existing prefix…").clicked() {
+                            action = MenuAction::Import;
+                            ui.close();
+                        }
+                    });
+                    ui.menu_button("View", |ui| {
+                        for (label, next) in [
+                            ("Library", MenuAction::Library),
+                            ("Prefixes", MenuAction::Prefixes),
+                            ("Runners", MenuAction::Runners),
+                            ("Settings", MenuAction::Settings),
+                        ] {
+                            if ui.button(label).clicked() {
+                                action = next;
+                                ui.close();
+                            }
+                        }
+                    });
+                    ui.menu_button("Help", |ui| {
+                        if ui.button("About RiceWine…").clicked() {
+                            action = MenuAction::About;
+                            ui.close();
+                        }
+                    });
                 });
             });
         });
@@ -79,11 +87,13 @@ pub fn application_menu(ui: &mut egui::Ui) -> MenuAction {
 /// window frame and titlebar. Back/Home always return to Library.
 pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
     let mut action = MenuAction::None;
+    let full_width = ui.available_width();
     egui::Frame::new()
         .fill(Color32::from_rgb(236, 235, 229))
         .stroke(Stroke::new(1.0, Color32::from_rgb(171, 179, 189)))
         .inner_margin(egui::Margin::symmetric(8, 5))
         .show(ui, |ui| {
+            ui.set_min_width((full_width - 18.0).max(0.0));
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(
@@ -101,11 +111,13 @@ pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
                 let (icon, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), Sense::hover());
                 paint_icon(ui.painter(), icon.min, XpIcon::Programs, 16.0);
                 ui.label(RichText::new("Address").size(12.0));
+                let address_width = (ui.available_width() - 48.0).max(130.0);
                 egui::Frame::new()
                     .fill(Color32::WHITE)
                     .stroke(Stroke::new(1.0, Color32::from_rgb(133, 150, 178)))
                     .inner_margin(egui::Margin::symmetric(7, 4))
                     .show(ui, |ui| {
+                        ui.set_min_width((address_width - 14.0).max(110.0));
                         ui.label(
                             RichText::new(format!("RiceWine  ›  {section}"))
                                 .size(12.0)

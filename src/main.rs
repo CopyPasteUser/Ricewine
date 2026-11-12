@@ -2539,6 +2539,7 @@ impl RiceWineApp {
         let luna_mode = self.theme == Theme::Luna;
         if let Some(draft) = &mut self.install {
             egui::Window::new("Install Windows program")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
                 .resizable(false)
                 .open(&mut keep_open)
@@ -2638,6 +2639,7 @@ impl RiceWineApp {
         let luna_mode = self.theme == Theme::Luna;
         if let Some(draft) = &mut self.import {
             egui::Window::new("Import existing Wine prefix")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false).resizable(false).open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width(450.0);
@@ -2720,7 +2722,9 @@ impl RiceWineApp {
         let Some(id) = self.remove_confirmation.clone() else {
             return;
         };
-        egui::Window::new("Remove from library?").collapsible(false).resizable(false).show(ctx, |ui| {
+        egui::Window::new("Remove from library?")
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .collapsible(false).resizable(false).show(ctx, |ui| {
             if luna_mode {
                 luna::dialog_intro(
                     ui,
@@ -2755,6 +2759,7 @@ impl RiceWineApp {
         let luna_mode = self.theme == Theme::Luna;
         if let Some(path) = self.ge_remove_confirmation.clone() {
             egui::Window::new("Remove managed GE-Proton runner?")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false).resizable(false).show(ctx, |ui| {
                     if luna_mode {
                         luna::dialog_intro(ui, luna::XpIcon::Warning, "Remove managed runner?", "This operation deletes only the managed runner.");
@@ -2771,7 +2776,7 @@ impl RiceWineApp {
                 });
         }
         if let Some((id, installer)) = self.update_install_confirmation.clone() {
-            egui::Window::new("Run Windows update installer?").collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("Run Windows update installer?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {
                 if luna_mode {
                     luna::dialog_intro(ui, luna::XpIcon::Install, "Run a Windows update?", "Back up the prefix before installing updates.");
                 }
@@ -2789,7 +2794,7 @@ impl RiceWineApp {
             });
         }
         if self.ge_install_confirmation {
-            egui::Window::new("Download GE-Proton?").collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("Download GE-Proton?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {
                 if luna_mode {
                     luna::dialog_intro(ui, luna::XpIcon::Install, "Install GE-Proton?", "The archive will be downloaded and verified.");
                 }
@@ -2804,7 +2809,7 @@ impl RiceWineApp {
             });
         }
         if let Some((id, preview)) = self.cleanup_preview.clone() {
-            egui::Window::new("Clean old temporary files?").collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("Clean old temporary files?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {
                 if luna_mode {
                     luna::dialog_intro(ui, luna::XpIcon::Disk, "Temporary files", "Review the eligible files before cleaning.");
                 }
@@ -2821,7 +2826,7 @@ impl RiceWineApp {
             });
         }
         if self.cancel_install_confirmation {
-            egui::Window::new("Cancel installation?").collapsible(false).resizable(false).show(ctx, |ui| {
+            egui::Window::new("Cancel installation?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {
                 if luna_mode {
                     luna::dialog_intro(ui, luna::XpIcon::Warning, "Cancel installation?", "Partial prefix data will be preserved.");
                 }
@@ -2838,6 +2843,7 @@ impl RiceWineApp {
         }
         if let Some(id) = self.stop_confirmation.clone() {
             egui::Window::new("Stop Windows program?")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
@@ -2904,6 +2910,7 @@ impl eframe::App for RiceWineApp {
         self.process_dialogs(ui.ctx());
         if self.about_open {
             egui::Window::new("About RiceWine")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
                 .resizable(false)
                 .open(&mut self.about_open)

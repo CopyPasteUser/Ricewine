@@ -8,16 +8,16 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 - **macOS:** Finder-inspired app interior with sidebar, restrained toolbar, application rows and status bar. Only RiceWine's interior is themed; Linux window decorations remain native.
 - **XP Luna Blue:** Explorer-inspired task panels, classic controls, application icons and menus, without replacing the compositor titlebar. No Microsoft artwork is bundled.
-- **Windows 10:** dedicated flat app shell with sidebar navigation, Apps & features header, compact program rows and blue primary action. Square controls and neutral typography; Linux compositor still renders all native decorations.
+- **Windows 10:** faithful 1809–1909-era *Settings → Apps & features* visual hierarchy: gray navigation rail, 3px blue selected indicator, large page heading, uncluttered command links, 63px program rows with app glyph/name/runner/status, and details beneath the list instead of a fixed right split. Appearance uses radio options and standard square controls. No fake Windows titlebar, taskbar, Microsoft assets or background services.
 - XP Luna Olive and Silver remain retired and migrate to Luna. Previous Windows 10 Light/Dark preferences migrate into the new unified Windows 10 Rice. No Microsoft artwork is bundled.
 
 ## Simple by default
 
-1. Navigation initially exposes only **My programs** and **Settings**, with clearly named **Advanced tools** to reveal **Prefixes** and **Runners**. The XP File/View menus retain full navigation.
+1. macOS and Luna default to **My programs** and **Settings**, with **Advanced tools** revealing **Prefixes** and **Runners**. Windows 10 uses an actual Settings-style Apps navigation list showing all four sections. The XP File/View menus retain full navigation.
 2. A single prominent **Install program** action is the main path. In macOS and Windows 10 Rices, a dedicated empty-library action starts the same existing flow; importing a prefix is secondary.
 3. The install form shows name, EXE/MSI and portable mode. Standard + system Wine is the default; templates, Proton and custom Wine remain in the **Advanced settings** disclosure.
 4. A selected program exposes **Play** and **Stop** immediately; a missing launch EXE gets a direct file-selection action. Rename, runner details, executable rescans, shortcuts and removal are under **More options**.
-5. Library status uses plain-language labels in macOS: **Ready**, **Running**, **Choose EXE**, **Check runner**. Technical runtime names remain available through advanced tools.
+5. Library status uses plain-language labels in macOS and Windows 10: **Ready**, **Running**, **Choose EXE**, **Check runner**. Technical runtime names remain available through advanced tools.
 6. All existing operations and confirmation boundaries remain unchanged. Collapsed controls are still keyboard accessible.
 
 ## Visual documentation
@@ -36,7 +36,7 @@ Native Linux tool for people who want to install and launch Windows software wit
 - Import is additive: registering an existing prefix must never move files. Show the source path so users recognize external ownership.
 - Backups live in Prefixes and are explicitly initiated; a restore creates a new library entry rather than overwriting an existing configuration.
 - Runner changes and compatibility component installation are explicit actions with status feedback; never claim success before the subprocess exits successfully.
-- Prefer native egui controls, keyboard-focusable buttons, and compact lists. Keep the two approved theme directions independent from Wine/Proton behavior.
+- Prefer native egui controls, keyboard-focusable buttons, and compact lists. Keep the three approved theme directions independent from Wine/Proton behavior.
 - Settings owns the optional desktop-theme follower. Manual theme selection disables following; unknown desktop styles must never trigger a guessed appearance.
 - File association is opt-in and opens the installation dialog with the selected file; no EXE is run automatically and system MIME defaults are preserved.
 

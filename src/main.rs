@@ -2515,6 +2515,7 @@ impl RiceWineApp {
     fn install_dialog(&mut self, ctx: &egui::Context) {
         let mut submit = None;
         let mut keep_open = true;
+        let mut cancel_dialog = false;
         let luna_mode = self.theme == Theme::Luna;
         if let Some(draft) = &mut self.install {
             egui::Window::new("Install Windows program")
@@ -2531,12 +2532,15 @@ impl RiceWineApp {
                             "Choose a setup file and its Wine environment.",
                         );
                     }
+                    if luna_mode {
+                        luna::section_heading(ui, "Program information", luna::XpIcon::Programs);
+                    }
                     ui.label("Program name");
                     ui.text_edit_singleline(&mut draft.name);
                     ui.label("EXE or MSI file");
                     ui.horizontal(|ui| {
                         ui.add(egui::TextEdit::singleline(&mut draft.file).desired_width(340.0));
-                        if ui.button("Browse…").clicked()
+                        if luna::action(ui, "Browse…", true, luna_mode).clicked()
                             && let Some(file) = rfd::FileDialog::new().add_filter("Windows setup", &["exe", "msi"]).pick_file()
                         {
                             draft.file = file.to_string_lossy().into_owned();
@@ -2546,7 +2550,10 @@ impl RiceWineApp {
                         }
                     });
                     ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
-                    ui.add_space(10.0);
+                    ui.add_space(8.0);
+                    if luna_mode {
+                        luna::section_heading(ui, "Compatibility", luna::XpIcon::Runner);
+                    }
                     ui.label("Installation template");
                     egui::ComboBox::from_id_salt("installation_template")
                         .selected_text(draft.template.label())
@@ -2569,28 +2576,35 @@ impl RiceWineApp {
                     });
                     Self::runner_fields(ui, draft);
                     ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
-                    ui.add_space(12.0);
+                    ui.add_space(9.0);
+                    ui.separator();
                     let install_label = if draft.portable {
                         "Add portable program"
                     } else {
                         "Run installer"
                     };
-                    let clicked = if luna_mode {
-                        luna::xp_button(ui, install_label, true).clicked()
-                    } else {
-                        ui.button(install_label).clicked()
-                    };
-                    if clicked {
-                        submit = Some(InstallDraft {
-                            name: draft.name.clone(), file: draft.file.clone(), portable: draft.portable,
-                            runner_kind: draft.runner_kind, custom_wine: draft.custom_wine.clone(),
-                            proton_dir: draft.proton_dir.clone(), game_id: draft.game_id.clone(),
-                            template: draft.template,
-                        });
+                    ui.horizontal(|ui| {
+                        if luna::action(ui, install_label, true, luna_mode).clicked() {
+                            submit = Some(InstallDraft {
+                                name: draft.name.clone(),
+                                file: draft.file.clone(),
+                                portable: draft.portable,
+                                runner_kind: draft.runner_kind,
+                                custom_wine: draft.custom_wine.clone(),
+                                proton_dir: draft.proton_dir.clone(),
+                                game_id: draft.game_id.clone(),
+                                template: draft.template,
+                            });
+                        }
+                        if luna::action(ui, "Cancel", true, luna_mode).clicked() {
+                            cancel_dialog = true;
+                        }
+                    });
+                });
                     }
                 });
         }
-        if !keep_open {
+        if !keep_open || cancel_dialog {
             self.install = None;
         }
         if let Some(draft) = submit {
@@ -2601,6 +2615,7 @@ impl RiceWineApp {
 
     fn import_dialog(&mut self, ctx: &egui::Context) {
         let mut keep_open = true;
+        let mut cancel_dialog = false;
         let mut imported = None;
         let luna_mode = self.theme == Theme::Luna;
         if let Some(draft) = &mut self.import {
@@ -2618,10 +2633,13 @@ impl RiceWineApp {
                     }
                     ui.label("Program name");
                     ui.text_edit_singleline(&mut draft.name);
+                    if luna_mode {
+                        luna::section_heading(ui, "Existing environment", luna::XpIcon::Prefix);
+                    }
                     ui.label("Existing Wine prefix directory");
                     ui.horizontal(|ui| {
                         ui.text_edit_singleline(&mut draft.prefix);
-                        if ui.button("Browse…").clicked()
+                        if luna::action(ui, "Browse…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new().pick_folder()
                         {
                             draft.prefix = core::readable_path(&path);
@@ -2630,28 +2648,30 @@ impl RiceWineApp {
                     ui.label("Existing launch EXE");
                     ui.horizontal(|ui| {
                         ui.text_edit_singleline(&mut draft.executable);
-                        if ui.button("Browse…").clicked()
+                        if luna::action(ui, "Browse…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
                         {
                             draft.executable = core::readable_path(&path);
                         }
                     });
                     ui.small("Import only registers an existing prefix. Its files are never moved or deleted.");
-                    let clicked = if luna_mode {
-                        luna::xp_button(ui, "Import prefix", true).clicked()
-                    } else {
-                        ui.button("Import prefix").clicked()
-                    };
-                    if clicked {
-                        imported = Some(core::imported_application(
-                            &draft.name,
-                            &PathBuf::from(draft.prefix.trim()),
-                            &PathBuf::from(draft.executable.trim()),
-                        ));
-                    }
+                    ui.add_space(8.0);
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        if luna::action(ui, "Import prefix", true, luna_mode).clicked() {
+                            imported = Some(core::imported_application(
+                                &draft.name,
+                                &PathBuf::from(draft.prefix.trim()),
+                                &PathBuf::from(draft.executable.trim()),
+                            ));
+                        }
+                        if luna::action(ui, "Cancel", true, luna_mode).clicked() {
+                            cancel_dialog = true;
+                        }
+                    });
                 });
         }
-        if !keep_open {
+        if !keep_open || cancel_dialog {
             self.import = None;
         }
         if let Some(result) = imported {

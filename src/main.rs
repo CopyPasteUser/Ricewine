@@ -1892,35 +1892,54 @@ impl RiceWineApp {
     }
 
     fn runners(&mut self, ui: &mut egui::Ui) {
-        if self.theme != Theme::Luna {
+        let luna_mode = self.theme == Theme::Luna;
+        if luna_mode {
+            luna::section_heading(ui, "Installed runtime tools", luna::XpIcon::Runner);
+        } else {
             ui.heading("Runners");
         }
-        ui.label("Choose a runner per program. Proton uses the external umu launcher.");
-        ui.add_space(14.0);
-        for line in runtime::diagnostics(self.wine.as_ref()) {
-            ui.small(line);
+        ui.small("Wine and Proton are configured independently for each Windows program.");
+        ui.add_space(7.0);
+        let diagnostics = runtime::diagnostics(self.wine.as_ref());
+        if luna_mode {
+            egui::Frame::new()
+                .fill(Color32::from_rgb(248, 250, 254))
+                .stroke(egui::Stroke::new(
+                    1.0,
+                    Color32::from_rgb(170, 187, 212),
+                ))
+                .inner_margin(egui::Margin::same(10))
+                .show(ui, |ui| {
+                    ui.set_min_width((ui.available_width() - 20.0).max(0.0));
+                    for line in &diagnostics {
+                        ui.label(RichText::new(line).size(11.0));
+                    }
+                });
+        } else {
+            for line in diagnostics {
+                ui.small(line);
+            }
         }
-        ui.add_space(8.0);
-        ui.label(
-            RichText::new("GE-Proton manager")
-                .strong()
-                .color(self.theme.palette().text),
-        );
+        ui.add_space(9.0);
+        if luna_mode {
+            luna::section_heading(ui, "GE-Proton manager", luna::XpIcon::Install);
+        } else {
+            ui.label(
+                RichText::new("GE-Proton manager")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
+        }
         ui.small("Opt-in official GE-Proton releases. Downloads are SHA512-verified and installed only under RiceWine's data directory; no sudo or Steam changes.");
         ui.horizontal(|ui| {
-            if ui
-                .add_enabled(!self.ge_busy, egui::Button::new("Check latest GE-Proton"))
+            if luna::action(ui, "Check latest GE-Proton", !self.ge_busy, luna_mode)
                 .clicked()
             {
                 self.check_ge_release();
             }
             if let Some(release) = &self.ge_release {
                 ui.label(format!("Latest: {}", release.tag));
-                if ui
-                    .add_enabled(
-                        !self.ge_busy,
-                        egui::Button::new("Install verified release…"),
-                    )
+                if luna::action(ui, "Install verified release…", !self.ge_busy, luna_mode)
                     .clicked()
                 {
                     self.ge_install_confirmation = true;
@@ -1937,8 +1956,7 @@ impl RiceWineApp {
             }
         });
         ui.small("Requires curl, tar, sha512sum and (for launching) umu-run. Existing installations are not overwritten.");
-        if ui
-            .button("Find locally installed Proton versions")
+        if luna::action(ui, "Find locally installed Proton versions", true, luna_mode)
             .clicked()
         {
             self.detected_proton = std::env::var_os("HOME")
@@ -1973,7 +1991,7 @@ impl RiceWineApp {
             let removable = managed && !self.runner_in_use(&candidate.path);
             ui.horizontal(|ui| {
                 ui.label(&candidate.name);
-                if ui.button("Use for selected program").clicked() {
+                if luna::action(ui, "Use for selected program", true, luna_mode).clicked() {
                     self.runner_draft.runner_kind = 2;
                     self.runner_draft.proton_dir = core::readable_path(&candidate.path);
                     if self.runner_draft.game_id.trim().is_empty() {
@@ -1981,28 +1999,46 @@ impl RiceWineApp {
                     }
                 }
                 if managed
-                    && ui
-                        .add_enabled(
-                            !self.ge_busy && removable,
-                            egui::Button::new("Remove managed runner…"),
-                        )
-                        .clicked()
+                    && luna::action(
+                        ui,
+                        "Remove managed runner…",
+                        !self.ge_busy && removable,
+                        luna_mode,
+                    )
+                    .clicked()
                 {
                     self.ge_remove_confirmation = Some(candidate.path.clone());
                 }
             });
         }
-        ui.separator();
+        ui.add_space(7.0);
+        if luna_mode {
+            luna::section_heading(ui, "Selected program configuration", luna::XpIcon::Programs);
+        } else {
+            ui.separator();
+        }
         let Some(app) = self
             .selected
             .as_ref()
             .and_then(|id| self.store.as_ref()?.get(id))
             .cloned()
         else {
-            ui.label("Add and select a program in Library to configure a runner.");
+            if luna_mode {
+                ui.label("No program selected.");
+                ui.small("Open Program library, choose a Windows app, then return to Runners.");
+                if luna::action(ui, "Open library", true, true).clicked() {
+                    self.page = Page::Library;
+                }
+            } else {
+                ui.label("Add and select a program in Library to configure a runner.");
+            }
             return;
         };
-        ui.heading(format!("Program: {}", app.name));
+        if luna_mode {
+            ui.label(RichText::new(format!("Program: {}", app.name)).strong());
+        } else {
+            ui.heading(format!("Program: {}", app.name));
+        }
         ui.horizontal_wrapped(|ui| {
             ui.label("Runner");
             for (index, label) in ["System Wine", "Custom Wine", "Proton / umu"]
@@ -2059,11 +2095,15 @@ impl RiceWineApp {
             runtime::ALLOWED_ENVIRONMENT.join(", ")
         ));
         ui.add_space(14.0);
-        ui.label(
-            RichText::new("Application updates")
-                .strong()
-                .color(self.theme.palette().text),
-        );
+        if luna_mode {
+            luna::section_heading(ui, "Application updates", luna::XpIcon::Import);
+        } else {
+            ui.label(
+                RichText::new("Application updates")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
+        }
         ui.small("Optional release notices for apps published on GitHub. RiceWine never downloads or runs a publisher EXE without your explicit selection.");
         ui.label("GitHub repository (owner/repo)");
         ui.add(
@@ -2107,7 +2147,7 @@ impl RiceWineApp {
                     Err(error) => self.notice = Some((true, error)),
                 }
             }
-            if ui.button("Reload saved runner").clicked() {
+            if luna::action(ui, "Reload saved runner", true, luna_mode).clicked() {
                 self.sync_runner_draft();
             }
         });
@@ -2153,11 +2193,15 @@ impl RiceWineApp {
         ui.small("A publisher update can overwrite installed app files. Back up the prefix first. Successful setup does not prove the app version changed.");
         ui.add_space(12.0);
         ui.separator();
-        ui.label(
-            RichText::new("Compatibility tools")
-                .strong()
-                .color(self.theme.palette().text),
-        );
+        if luna_mode {
+            luna::section_heading(ui, "Compatibility components", luna::XpIcon::Settings);
+        } else {
+            ui.label(
+                RichText::new("Compatibility tools")
+                    .strong()
+                    .color(self.theme.palette().text),
+            );
+        }
         ui.small("Winetricks modifies the selected prefix. Apply components only when the program requires them. DXVK and VKD3D are provided by the installed Winetricks version.");
         ui.horizontal(|ui| {
             egui::ComboBox::from_id_salt("winetricks_component")
@@ -2183,7 +2227,10 @@ impl RiceWineApp {
         });
         ui.add_space(12.0);
         ui.separator();
-        if ui.button("Read recent Wine log").clicked() {
+        if luna_mode {
+            luna::section_heading(ui, "Diagnostic log", luna::XpIcon::Disk);
+        }
+        if luna::action(ui, "Read recent Wine log", true, luna_mode).clicked() {
             self.log_preview = self
                 .store
                 .as_ref()

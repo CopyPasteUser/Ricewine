@@ -3365,7 +3365,7 @@ impl eframe::App for RiceWineApp {
                     .raw
                     .dropped_files
                     .iter()
-                    .find_map(|file| file.path.clone())
+                    .find_map(|file| file.path().map(|path| path.to_path_buf()))
             })
         {
             let supported = path

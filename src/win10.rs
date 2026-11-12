@@ -21,7 +21,8 @@ pub fn brand(ui: &mut egui::Ui) {
         let space = 3.0;
         for row in 0..2 {
             for col in 0..2 {
-                let origin = rect.min + egui::vec2(col as f32 * (w + space), row as f32 * (w + space));
+                let origin =
+                    rect.min + egui::vec2(col as f32 * (w + space), row as f32 * (w + space));
                 ui.painter().rect_filled(
                     egui::Rect::from_min_size(origin, egui::vec2(w, w)),
                     0.0,
@@ -32,14 +33,23 @@ pub fn brand(ui: &mut egui::Ui) {
         ui.add_space(6.0);
         ui.vertical(|ui| {
             ui.label(RichText::new("RiceWine").size(19.0).strong().color(TEXT));
-            ui.label(RichText::new("Windows apps on Linux").size(11.0).color(MUTED));
+            ui.label(
+                RichText::new("Windows apps on Linux")
+                    .size(11.0)
+                    .color(MUTED),
+            );
         });
     });
 }
 
 pub fn section(ui: &mut egui::Ui, title: &str) {
     ui.add_space(14.0);
-    ui.label(RichText::new(title.to_uppercase()).size(10.0).strong().color(MUTED));
+    ui.label(
+        RichText::new(title.to_uppercase())
+            .size(10.0)
+            .strong()
+            .color(MUTED),
+    );
     ui.add_space(6.0);
 }
 
@@ -64,11 +74,11 @@ pub fn heading(ui: &mut egui::Ui, title: &str, description: &str) {
 }
 
 pub fn primary_action(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response {
-    let button = egui::Button::new(
-        RichText::new(label)
-            .size(13.0)
-            .color(if enabled { Color32::WHITE } else { MUTED }),
-    )
+    let button = egui::Button::new(RichText::new(label).size(13.0).color(if enabled {
+        Color32::WHITE
+    } else {
+        MUTED
+    }))
     .fill(if enabled { BLUE } else { SIDEBAR })
     .stroke(egui::Stroke::NONE);
     ui.add_enabled(enabled, button)
@@ -130,7 +140,11 @@ pub fn status_bar(ui: &mut egui::Ui, status: &str) {
             ui.horizontal(|ui| {
                 ui.label(RichText::new(status).size(11.0).color(MUTED));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(RichText::new("RiceWine · Windows 10").size(11.0).color(MUTED));
+                    ui.label(
+                        RichText::new("RiceWine · Windows 10")
+                            .size(11.0)
+                            .color(MUTED),
+                    );
                 });
             });
         });

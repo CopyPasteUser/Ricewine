@@ -12,6 +12,7 @@ pub enum XpIcon {
     Runner,
     Settings,
     Info,
+    Warning,
     Disk,
 }
 
@@ -126,6 +127,19 @@ pub fn paint_icon(p: &Painter, at: Pos2, icon: XpIcon, size: f32) {
             disc(p, at, k, 8.0, 7.7, 5.7, rgb(94, 155, 233));
             block(p, at, k, 7.2, 7.0, 1.7, 5.0, white);
             disc(p, at, k, 8.0, 4.7, 1.1, white);
+        }
+        XpIcon::Warning => {
+            p.add(egui::Shape::convex_polygon(
+                vec![
+                    at + egui::vec2(8.0 * k, 0.0),
+                    at + egui::vec2(16.0 * k, 14.0 * k),
+                    at + egui::vec2(0.0, 14.0 * k),
+                ],
+                rgb(246, 201, 71),
+                Stroke::new(k.max(0.8), rgb(148, 110, 26)),
+            ));
+            block(p, at, k, 7.0, 5.0, 2.0, 5.0, rgb(84, 64, 22));
+            disc(p, at, k, 8.0, 12.0, 1.1, rgb(84, 64, 22));
         }
         XpIcon::Disk => {
             block(p, at, k, 1.0, 3.0, 14.0, 11.0, rgb(75, 89, 115));

@@ -211,10 +211,8 @@ impl Theme {
             visuals.widgets.active.fg_stroke.color = Color32::from_rgb(25, 52, 108);
             let border = egui::Stroke::new(1.0, Color32::from_rgb(118, 148, 194));
             visuals.widgets.inactive.bg_stroke = border;
-            visuals.widgets.hovered.bg_stroke = egui::Stroke::new(
-                1.0,
-                Color32::from_rgb(238, 150, 40),
-            );
+            visuals.widgets.hovered.bg_stroke =
+                egui::Stroke::new(1.0, Color32::from_rgb(238, 150, 40));
             visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, palette.accent);
         }
         visuals.window_corner_radius = egui::CornerRadius::same(palette.corner_radius);
@@ -1307,30 +1305,24 @@ impl RiceWineApp {
 
     fn page_body(&mut self, ui: &mut egui::Ui) {
         if let Some((is_error, message)) = self.notice.clone() {
-            let color = if is_error {
-                self.theme.error()
-            } else {
-                self.theme.accent()
-            };
-            ui.horizontal(|ui| {
-                if self.theme == Theme::Luna {
-                    let (rect, _) = ui.allocate_exact_size(
-                        egui::vec2(16.0, 16.0),
-                        egui::Sense::hover(),
-                    );
-                    luna_icons::paint_icon(
-                        ui.painter(),
-                        rect.min,
-                        luna::XpIcon::Info,
-                        16.0,
-                    );
-                }
-                ui.colored_label(color, message);
-                if ui.small_button("×").clicked() {
+            if self.theme == Theme::Luna {
+                if luna::notice(ui, is_error, &message) {
                     self.notice = None;
                 }
-            });
-            ui.separator();
+            } else {
+                let color = if is_error {
+                    self.theme.error()
+                } else {
+                    self.theme.accent()
+                };
+                ui.horizontal(|ui| {
+                    ui.colored_label(color, message);
+                    if ui.small_button("×").clicked() {
+                        self.notice = None;
+                    }
+                });
+                ui.separator();
+            }
         }
         match self.page {
             Page::Library => self.library(ui),
@@ -1357,7 +1349,13 @@ impl RiceWineApp {
             luna::MenuAction::About => self.about_open = true,
             _ => {}
         }
-        luna::application_toolbar(ui, self.page.label());
+        match luna::application_toolbar(ui, self.page.label()) {
+            luna::MenuAction::Library => self.page = Page::Library,
+            luna::MenuAction::Prefixes => self.page = Page::Prefixes,
+            luna::MenuAction::Runners => self.page = Page::Runners,
+            luna::MenuAction::Settings => self.page = Page::Settings,
+            _ => {}
+        }
         ui.add_space(5.0);
         let available_height = (ui.available_height() - 27.0).max(250.0);
         ui.horizontal_top(|ui| {
@@ -1532,7 +1530,11 @@ impl RiceWineApp {
                                 });
                             });
                     }
-                    let row_height = if self.theme == Theme::Luna { 28.0 } else { 42.0 };
+                    let row_height = if self.theme == Theme::Luna {
+                        28.0
+                    } else {
+                        42.0
+                    };
                     egui::ScrollArea::vertical().show_rows(
                         ui,
                         row_height,

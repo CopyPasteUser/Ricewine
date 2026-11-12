@@ -2,6 +2,7 @@
 
 use crate::luna_icons::paint_icon;
 pub use crate::luna_icons::XpIcon;
+use crate::luna_icons::paint_icon;
 
 use eframe::egui::{self, Align2, Color32, FontId, Painter, Rect, RichText, Sense, Stroke};
 
@@ -75,49 +76,133 @@ pub fn application_menu(ui: &mut egui::Ui) -> MenuAction {
     action
 }
 
-/// Explorer-era address toolbar. This is an application control, never a
-/// simulated title bar: the compositor and RiceBowl own window decorations.
-pub fn application_toolbar(ui: &mut egui::Ui, section: &str) {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 35.0), Sense::hover());
-    let painter = ui.painter_at(rect);
-    gradient(
-        &painter,
-        rect,
-        Color32::from_rgb(255, 255, 255),
-        Color32::from_rgb(226, 232, 243),
+/// Functional Explorer controls inside the app; the OS/RiceBowl owns the
+/// window frame and titlebar. Back/Home always return to Library.
+pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
+    let mut action = MenuAction::None;
+    egui::Frame::new()
+        .fill(Color32::from_rgb(236, 235, 229))
+        .stroke(Stroke::new(1.0, Color32::from_rgb(171, 179, 189)))
+        .inner_margin(egui::Margin::symmetric(8, 5))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        section != "Library",
+                        egui::Button::new("◀ Back").min_size(egui::vec2(65.0, 24.0)),
+                    )
+                    .clicked()
+                {
+                    action = MenuAction::Library;
+                }
+                if ui.button("Home").clicked() {
+                    action = MenuAction::Library;
+                }
+                ui.separator();
+                let (icon, _) =
+                    ui.allocate_exact_size(egui::vec2(18.0, 18.0), Sense::hover());
+                paint_icon(ui.painter(), icon.min, XpIcon::Programs, 16.0);
+                ui.label(RichText::new("Address").size(12.0));
+                egui::Frame::new()
+                    .fill(Color32::WHITE)
+                    .stroke(Stroke::new(1.0, Color32::from_rgb(133, 150, 178)))
+                    .inner_margin(egui::Margin::symmetric(7, 4))
+                    .show(ui, |ui| {
+                        ui.label(
+                            RichText::new(format!("RiceWine  ›  {section}"))
+                                .size(12.0)
+                                .color(Color32::from_rgb(36, 60, 116)),
+                        );
+                    });
+                ui.menu_button("▾", |ui| {
+                    for (label, destination) in [
+                        ("Library", MenuAction::Library),
+                        ("Prefixes", MenuAction::Prefixes),
+                        ("Runners", MenuAction::Runners),
+                        ("Settings", MenuAction::Settings),
+                    ] {
+                        if ui.button(label).clicked() {
+                            action = destination;
+                            ui.close();
+                        }
+                    }
+                });
+            });
+        });
+    action
+}
+
+/// Reusable XP action control. Other Rices retain native egui controls.
+pub fn action(
+    ui: &mut egui::Ui,
+    label: &str,
+    enabled: bool,
+    luna: bool,
+) -> egui::Response {
+    if luna {
+        xp_button(ui, label, enabled)
+    } else {
+        ui.add_enabled(enabled, egui::Button::new(label))
+    }
+}
+
+/// Control Panel-style section heading with original era-inspired icon.
+pub fn section_heading(ui: &mut egui::Ui, title: &str, icon: XpIcon) {
+    ui.add_space(6.0);
+    ui.horizontal(|ui| {
+        let (rect, _) =
+            ui.allocate_exact_size(egui::vec2(20.0, 20.0), Sense::hover());
+        paint_icon(ui.painter(), rect.min, icon, 18.0);
+        ui.label(
+            RichText::new(title)
+                .size(13.0)
+                .strong()
+                .color(NAV_BLUE),
+        );
+    });
+    let (rect, _) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 2.0), Sense::hover());
+    ui.painter().line_segment(
+        [rect.left_top(), rect.right_top()],
+        Stroke::new(1.0, Color32::from_rgb(147, 176, 221)),
     );
-    painter.line_segment(
-        [
-            rect.left_bottom() - egui::vec2(0.0, 1.0),
-            rect.right_bottom() - egui::vec2(0.0, 1.0),
-        ],
-        Stroke::new(1.0, Color32::from_rgb(153, 167, 189)),
-    );
-    painter.text(
-        rect.left_center() + egui::vec2(13.0, 0.0),
-        Align2::LEFT_CENTER,
-        "Address",
-        FontId::proportional(12.0),
-        Color32::from_rgb(55, 61, 72),
-    );
-    let field = Rect::from_min_max(
-        rect.left_top() + egui::vec2(72.0, 5.0),
-        rect.right_bottom() - egui::vec2(12.0, 5.0),
-    );
-    painter.rect_filled(field, egui::CornerRadius::same(1), Color32::WHITE);
-    painter.rect_stroke(
-        field,
-        egui::CornerRadius::same(1),
-        Stroke::new(1.0, Color32::from_rgb(132, 150, 176)),
-        egui::StrokeKind::Inside,
-    );
-    painter.text(
-        field.left_center() + egui::vec2(9.0, 0.0),
-        Align2::LEFT_CENTER,
-        format!("RiceWine  ›  {section}"),
-        FontId::proportional(12.0),
-        Color32::from_rgb(36, 50, 82),
-    );
+    ui.add_space(3.0);
+}
+
+/// Classic system notification, keeps an accessible real dismiss control.
+pub fn notice(ui: &mut egui::Ui, error: bool, message: &str) -> bool {
+    let mut close = false;
+    let fill = if error {
+        Color32::from_rgb(255, 248, 224)
+    } else {
+        Color32::from_rgb(237, 247, 255)
+    };
+    egui::Frame::new()
+        .fill(fill)
+        .stroke(Stroke::new(1.0, Color32::from_rgb(152, 182, 219)))
+        .inner_margin(egui::Margin::symmetric(8, 6))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                let (rect, _) =
+                    ui.allocate_exact_size(egui::vec2(19.0, 19.0), Sense::hover());
+                paint_icon(
+                    ui.painter(),
+                    rect.min,
+                    if error { XpIcon::Warning } else { XpIcon::Info },
+                    18.0,
+                );
+                ui.label(
+                    RichText::new(message)
+                        .size(12.0)
+                        .color(Color32::from_rgb(47, 58, 77)),
+                );
+                close = ui
+                    .small_button("×")
+                    .on_hover_text("Dismiss notification")
+                    .clicked();
+            });
+        });
+    close
 }
 
 pub fn task_header(ui: &mut egui::Ui, heading: &str) {
@@ -230,11 +315,17 @@ pub fn xp_button(ui: &mut egui::Ui, text: &str, enabled: bool) -> egui::Response
             Color32::from_rgb(125, 140, 164)
         };
         ui.painter().line_segment(
-            [r.left_top() + egui::vec2(2.0, 1.0), r.right_top() - egui::vec2(2.0, -1.0)],
+            [
+                r.left_top() + egui::vec2(2.0, 1.0),
+                r.right_top() - egui::vec2(2.0, -1.0),
+            ],
             Stroke::new(1.0, light),
         );
         ui.painter().line_segment(
-            [r.left_bottom() + egui::vec2(2.0, -1.0), r.right_bottom() - egui::vec2(2.0, 1.0)],
+            [
+                r.left_bottom() + egui::vec2(2.0, -1.0),
+                r.right_bottom() - egui::vec2(2.0, 1.0),
+            ],
             Stroke::new(1.0, dark),
         );
     }
@@ -243,12 +334,7 @@ pub fn xp_button(ui: &mut egui::Ui, text: &str, enabled: bool) -> egui::Response
 
 /// XP-like bordered option group. Unlike a card, this follows the traditional
 /// Control Panel fieldset hierarchy and leaves all children interactive.
-pub fn option_group(
-    ui: &mut egui::Ui,
-    title: &str,
-    icon: XpIcon,
-    add: impl FnOnce(&mut egui::Ui),
-) {
+pub fn option_group(ui: &mut egui::Ui, title: &str, icon: XpIcon, add: impl FnOnce(&mut egui::Ui)) {
     ui.horizontal(|ui| {
         let (rect, _) = ui.allocate_exact_size(egui::vec2(19.0, 19.0), Sense::hover());
         paint_icon(ui.painter(), rect.min, icon, 18.0);
@@ -286,7 +372,6 @@ pub fn dialog_intro(ui: &mut egui::Ui, icon: XpIcon, title: &str, subtitle: &str
     ui.add_space(9.0);
 }
 
-
 pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 65.0), Sense::hover());
     let painter = ui.painter_at(rect);
@@ -308,7 +393,12 @@ pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
         "Compatibility Runners" => XpIcon::Runner,
         _ => XpIcon::Settings,
     };
-    paint_icon(&painter, rect.left_top() + egui::vec2(15.0, 16.0), icon, 33.0);
+    paint_icon(
+        &painter,
+        rect.left_top() + egui::vec2(15.0, 16.0),
+        icon,
+        33.0,
+    );
     painter.text(
         rect.left_top() + egui::vec2(57.0, 8.0),
         Align2::LEFT_TOP,

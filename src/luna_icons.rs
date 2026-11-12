@@ -20,7 +20,8 @@ fn rgb(r: u8, g: u8, b: u8) -> Color32 {
     Color32::from_rgb(r, g, b)
 }
 
-fn block(p: &Painter, at: Pos2, k: f32, x: f32, y: f32, w: f32, h: f32, fill: Color32) {
+fn block(p: &Painter, at: Pos2, k: f32, bounds: [f32; 4], fill: Color32) {
+    let [x, y, w, h] = bounds;
     p.rect_filled(
         Rect::from_min_size(at + egui::vec2(x * k, y * k), egui::vec2(w * k, h * k)),
         0.0,
@@ -59,12 +60,12 @@ pub fn paint_icon(p: &Painter, at: Pos2, icon: XpIcon, size: f32) {
     let white = Color32::WHITE;
     match icon {
         XpIcon::Programs => {
-            block(p, at, k, 1.0, 1.0, 14.0, 11.0, navy);
-            block(p, at, k, 2.0, 2.0, 12.0, 9.0, rgb(139, 200, 240));
-            block(p, at, k, 3.0, 3.0, 10.0, 2.0, rgb(201, 239, 255));
-            block(p, at, k, 3.0, 6.0, 10.0, 4.0, rgb(54, 131, 208));
+            block(p, at, k, [1.0, 1.0, 14.0, 11.0], navy);
+            block(p, at, k, [2.0, 2.0, 12.0, 9.0], rgb(139, 200, 240));
+            block(p, at, k, [3.0, 3.0, 10.0, 2.0], rgb(201, 239, 255));
+            block(p, at, k, [3.0, 6.0, 10.0, 4.0], rgb(54, 131, 208));
             segment(p, at, k, [8.0, 12.0], [8.0, 14.0], shadow, 2.0);
-            block(p, at, k, 4.0, 14.0, 8.0, 1.0, shadow);
+            block(p, at, k, [4.0, 14.0, 8.0, 1.0], shadow);
         }
         XpIcon::Install => {
             disc(p, at, k, 6.5, 7.5, 6.4, rgb(94, 100, 144));
@@ -72,23 +73,23 @@ pub fn paint_icon(p: &Painter, at: Pos2, icon: XpIcon, size: f32) {
             segment(p, at, k, [2.0, 5.5], [10.0, 2.0], rgb(167, 224, 250), 2.0);
             segment(p, at, k, [3.0, 11.5], [10.0, 7.0], rgb(223, 186, 233), 2.0);
             disc(p, at, k, 6.5, 7.5, 1.6, rgb(118, 122, 147));
-            block(p, at, k, 9.0, 11.0, 5.0, 3.0, rgb(38, 116, 25));
-            block(p, at, k, 11.0, 8.0, 3.0, 6.0, rgb(79, 181, 44));
+            block(p, at, k, [9.0, 11.0, 5.0, 3.0], rgb(38, 116, 25));
+            block(p, at, k, [11.0, 8.0, 3.0, 6.0], rgb(79, 181, 44));
             segment(p, at, k, [9.0, 12.0], [12.0, 15.0], rgb(46, 127, 26), 2.0);
             segment(p, at, k, [15.0, 12.0], [12.0, 15.0], rgb(46, 127, 26), 2.0);
         }
         XpIcon::Import | XpIcon::Prefix => {
-            block(p, at, k, 1.0, 3.0, 8.0, 3.0, rgb(163, 100, 17));
-            block(p, at, k, 2.0, 3.0, 7.0, 2.0, rgb(255, 211, 108));
-            block(p, at, k, 1.0, 5.0, 14.0, 9.0, rgb(177, 110, 18));
-            block(p, at, k, 2.0, 6.0, 12.0, 7.0, rgb(248, 187, 58));
-            block(p, at, k, 3.0, 7.0, 10.0, 2.0, rgb(255, 226, 121));
+            block(p, at, k, [1.0, 3.0, 8.0, 3.0], rgb(163, 100, 17));
+            block(p, at, k, [2.0, 3.0, 7.0, 2.0], rgb(255, 211, 108));
+            block(p, at, k, [1.0, 5.0, 14.0, 9.0], rgb(177, 110, 18));
+            block(p, at, k, [2.0, 6.0, 12.0, 7.0], rgb(248, 187, 58));
+            block(p, at, k, [3.0, 7.0, 10.0, 2.0], rgb(255, 226, 121));
             if icon == XpIcon::Prefix {
-                block(p, at, k, 7.0, 7.0, 5.0, 7.0, rgb(238, 245, 255));
-                block(p, at, k, 8.0, 9.0, 3.0, 1.0, rgb(64, 130, 213));
-                block(p, at, k, 8.0, 11.0, 3.0, 1.0, rgb(145, 167, 199));
+                block(p, at, k, [7.0, 7.0, 5.0, 7.0], rgb(238, 245, 255));
+                block(p, at, k, [8.0, 9.0, 3.0, 1.0], rgb(64, 130, 213));
+                block(p, at, k, [8.0, 11.0, 3.0, 1.0], rgb(145, 167, 199));
             } else {
-                block(p, at, k, 10.0, 1.0, 2.0, 6.0, rgb(20, 97, 164));
+                block(p, at, k, [10.0, 1.0, 2.0, 6.0], rgb(20, 97, 164));
                 segment(p, at, k, [8.0, 5.0], [11.0, 8.0], rgb(20, 97, 164), 2.0);
                 segment(p, at, k, [14.0, 5.0], [11.0, 8.0], rgb(20, 97, 164), 2.0);
             }
@@ -125,7 +126,7 @@ pub fn paint_icon(p: &Painter, at: Pos2, icon: XpIcon, size: f32) {
         XpIcon::Info => {
             disc(p, at, k, 8.0, 8.0, 7.0, rgb(45, 87, 174));
             disc(p, at, k, 8.0, 7.7, 5.7, rgb(94, 155, 233));
-            block(p, at, k, 7.2, 7.0, 1.7, 5.0, white);
+            block(p, at, k, [7.2, 7.0, 1.7, 5.0], white);
             disc(p, at, k, 8.0, 4.7, 1.1, white);
         }
         XpIcon::Warning => {
@@ -138,16 +139,16 @@ pub fn paint_icon(p: &Painter, at: Pos2, icon: XpIcon, size: f32) {
                 rgb(246, 201, 71),
                 Stroke::new(k.max(0.8), rgb(148, 110, 26)),
             ));
-            block(p, at, k, 7.0, 5.0, 2.0, 5.0, rgb(84, 64, 22));
+            block(p, at, k, [7.0, 5.0, 2.0, 5.0], rgb(84, 64, 22));
             disc(p, at, k, 8.0, 12.0, 1.1, rgb(84, 64, 22));
         }
         XpIcon::Disk => {
-            block(p, at, k, 1.0, 3.0, 14.0, 11.0, rgb(75, 89, 115));
-            block(p, at, k, 2.0, 3.0, 12.0, 9.0, rgb(219, 229, 244));
-            block(p, at, k, 4.0, 4.0, 7.0, 4.0, rgb(96, 151, 210));
-            block(p, at, k, 5.0, 4.0, 3.0, 4.0, rgb(226, 246, 255));
-            block(p, at, k, 4.0, 9.0, 8.0, 4.0, rgb(255, 255, 252));
-            block(p, at, k, 5.0, 10.0, 6.0, 2.0, rgb(153, 187, 219));
+            block(p, at, k, [1.0, 3.0, 14.0, 11.0], rgb(75, 89, 115));
+            block(p, at, k, [2.0, 3.0, 12.0, 9.0], rgb(219, 229, 244));
+            block(p, at, k, [4.0, 4.0, 7.0, 4.0], rgb(96, 151, 210));
+            block(p, at, k, [5.0, 4.0, 3.0, 4.0], rgb(226, 246, 255));
+            block(p, at, k, [4.0, 9.0, 8.0, 4.0], rgb(255, 255, 252));
+            block(p, at, k, [5.0, 10.0, 6.0, 2.0], rgb(153, 187, 219));
         }
     }
 }

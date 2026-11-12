@@ -38,4 +38,7 @@ The maintainer will perform the **manual user acceptance at the 1.0 gate**, not 
 
 29. **Windows 10 visual fidelity:** Verify Settings-style sidebar/navigation, active selection rail, search and the inline app-details workflow on an interactive X11 and Wayland desktop. Test at 780×500 and 1080×700, with keyboard focus. Compare fresh source screenshots and confirm XP/macOS rendering was not altered. Do not count empty-library screenshot generation as proof of a populated-list experience.
 
+30. **Guided setup and errors:** Install with browse, drag-and-drop, and Open With; none may autoexecute the dropped file. Verify filename-derived name suggestions and that user edits persist when choosing another file. Submit invalid data and missing Wine/custom runner configuration and confirm errors appear *inside* the still-open dialog with all fields intact.
+31. **Quick first run:** After installing/importing while a search filter is active, confirm the new program is selected and visible. Test ambiguous, empty and large EXE scans: the UI must stay responsive, busy state must clear on success/error, and picking a suggested EXE must enable launch. A manual picker must remain available.
+
 Release blockers: crashing/blocked UI, data loss, unsafe prefix or runner removal, failed backup restore, broken launcher integration, an unapproved license, or any confirmed Wine/Proton command that launches the wrong runner. Keep real Windows programs out of CI and never treat a mock Wine binary as hardware acceptance.

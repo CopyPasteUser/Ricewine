@@ -281,10 +281,11 @@ impl Page {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct InstallDraft {
     name: String,
     file: String,
+    error: Option<String>,
     portable: bool,
     runner_kind: usize,
     custom_wine: String,
@@ -298,9 +299,41 @@ struct ImportDraft {
     name: String,
     prefix: String,
     executable: String,
+    error: Option<String>,
 }
 
 impl InstallDraft {
+    /// A readable suggestion, never a forced rename: users can edit it before setup.
+    fn suggested_name(path: &std::path::Path) -> String {
+        let raw = path.file_stem().unwrap_or_default().to_string_lossy();
+        let normalized = raw.replace(['_', '-'], " ");
+        let mut words: Vec<&str> = normalized.split_whitespace().collect();
+        if words.last().is_some_and(|word| {
+            matches!(
+                word.to_ascii_lowercase().as_str(),
+                "setup" | "installer" | "install"
+            )
+        }) {
+            words.pop();
+        }
+        let suggested = words.join(" ");
+        if suggested.is_empty() {
+            raw.replace(['_', '-'], " ").trim().to_owned()
+        } else {
+            suggested
+        }
+    }
+
+    fn choose_file(&mut self, path: PathBuf) {
+        let previous_suggestion = Self::suggested_name(std::path::Path::new(&self.file));
+        let replace_name = self.name.trim().is_empty() || self.name == previous_suggestion;
+        self.file = core::readable_path(&path);
+        if replace_name {
+            self.name = Self::suggested_name(&path);
+        }
+        self.error = None;
+    }
+
     fn runner(&self) -> Runner {
         match self.runner_kind {
             1 => Runner::CustomWine {
@@ -321,6 +354,7 @@ impl InstallDraft {
 
 enum Event {
     Installed(Result<(Application, bool), String>),
+    ExecutablesScanned(String, Result<Vec<LaunchCandidate>, String>),
     Started(String, Result<u32, String>),
     Exited(String, Result<String, String>),
     CompatibilityFinished(String, String, Result<(), String>),
@@ -375,6 +409,7 @@ struct RiceWineApp {
     running_controls: HashMap<String, OperationControl>,
     exe_candidates: Vec<LaunchCandidate>,
     exe_candidate_for: Option<String>,
+    exe_scan_busy: HashSet<String>,
     compatibility_busy: HashSet<String>,
     backup_busy: bool,
     backups: Vec<BackupEntry>,
@@ -393,15 +428,9 @@ struct RiceWineApp {
 
 impl RiceWineApp {
     fn install_draft_for_file(path: PathBuf) -> InstallDraft {
-        InstallDraft {
-            name: path
-                .file_stem()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .into_owned(),
-            file: core::readable_path(&path),
-            ..Default::default()
-        }
+        let mut draft = InstallDraft::default();
+        draft.choose_file(path);
+        draft
     }
 
     fn new(ctx: &eframe::CreationContext<'_>, initial_install: Option<PathBuf>) -> Self {
@@ -511,6 +540,7 @@ impl RiceWineApp {
             running_controls: HashMap::new(),
             exe_candidates: Vec::new(),
             exe_candidate_for: None,
+            exe_scan_busy: HashSet::new(),
             compatibility_busy: HashSet::new(),
             backup_busy: false,
             backups,
@@ -557,6 +587,8 @@ impl RiceWineApp {
                                 .add(app)
                             {
                                 Ok(()) => {
+                                    self.page = Page::Library;
+                                    self.search.clear();
                                     self.sync_runner_draft();
                                     self.notice = Some((
                                         false,
@@ -566,7 +598,7 @@ impl RiceWineApp {
                                             )
                                         } else {
                                             format!(
-                                                "{name} added. Scan or choose its launch EXE to enable Play."
+                                                "{name} added. Find its launch EXE automatically or choose one manually to start it."
                                             )
                                         },
                                     ))
@@ -575,6 +607,31 @@ impl RiceWineApp {
                             }
                         }
                         Err(error) => self.notice = Some((true, error)),
+                    }
+                }
+                Event::ExecutablesScanned(id, result) => {
+                    self.exe_scan_busy.remove(&id);
+                    if self.selected.as_deref() == Some(id.as_str()) {
+                        match result {
+                            Ok(candidates) => {
+                                let count = candidates.len();
+                                self.exe_candidate_for = Some(id);
+                                self.exe_candidates = candidates;
+                                self.notice = Some((
+                                    false,
+                                    if count == 0 {
+                                        "No launch EXE found. Choose one manually.".into()
+                                    } else {
+                                        format!(
+                                            "Found {count} possible launch files. Choose the correct one."
+                                        )
+                                    },
+                                ));
+                            }
+                            Err(error) => {
+                                self.notice = Some((true, format!("EXE search: {error}")))
+                            }
+                        }
                     }
                 }
                 Event::Started(id, result) => match result {
@@ -746,6 +803,7 @@ impl RiceWineApp {
             || !self.compatibility_busy.is_empty()
             || !self.storage_busy.is_empty()
             || self.ge_busy
+            || !self.exe_scan_busy.is_empty()
         {
             ctx.request_repaint_after(Duration::from_millis(200));
         }
@@ -767,30 +825,21 @@ impl RiceWineApp {
         self.persist_preferences();
     }
 
-    fn install_async(&mut self, draft: InstallDraft) {
-        let Some(store) = self.store.as_ref() else {
-            return;
-        };
+    fn install_async(&mut self, draft: InstallDraft) -> Result<(), String> {
+        let store = self.store.as_ref().ok_or("Library unavailable")?;
         let profile = PrefixProfile {
             runner: draft.runner(),
             template: draft.template,
             ..Default::default()
         };
-        if let Err(error) = runtime::validate_runner(&profile.runner) {
-            self.notice = Some((true, error));
-            return;
-        }
+        // Validate *before* dismissing the setup dialog; invalid inputs remain editable.
+        runtime::validate_profile(&profile)?;
         if self.wine.is_none() && matches!(profile.runner, Runner::SystemWine) {
-            self.notice = Some((true, "Install Wine or choose a different runner".into()));
-            return;
+            return Err("System Wine is missing. Install Wine, or choose a working runner in Advanced settings.".into());
         }
         let file = PathBuf::from(draft.file.trim());
-        if let Err(error) = core::validate_name(&draft.name)
-            .and_then(|_| core::validate_installer(&file, draft.portable))
-        {
-            self.notice = Some((true, error));
-            return;
-        }
+        core::validate_name(&draft.name)?;
+        core::validate_installer(&file, draft.portable)?;
         self.busy = true;
         let control = OperationControl::default();
         self.install_control = Some(control.clone());
@@ -835,6 +884,7 @@ impl RiceWineApp {
             });
             let _ = tx.send(Event::Installed(result));
         });
+        Ok(())
     }
 
     fn play(&mut self, app: Application) {
@@ -897,6 +947,60 @@ impl RiceWineApp {
                     .collect()
             })
             .unwrap_or_default();
+    }
+
+    /// Bounded prefix scans may traverse thousands of files; never block egui.
+    fn scan_executables_async(&mut self, app: &Application) {
+        if !self.exe_scan_busy.insert(app.id.clone()) {
+            return;
+        }
+        self.exe_candidates.clear();
+        self.exe_candidate_for = None;
+        let id = app.id.clone();
+        let prefix = app.prefix.clone();
+        let name = app.name.clone();
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let result = discovery::scan_executables(&prefix, &name);
+            let _ = sender.send(Event::ExecutablesScanned(id, result));
+        });
+    }
+
+    /// This is the same picker used in the normal first-run flow and advanced tools.
+    fn show_exe_candidates(&mut self, ui: &mut egui::Ui, app: &Application) {
+        if self.exe_candidate_for.as_deref() != Some(app.id.as_str()) {
+            return;
+        }
+        let mut selected = None;
+        for candidate in self.exe_candidates.iter().take(12) {
+            let name = candidate
+                .path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy();
+            if ui
+                .button(format!("Use {name}"))
+                .on_hover_text(core::readable_path(&candidate.path))
+                .clicked()
+            {
+                selected = Some(candidate.path.clone());
+            }
+        }
+        if let Some(path) = selected
+            && let Some(store) = self.store.as_mut()
+        {
+            match store.set_executable(&app.id, path) {
+                Ok(()) => {
+                    self.exe_candidates.clear();
+                    self.exe_candidate_for = None;
+                    self.notice = Some((
+                        false,
+                        "Launch EXE selected. You can now start the program.".into(),
+                    ));
+                }
+                Err(error) => self.notice = Some((true, error)),
+            }
+        }
     }
 
     fn sync_runner_draft(&mut self) {
@@ -1686,6 +1790,9 @@ impl RiceWineApp {
             }
         });
         ui.add_space(if luna_mode { 5.0 } else { 10.0 });
+        if self.store.is_some() {
+            ui.small("Tip: Drop an EXE or MSI into this window to open its installation form.");
+        }
         ui.horizontal(|ui| {
             if !win10_mode {
                 ui.label(if luna_mode { "Search for:" } else { "Search" });
@@ -1895,18 +2002,39 @@ impl RiceWineApp {
                         }
                     }
                     if app.executable.is_none() {
-                        ui.small("Choose the program's EXE file to enable Play.");
-                        if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
-                            && let Some(path) = rfd::FileDialog::new()
-                                .add_filter("Windows program", &["exe"])
-                                .pick_file()
-                            && let Some(store) = self.store.as_mut()
-                        {
-                            self.notice = Some(match store.set_executable(&app.id, path) {
-                                Ok(()) => (false, "Launch executable saved".into()),
-                                Err(error) => (true, error),
+                        ui.small("One step left: select the EXE that starts this program.");
+                        ui.horizontal_wrapped(|ui| {
+                            if luna::action(
+                                ui,
+                                "Find EXE automatically",
+                                !self.exe_scan_busy.contains(&app.id),
+                                luna_mode,
+                            )
+                            .clicked()
+                            {
+                                self.scan_executables_async(&app);
+                            }
+                            if luna::action(ui, "Choose EXE manually…", true, luna_mode).clicked()
+                                && let Some(path) = rfd::FileDialog::new()
+                                    .add_filter("Windows program", &["exe"])
+                                    .pick_file()
+                                && let Some(store) = self.store.as_mut()
+                            {
+                                self.notice = Some(match store.set_executable(&app.id, path) {
+                                    Ok(()) => {
+                                        (false, "Launch EXE selected. Ready to start.".into())
+                                    }
+                                    Err(error) => (true, error),
+                                });
+                            }
+                        });
+                        if self.exe_scan_busy.contains(&app.id) {
+                            ui.horizontal(|ui| {
+                                ui.spinner();
+                                ui.small("Looking for installed programs…");
                             });
                         }
+                        self.show_exe_candidates(ui, &app);
                     }
                     ui.add_space(14.0);
                     ui.collapsing("More options · rename, runner, files, remove", |ui| {
@@ -1927,7 +2055,9 @@ impl RiceWineApp {
                                     let updated = store.get(&app.id).cloned();
                                     if let Some(updated) = updated
                                         && let Ok(path) = integration::application_directory()
-                                        && path.join(format!("ricewine-{}.desktop", app.id)).exists()
+                                        && path
+                                            .join(format!("ricewine-{}.desktop", app.id))
+                                            .exists()
                                         && let Ok(binary) = std::env::current_exe()
                                         && let Err(error) =
                                             integration::install_shortcut(&updated, &binary)
@@ -1962,40 +2092,24 @@ impl RiceWineApp {
                         ui.small(core::readable_path(&app.prefix));
                         ui.add_space(12.0);
                         if app.executable.is_none() {
-                            ui.small("Find or choose the installed EXE to enable Play.");
+                            ui.small("Use the quick EXE finder above to finish setup.");
                         }
-                        if luna::action(ui, "Scan installed EXEs", true, luna_mode).clicked() {
-                            match discovery::scan_executables(&app.prefix, &app.name) {
-                                Ok(candidates) => {
-                                    self.exe_candidates = candidates;
-                                    self.exe_candidate_for = Some(app.id.clone());
-                                    if self.exe_candidates.is_empty() {
-                                        self.notice = Some((
-                                            false,
-                                            "No program executables detected; choose a file manually"
-                                                .into(),
-                                        ));
-                                    }
-                                }
-                                Err(error) => self.notice = Some((true, error)),
-                            }
+                        if luna::action(
+                            ui,
+                            "Scan installed EXEs",
+                            !self.exe_scan_busy.contains(&app.id),
+                            luna_mode,
+                        )
+                        .clicked()
+                        {
+                            self.scan_executables_async(&app);
                         }
-                        if self.exe_candidate_for.as_deref() == Some(&app.id) {
-                            for candidate in self.exe_candidates.iter().take(12) {
-                                let chosen = candidate.path.clone();
-                                let label = chosen.file_name().unwrap_or_default().to_string_lossy();
-                                if ui
-                                    .add(egui::Button::new(format!("Use {label}")))
-                                    .on_hover_text(core::readable_path(&chosen))
-                                    .clicked()
-                                    && let Some(store) = self.store.as_mut()
-                                {
-                                    self.notice = Some(match store.set_executable(&app.id, chosen) {
-                                        Ok(()) => (false, "Launch EXE selected".into()),
-                                        Err(error) => (true, error),
-                                    });
-                                }
-                            }
+                        if self.exe_scan_busy.contains(&app.id) {
+                            ui.spinner();
+                            ui.small("Scanning prefix…");
+                        }
+                        if app.executable.is_some() {
+                            self.show_exe_candidates(ui, &app);
                         }
                         if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new()
@@ -2014,7 +2128,9 @@ impl RiceWineApp {
                                 .map_err(|e| e.to_string())
                                 .and_then(|bin| integration::install_shortcut(&app, &bin));
                             self.notice = Some(match outcome {
-                                Ok(file) => (false, format!("Shortcut created: {}", file.display())),
+                                Ok(file) => {
+                                    (false, format!("Shortcut created: {}", file.display()))
+                                }
                                 Err(error) => (true, error),
                             });
                         }
@@ -2843,21 +2959,43 @@ impl RiceWineApp {
                         ui.small("Select an EXE or MSI; Wine handles the installation.");
                         ui.separator();
                     }
-                    ui.label("Program name");
-                    ui.text_edit_singleline(&mut draft.name);
-                    ui.label("EXE or MSI file");
+                    ui.label(RichText::new("1. Choose a Windows program").strong());
+                    ui.small("Select a setup EXE/MSI, or an EXE that runs without installation.");
+                    ui.add_space(3.0);
                     ui.horizontal(|ui| {
-                        ui.add(egui::TextEdit::singleline(&mut draft.file).desired_width(340.0));
+                        let file_input = ui.add(
+                            egui::TextEdit::singleline(&mut draft.file)
+                                .hint_text("Choose an EXE or MSI file…")
+                                .desired_width(340.0),
+                        );
+                        if file_input.changed() {
+                            draft.error = None;
+                        }
+                        if file_input.lost_focus() && draft.name.trim().is_empty() {
+                            draft.name = InstallDraft::suggested_name(std::path::Path::new(&draft.file));
+                        }
                         if luna::action(ui, "Browse…", true, luna_mode).clicked()
-                            && let Some(file) = rfd::FileDialog::new().add_filter("Windows setup", &["exe", "msi"]).pick_file()
+                            && let Some(file) = rfd::FileDialog::new()
+                                .add_filter("Windows setup", &["exe", "msi"])
+                                .pick_file()
                         {
-                            draft.file = file.to_string_lossy().into_owned();
-                            if draft.name.trim().is_empty() {
-                                draft.name = file.file_stem().unwrap_or_default().to_string_lossy().into_owned();
-                            }
+                            draft.choose_file(file);
                         }
                     });
-                    ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
+                    ui.add_space(8.0);
+                    ui.label(RichText::new("2. Confirm the name").strong());
+                    if ui.add(
+                        egui::TextEdit::singleline(&mut draft.name)
+                            .hint_text("Name shown in your library"),
+                    ).changed() {
+                        draft.error = None;
+                    }
+                    ui.small("Suggested from the filename. You can change it.");
+                    ui.add_space(5.0);
+                    ui.checkbox(&mut draft.portable, "This app is portable (no installer)");
+                    if draft.portable {
+                        ui.small("RiceWine will register this EXE directly instead of running setup.");
+                    }
                     ui.add_space(8.0);
                     ui.collapsing("Advanced settings · Wine, Proton and compatibility", |ui| {
                         if luna_mode {
@@ -2885,7 +3023,14 @@ impl RiceWineApp {
                         });
                         Self::runner_fields(ui, draft);
                     });
-                    ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
+                    ui.small("Windows programs can access your Linux user files. Only run software you trust.");
+                    if let Some(error) = &draft.error {
+                        ui.add_space(5.0);
+                        ui.colored_label(Color32::DARK_RED, error);
+                    }
+                    if draft.file.trim().is_empty() {
+                        ui.small("Choose an EXE/MSI to continue.");
+                    }
                     ui.add_space(9.0);
                     ui.separator();
                     let install_label = if draft.portable {
@@ -2894,22 +3039,14 @@ impl RiceWineApp {
                         "Run installer"
                     };
                     ui.horizontal(|ui| {
+                        let ready = !draft.file.trim().is_empty() && !draft.name.trim().is_empty();
                         let start = if win10_mode {
-                            win10::primary_action(ui, install_label, true)
+                            win10::primary_action(ui, install_label, ready)
                         } else {
-                            luna::action(ui, install_label, true, luna_mode)
+                            luna::action(ui, install_label, ready, luna_mode)
                         };
                         if start.clicked() {
-                            submit = Some(InstallDraft {
-                                name: draft.name.clone(),
-                                file: draft.file.clone(),
-                                portable: draft.portable,
-                                runner_kind: draft.runner_kind,
-                                custom_wine: draft.custom_wine.clone(),
-                                proton_dir: draft.proton_dir.clone(),
-                                game_id: draft.game_id.clone(),
-                                template: draft.template,
-                            });
+                            submit = Some(draft.clone());
                         }
                         let cancel = if win10_mode {
                             win10::secondary_action(ui, "Cancel", true)
@@ -2926,8 +3063,15 @@ impl RiceWineApp {
             self.install = None;
         }
         if let Some(draft) = submit {
-            self.install = None;
-            self.install_async(draft);
+            match self.install_async(draft) {
+                Ok(()) => self.install = None,
+                Err(error) => {
+                    self.notice = Some((true, error.clone()));
+                    if let Some(draft) = &mut self.install {
+                        draft.error = Some(error);
+                    }
+                }
+            }
         }
     }
 
@@ -2956,7 +3100,9 @@ impl RiceWineApp {
                         ui.separator();
                     }
                     ui.label("Program name");
-                    ui.text_edit_singleline(&mut draft.name);
+                    if ui.text_edit_singleline(&mut draft.name).changed() {
+                        draft.error = None;
+                    }
                     if luna_mode {
                         luna::section_heading(ui, "Existing environment", luna::XpIcon::Prefix);
                     }
@@ -2967,6 +3113,7 @@ impl RiceWineApp {
                             && let Some(path) = rfd::FileDialog::new().pick_folder()
                         {
                             draft.prefix = core::readable_path(&path);
+                            draft.error = None;
                         }
                     });
                     ui.label("Existing launch EXE");
@@ -2976,16 +3123,27 @@ impl RiceWineApp {
                             && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
                         {
                             draft.executable = core::readable_path(&path);
+                            if draft.name.trim().is_empty() {
+                                draft.name = InstallDraft::suggested_name(&path);
+                            }
+                            draft.error = None;
                         }
                     });
                     ui.small("Import only registers an existing prefix. Its files are never moved or deleted.");
+                    if let Some(error) = &draft.error {
+                        ui.add_space(5.0);
+                        ui.colored_label(Color32::DARK_RED, error);
+                    }
                     ui.add_space(8.0);
                     ui.separator();
                     ui.horizontal(|ui| {
+                        let ready = !draft.name.trim().is_empty()
+                            && !draft.prefix.trim().is_empty()
+                            && !draft.executable.trim().is_empty();
                         let start = if win10_mode {
-                            win10::primary_action(ui, "Import prefix", true)
+                            win10::primary_action(ui, "Import program", ready)
                         } else {
-                            luna::action(ui, "Import prefix", true, luna_mode)
+                            luna::action(ui, "Import program", ready, luna_mode)
                         };
                         if start.clicked() {
                             imported = Some(core::imported_application(
@@ -3019,6 +3177,8 @@ impl RiceWineApp {
             }) {
                 Ok(id) => {
                     self.selected = Some(id);
+                    self.page = Page::Library;
+                    self.search.clear();
                     self.sync_runner_draft();
                     self.notice = Some((
                         false,
@@ -3026,7 +3186,12 @@ impl RiceWineApp {
                     ));
                     self.import = None;
                 }
-                Err(error) => self.notice = Some((true, error)),
+                Err(error) => {
+                    self.notice = Some((true, error.clone()));
+                    if let Some(draft) = &mut self.import {
+                        draft.error = Some(error);
+                    }
+                }
             }
         }
     }
@@ -3190,6 +3355,33 @@ impl RiceWineApp {
 impl eframe::App for RiceWineApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.poll(ui.ctx());
+        // Drag-and-drop is a shortcut to the same reviewable setup form,
+        // never permission to execute a dropped Windows binary automatically.
+        if self.install.is_none()
+            && !self.busy
+            && self.store.is_some()
+            && let Some(path) = ui.ctx().input(|input| {
+                input.raw.dropped_files.iter().find_map(|file| {
+                    let path = file.path();
+                    (!path.as_os_str().is_empty()).then(|| path.to_path_buf())
+                })
+            })
+        {
+            let supported = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| {
+                    ext.eq_ignore_ascii_case("exe") || ext.eq_ignore_ascii_case("msi")
+                });
+            if supported {
+                self.install = Some(Self::install_draft_for_file(path));
+            } else {
+                self.notice = Some((
+                    true,
+                    "Drop a Windows EXE or MSI to open the installation form.".into(),
+                ));
+            }
+        }
         let panel = if self.theme == Theme::Luna {
             egui::CentralPanel::default().frame(
                 egui::Frame::new()
@@ -3368,6 +3560,31 @@ mod rice_tests {
         let a = luminance(a);
         let b = luminance(b);
         (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    #[test]
+    fn installation_suggests_names_without_erasing_manual_edits() {
+        let mut draft = InstallDraft::default();
+        draft.choose_file(PathBuf::from("/tmp/Example-App_Setup.exe"));
+        assert_eq!(draft.name, "Example App");
+        assert!(draft.file.ends_with("Example-App_Setup.exe"));
+
+        // Choosing another setup replaces only an automatically suggested name.
+        draft.choose_file(PathBuf::from("/tmp/Another_Program_installer.msi"));
+        assert_eq!(draft.name, "Another Program");
+
+        draft.name = "My custom title".into();
+        draft.choose_file(PathBuf::from("/tmp/Third-install.exe"));
+        assert_eq!(draft.name, "My custom title");
+
+        assert_eq!(
+            InstallDraft::suggested_name(std::path::Path::new("setup.exe")),
+            "setup"
+        );
+        assert_eq!(
+            InstallDraft::suggested_name(std::path::Path::new("My_App_1.2.3_Setup.exe")),
+            "My App 1.2.3"
+        );
     }
 
     #[test]

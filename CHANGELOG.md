@@ -2,7 +2,15 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
-## Unreleased – Windows 10 Settings fidelity overhaul
+## Unreleased – simpler install, import and first run
+
+- Guide installations through file selection, automatic app-name suggestion and the default Wine setup; preserve edited names and show validation errors inside the dialog without discarding inputs.
+- Support drag-and-drop EXE/MSI to prefill the existing installation review, never to auto-run Windows code.
+- After install or import, clear stale search filters and reveal the newly registered app in the Library.
+- Offer direct automatic EXE discovery and manual selection when a program has no launch file; move the bounded filesystem scan into a worker thread to keep egui responsive.
+- Keep the three approved visual themes, permissions, safety confirmations and Wine/Proton execution paths intact. Real-desktop acceptance remains outstanding.
+
+## Previous development – Windows 10 Settings fidelity overhaul
 
 - Rework the Windows 10 Rice from a generic dashboard layout to the Apps & features interface of Windows 10 Settings (1809–1909): neutral side navigation, blue selected rail, page-level app actions and native-sized type.
 - Draw distinct 63px app list rows with local window glyphs, two lines of app/runner information and readable status; preserve virtualized scrolling and the cached runner profiles.

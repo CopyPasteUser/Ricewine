@@ -1,6 +1,5 @@
 //! XP Luna Blue application surfaces. Window decorations belong to the compositor.
 
-use crate::luna_icons::paint_icon;
 pub use crate::luna_icons::XpIcon;
 use crate::luna_icons::paint_icon;
 

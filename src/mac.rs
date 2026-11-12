@@ -83,11 +83,7 @@ pub fn program_row(
         [width, 40.0],
         egui::Button::selectable(
             selected,
-            RichText::new(format!("▣  {name}")).size(13.0).color(if selected {
-                ACCENT
-            } else {
-                TEXT
-            }),
+            RichText::new(format!("▣  {name}")).size(13.0),
         ),
     )
 }

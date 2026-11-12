@@ -130,12 +130,18 @@ mod tests {
             let decoded: Appearance = serde_json::from_str(&json).unwrap();
             assert_eq!(decoded, appearance);
         }
-        assert_eq!(serde_json::to_string(&Appearance::MacOS).unwrap(), r#""macos""#);
+        assert_eq!(
+            serde_json::to_string(&Appearance::MacOS).unwrap(),
+            r#""macos""#
+        );
     }
 
     #[test]
     fn desktop_detection_does_not_reintroduce_retired_rices() {
-        assert_eq!(appearance_for_theme("WhiteSur-Dark"), Some(Appearance::MacOS));
+        assert_eq!(
+            appearance_for_theme("WhiteSur-Dark"),
+            Some(Appearance::MacOS)
+        );
         assert_eq!(appearance_for_theme("XP-Luna-Blue"), Some(Appearance::Luna));
         assert_eq!(appearance_for_theme("Windows-10-Dark"), None);
         assert_eq!(appearance_for_theme("Adwaita"), None);

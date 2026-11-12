@@ -72,12 +72,7 @@ pub fn list_header(ui: &mut egui::Ui) {
                         .color(SECONDARY),
                 );
                 ui.add_space(75.0);
-                ui.label(
-                    RichText::new("STATUS")
-                        .size(10.0)
-                        .strong()
-                        .color(SECONDARY),
-                );
+                ui.label(RichText::new("STATUS").size(10.0).strong().color(SECONDARY));
             });
         });
 }
@@ -113,7 +108,10 @@ pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
                 );
                 ui.add_space(14.0);
                 if ui
-                    .add_enabled(can_install, egui::Button::new("＋ Install your first program"))
+                    .add_enabled(
+                        can_install,
+                        egui::Button::new("＋ Install your first program"),
+                    )
                     .clicked()
                 {
                     install_clicked = true;

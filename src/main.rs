@@ -1577,7 +1577,9 @@ impl RiceWineApp {
                 ui.add_space(7.0);
                 luna::empty_library(ui);
             } else if self.theme == Theme::MacOS {
-                mac::empty_library(ui);
+                if mac::empty_library(ui, !self.busy && self.store.is_some()) {
+                    self.install = Some(InstallDraft::default());
+                }
             } else {
                 ui.add_space(45.0);
                 ui.heading("Your library is empty");
@@ -1673,7 +1675,20 @@ impl RiceWineApp {
                                     let label = runtime::load_profile(&app.prefix)
                                         .map(|profile| profile.runner.label())
                                         .unwrap_or("Invalid profile");
-                                    ui.label(label);
+                                    if self.theme == Theme::MacOS {
+                                        let status = if label == "Invalid profile" {
+                                            "Check runner"
+                                        } else if app.executable.is_none() {
+                                            "Choose EXE"
+                                        } else if self.running.contains(&app.id) {
+                                            "Running"
+                                        } else {
+                                            "Ready"
+                                        };
+                                        ui.label(status);
+                                    } else {
+                                        ui.label(label);
+                                    }
                                 });
                             }
                         },

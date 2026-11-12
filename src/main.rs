@@ -3653,22 +3653,69 @@ impl RiceWineApp {
                 });
         }
         if let Some((id, installer)) = self.update_install_confirmation.clone() {
-            egui::Window::new("Run Windows update installer?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {
-                if luna_mode {
-                    luna::dialog_intro(ui, luna::XpIcon::Install, "Run a Windows update?", "Back up the prefix before installing updates.");
-                }
-                ui.label(core::readable_path(&installer));
-                ui.label("The installer runs with the existing application's runner and prefix. Back up the prefix first; only install updates from trusted publishers.");
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() { self.update_install_confirmation = None; }
-                    if luna::action(ui, "Run update now", true, luna_mode).clicked() {
-                        self.update_install_confirmation = None;
-                        if let Some(app) = self.store.as_ref().and_then(|store| store.get(&id)).cloned() {
-                            self.update_app_async(app, installer);
-                        }
+            let app = self
+                .store
+                .as_ref()
+                .and_then(|store| store.get(&id))
+                .cloned();
+            let available = app.is_some()
+                && !self.backup_busy
+                && !self.busy
+                && !self.running.contains(&id)
+                && !self.compatibility_busy.contains(&id);
+            let mut decision = 0u8;
+            egui::Window::new("Run Windows update installer?")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    if luna_mode {
+                        luna::dialog_intro(
+                            ui,
+                            luna::XpIcon::Install,
+                            "Update an installed Windows app?",
+                            "Back up this prefix before running the update.",
+                        );
                     }
+                    if let Some(app) = &app {
+                        ui.label(format!("Program: {}", app.name));
+                    }
+                    ui.label(format!("Installer: {}", core::readable_path(&installer)));
+                    ui.label("Updates execute within the program's existing Wine prefix. Only select installers from trusted publishers.");
+                    ui.small("Back up first creates a prefix archive. You decide separately whether to run this installer.");
+                    if self.backup_busy {
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.small("Creating backup. Update actions are disabled…");
+                        });
+                    }
+                    ui.horizontal_wrapped(|ui| {
+                        if luna::action(ui, "Cancel", true, luna_mode).clicked() {
+                            decision = 1;
+                        }
+                        if luna::action(ui, "Back up prefix first", available, luna_mode).clicked() {
+                            decision = 2;
+                        }
+                        if luna::action(ui, "Run update now", available, luna_mode).clicked() {
+                            decision = 3;
+                        }
+                    });
                 });
-            });
+            match decision {
+                1 => self.update_install_confirmation = None,
+                2 => {
+                    if let Some(app) = app {
+                        self.backup_async(app);
+                    }
+                }
+                3 => {
+                    self.update_install_confirmation = None;
+                    if let Some(app) = app {
+                        self.update_app_async(app, installer);
+                    }
+                }
+                _ => {}
+            }
         }
         if self.ge_install_confirmation {
             egui::Window::new("Download GE-Proton?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {

@@ -97,10 +97,6 @@ impl Theme {
         }
     }
 
-    fn sidebar(self) -> Color32 {
-        self.palette().sidebar
-    }
-
     fn apply(self, ctx: &egui::Context) {
         let palette = self.palette();
         let mut visuals = if palette.dark {
@@ -1150,62 +1146,6 @@ impl RiceWineApp {
         thread::spawn(move || {
             let _ = sender.send(Event::Cleaned(id, storage::cleanup_old_temp(&root, &app)));
         });
-    }
-
-    fn sidebar(&mut self, ui: &mut egui::Ui) {
-        egui::Frame::new()
-            .fill(self.theme.sidebar())
-            .inner_margin(16.0)
-            .show(ui, |ui| {
-                ui.set_min_width(168.0);
-                ui.set_min_height((ui.available_height() - 32.0).max(300.0));
-                ui.add_space(5.0);
-                ui.label(
-                    RichText::new("◈ RiceWine")
-                        .size(24.0)
-                        .strong()
-                        .color(self.theme.accent()),
-                );
-                ui.label(
-                    RichText::new("Wine manager")
-                        .small()
-                        .color(self.theme.palette().muted),
-                );
-                ui.add_space(24.0);
-                for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
-                    let selected = page == self.page;
-                    if ui
-                        .add_sized(
-                            [ui.available_width(), 37.0],
-                            egui::Button::selectable(selected, page.label()),
-                        )
-                        .clicked()
-                    {
-                        self.page = page;
-                    }
-                }
-                ui.add_space(20.0);
-                ui.separator();
-                ui.label(
-                    RichText::new("RICE")
-                        .small()
-                        .strong()
-                        .color(self.theme.palette().muted),
-                );
-                egui::ComboBox::from_id_salt("sidebar_rice")
-                    .width(ui.available_width())
-                    .selected_text(self.theme.label())
-                    .show_ui(ui, |ui| {
-                        for theme in Theme::ALL {
-                            if ui
-                                .selectable_label(self.theme == theme, theme.label())
-                                .clicked()
-                            {
-                                self.set_theme(theme, ui.ctx());
-                            }
-                        }
-                    });
-            });
     }
 
     fn mac_sidebar(&mut self, ui: &mut egui::Ui) {
@@ -2962,22 +2902,8 @@ impl eframe::App for RiceWineApp {
         panel.show(ui, |ui| {
             if self.theme == Theme::Luna {
                 self.luna_shell(ui);
-            } else if self.theme == Theme::MacOS {
-                self.mac_shell(ui);
             } else {
-                let height = ui.available_height();
-                ui.horizontal_top(|ui| {
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(200.0, height),
-                        egui::Layout::top_down(egui::Align::Min),
-                        |ui| self.sidebar(ui),
-                    );
-                    ui.separator();
-                    ui.vertical(|ui| {
-                        ui.add_space(10.0);
-                        self.page_body(ui);
-                    });
-                });
+                self.mac_shell(ui);
             }
         });
         self.install_dialog(ui.ctx());

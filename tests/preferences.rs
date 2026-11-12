@@ -52,22 +52,16 @@ fn ricebowl_theme_detection_is_explicit_and_does_not_guess() {
         Some(Appearance::Luna)
     );
     assert_eq!(
-        preferences::appearance_for_theme("RiceHub-Ten"),
-        Some(Appearance::Windows10)
+        preferences::appearance_for_theme("WhiteSur-Dark"),
+        Some(Appearance::MacOS)
     );
-    assert_eq!(preferences::appearance_for_theme("WhiteSur-Dark"), None);
+    assert_eq!(preferences::appearance_for_theme("RiceHub-Ten"), None);
     assert_eq!(preferences::appearance_for_theme("Adwaita"), None);
 }
 
 #[test]
-fn all_rices_round_trip_without_breaking_old_preferences() {
-    for appearance in [
-        Appearance::Windows10,
-        Appearance::Windows10Dark,
-        Appearance::Luna,
-        Appearance::LunaOlive,
-        Appearance::LunaSilver,
-    ] {
+fn maintained_rices_round_trip_and_legacy_values_remain_readable() {
+    for appearance in [Appearance::Luna, Appearance::MacOS] {
         let preferences = Preferences {
             appearance,
             follow_desktop: false,
@@ -79,9 +73,10 @@ fn all_rices_round_trip_without_breaking_old_preferences() {
         );
     }
 
-    let old = r#"{"appearance":"luna","follow_desktop":true}"#;
-    assert_eq!(
-        serde_json::from_str::<Preferences>(old).unwrap().appearance,
-        Appearance::Luna
-    );
+    for old_name in ["windows10", "windows10_dark", "luna_olive", "luna_silver"] {
+        let json = format!(r#"{{"appearance":"{old_name}","follow_desktop":true}}"#);
+        let result = serde_json::from_str::<Preferences>(&json).unwrap();
+        assert_eq!(result.appearance, Appearance::Luna);
+        assert!(result.follow_desktop);
+    }
 }

@@ -2,7 +2,7 @@
 
 **A lightweight Wine & Proton manager for Linux, built with Rust.**
 
-Install, organize and launch Windows applications in separate Wine prefixes — with a native desktop UI and five built-in Rices. Works standalone or alongside RiceBowl; no background service required.
+Install, organize and launch Windows applications in separate Wine prefixes — with a native desktop UI and two maintained Rices. Works standalone or alongside RiceBowl; no background service required.
 
 > **Version 2.0.0-beta.1** · Feature-complete software beta. Real Wine/Proton and X11/Wayland acceptance remains outstanding; this is **not** a stable release.
 
@@ -16,7 +16,9 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 - **Desktop integration:** application-menu shortcuts, optional *Open With RiceWine* and read-only RiceBowl theme detection.
 - **Diagnostics:** live status, logs, library verification and a few useful CLI commands.
 
-## Built-in Rices
+## Maintained Rices
+
+**macOS** has its own Finder-inspired application shell with a grouped navigation sidebar, compact toolbar with real install/import actions, subtle list treatment and a status bar. It styles only RiceWine's interior; the compositor still renders the actual window decorations. This is a new implementation, pending real X11/Wayland visual acceptance.
 
 **XP Luna Blue** now uses a dedicated XP-era application UI: functional Explorer menus and address navigation, shaded task panes, original application icons, beveled controls, compact classic forms, and consistent management pages. **The native titlebar and window borders are never replaced**; RiceBowl/the Linux compositor owns them.
 
@@ -34,7 +36,7 @@ These are six genuine screenshots from the Linux build (including real, isolated
 | :---: | :---: |
 | ![XP Luna Blue — install form](docs/screenshots/luna-install.webp) | ![XP Luna Blue — import form](docs/screenshots/luna-import.webp) |
 
-Windows 10 Light/Dark and XP Luna Olive/Silver remain available but are not part of the current visual refresh. Switch in **Settings**; Rice choice persists across restarts and does not alter your desktop or Wine configuration.
+Only **macOS** and **XP Luna Blue** are offered in Settings. The incomplete Windows 10 Light/Dark and XP Luna Olive/Silver experiments were retired. Existing preferences referencing those variants automatically fall back to Luna Blue; the program catalog, prefixes, backups and runner settings are untouched. Manual selection persists across restarts and does not change the Linux desktop or Wine configuration.
 
 ## Install
 
@@ -84,7 +86,7 @@ ricewine --snapshot-library
 
 | Milestone | Status |
 | --- | --- |
-| 0.1–1.0 RC3 · core, backups, desktop integration and five Rices | Implemented |
+| 0.1–1.0 RC3 · core, backups and desktop integration | Implemented |
 | **2.0 beta 1 · process control, discovery, managed GE-Proton, disk tools, presets and updates** | **Implemented; automated checks required** |
 | 2.0 stable · real app tests, X11/Wayland review, recovery and performance | Awaiting manual acceptance |
 

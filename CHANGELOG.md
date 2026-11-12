@@ -2,7 +2,14 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
-## Unreleased – XP Luna Blue complete application UI overhaul
+## Unreleased – curated Rices and macOS interface
+
+- Add a Finder-inspired macOS application shell with dedicated navigation, toolbar, program list and status surfaces. The Linux compositor remains responsible for native window borders.
+- Retire the incomplete Windows 10 Light/Dark and XP Luna Olive/Silver variants. Keep the thoroughly developed XP Luna Blue Rice; the picker now contains exactly two Rices.
+- Transparently migrate saved legacy appearance names to Luna Blue. Add serialized appearance, migration and desktop-detection regression tests. Existing program and prefix data is not changed.
+- Update user documentation and manual desktop-acceptance coverage; visual and functional acceptance on real X11/Wayland systems remains outstanding.
+
+## Previous development – XP Luna Blue application UI overhaul
 
 - Replace the Luna-only interior with functional full-width Explorer menus and navigation, classic shaded task panes, compact forms, original XP-era-style icons and coherent focus/hover/pressed states; preserve OS-owned window decorations.
 - Rework Library details, Prefix backup/cleanup, Wine/Proton runner diagnostics and settings into grouped management surfaces while retaining all existing operations and guards.

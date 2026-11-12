@@ -615,7 +615,10 @@ impl RiceWineApp {
                                     self.search.clear();
                                     self.workspace.filter = LibraryFilter::All;
                                     if let Err(error) = self.persist_workspace() {
-                                        self.notice = Some((true, format!("Could not save Library view: {error}")));
+                                        self.notice = Some((
+                                            true,
+                                            format!("Could not save Library view: {error}"),
+                                        ));
                                     }
                                     self.sync_runner_draft();
                                     self.notice = Some((
@@ -670,7 +673,9 @@ impl RiceWineApp {
                             Ok(()) => (false, format!("Program started (PID {pid})")),
                             Err(error) => (
                                 true,
-                                format!("Program started (PID {pid}), but recent history could not be saved: {error}"),
+                                format!(
+                                    "Program started (PID {pid}), but recent history could not be saved: {error}"
+                                ),
                             ),
                         });
                     }
@@ -893,7 +898,10 @@ impl RiceWineApp {
         }
         ui.small("Check launch files, prefixes and Wine/Proton runners without changing anything.");
         if ui
-            .add_enabled(!self.doctor_busy && self.store.is_some(), egui::Button::new("Check now"))
+            .add_enabled(
+                !self.doctor_busy && self.store.is_some(),
+                egui::Button::new("Check now"),
+            )
             .clicked()
         {
             self.scan_health();
@@ -1924,7 +1932,11 @@ impl RiceWineApp {
                     .show_ui(ui, |ui| {
                         for filter in LibraryFilter::ALL {
                             workspace_changed |= ui
-                                .selectable_value(&mut self.workspace.filter, filter, filter.label())
+                                .selectable_value(
+                                    &mut self.workspace.filter,
+                                    filter,
+                                    filter.label(),
+                                )
                                 .changed();
                         }
                     });
@@ -1942,9 +1954,7 @@ impl RiceWineApp {
                     });
             });
         });
-        if workspace_changed
-            && let Err(error) = self.persist_workspace()
-        {
+        if workspace_changed && let Err(error) = self.persist_workspace() {
             self.notice = Some((true, format!("Could not save Library view: {error}")));
         }
         if self.store.is_none() {
@@ -1974,12 +1984,17 @@ impl RiceWineApp {
         let matching_indices: Vec<usize> = self
             .store
             .as_ref()
-            .map(|store| self.workspace.ordered_indices(store.applications(), &self.search))
+            .map(|store| {
+                self.workspace
+                    .ordered_indices(store.applications(), &self.search)
+            })
             .unwrap_or_default();
         ui.small(format!("{} matching program(s)", matching_indices.len()));
         if matching_indices.is_empty() {
             if self.workspace.filter == LibraryFilter::Favorites {
-                ui.label("No favorite programs match. Choose 'All programs' or mark one as favorite.");
+                ui.label(
+                    "No favorite programs match. Choose 'All programs' or mark one as favorite.",
+                );
             } else {
                 ui.label("No matching programs. Clear the search to show the library.");
             }
@@ -2064,7 +2079,12 @@ impl RiceWineApp {
                                                 width - 112.0,
                                             )
                                         } else {
-                                            mac::program_row(ui, &display_name, selected, width - 112.0)
+                                            mac::program_row(
+                                                ui,
+                                                &display_name,
+                                                selected,
+                                                width - 112.0,
+                                            )
                                         };
                                         if response.clicked() {
                                             next_selected = Some(app.id.clone());

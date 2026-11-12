@@ -2791,6 +2791,7 @@ impl RiceWineApp {
         let mut keep_open = true;
         let mut cancel_dialog = false;
         let luna_mode = self.theme == Theme::Luna;
+        let win10_mode = self.theme == Theme::Windows10;
         if let Some(draft) = &mut self.install {
             egui::Window::new("Install Windows program")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -2809,6 +2810,10 @@ impl RiceWineApp {
                     }
                     if luna_mode {
                         luna::section_heading(ui, "Program information", luna::XpIcon::Programs);
+                    } else if win10_mode {
+                        ui.label(RichText::new("Install a Windows app").size(20.0).color(win10::TEXT));
+                        ui.small("Select an EXE or MSI; Wine handles the installation.");
+                        ui.separator();
                     }
                     ui.label("Program name");
                     ui.text_edit_singleline(&mut draft.name);
@@ -2861,7 +2866,12 @@ impl RiceWineApp {
                         "Run installer"
                     };
                     ui.horizontal(|ui| {
-                        if luna::action(ui, install_label, true, luna_mode).clicked() {
+                        let start = if win10_mode {
+                            win10::primary_action(ui, install_label, true)
+                        } else {
+                            luna::action(ui, install_label, true, luna_mode)
+                        };
+                        if start.clicked() {
                             submit = Some(InstallDraft {
                                 name: draft.name.clone(),
                                 file: draft.file.clone(),
@@ -2873,7 +2883,12 @@ impl RiceWineApp {
                                 template: draft.template,
                             });
                         }
-                        if luna::action(ui, "Cancel", true, luna_mode).clicked() {
+                        let cancel = if win10_mode {
+                            win10::secondary_action(ui, "Cancel", true)
+                        } else {
+                            luna::action(ui, "Cancel", true, luna_mode)
+                        };
+                        if cancel.clicked() {
                             cancel_dialog = true;
                         }
                     });
@@ -2893,6 +2908,7 @@ impl RiceWineApp {
         let mut cancel_dialog = false;
         let mut imported = None;
         let luna_mode = self.theme == Theme::Luna;
+        let win10_mode = self.theme == Theme::Windows10;
         if let Some(draft) = &mut self.import {
             egui::Window::new("Import existing Wine prefix")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -2906,6 +2922,10 @@ impl RiceWineApp {
                             "Import an existing prefix",
                             "Register a program without moving any of its files.",
                         );
+                    } else if win10_mode {
+                        ui.label(RichText::new("Import a Wine environment").size(20.0).color(win10::TEXT));
+                        ui.small("Register an existing program without moving its files.");
+                        ui.separator();
                     }
                     ui.label("Program name");
                     ui.text_edit_singleline(&mut draft.name);
@@ -2934,14 +2954,24 @@ impl RiceWineApp {
                     ui.add_space(8.0);
                     ui.separator();
                     ui.horizontal(|ui| {
-                        if luna::action(ui, "Import prefix", true, luna_mode).clicked() {
+                        let start = if win10_mode {
+                            win10::primary_action(ui, "Import prefix", true)
+                        } else {
+                            luna::action(ui, "Import prefix", true, luna_mode)
+                        };
+                        if start.clicked() {
                             imported = Some(core::imported_application(
                                 &draft.name,
                                 &PathBuf::from(draft.prefix.trim()),
                                 &PathBuf::from(draft.executable.trim()),
                             ));
                         }
-                        if luna::action(ui, "Cancel", true, luna_mode).clicked() {
+                        let cancel = if win10_mode {
+                            win10::secondary_action(ui, "Cancel", true)
+                        } else {
+                            luna::action(ui, "Cancel", true, luna_mode)
+                        };
+                        if cancel.clicked() {
                             cancel_dialog = true;
                         }
                     });

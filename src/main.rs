@@ -2854,21 +2854,43 @@ impl RiceWineApp {
                         ui.small("Select an EXE or MSI; Wine handles the installation.");
                         ui.separator();
                     }
-                    ui.label("Program name");
-                    ui.text_edit_singleline(&mut draft.name);
-                    ui.label("EXE or MSI file");
+                    ui.label(RichText::new("1. Choose a Windows program").strong());
+                    ui.small("Select a setup EXE/MSI, or an EXE that runs without installation.");
+                    ui.add_space(3.0);
                     ui.horizontal(|ui| {
-                        ui.add(egui::TextEdit::singleline(&mut draft.file).desired_width(340.0));
+                        let file_input = ui.add(
+                            egui::TextEdit::singleline(&mut draft.file)
+                                .hint_text("Choose an EXE or MSI file…")
+                                .desired_width(340.0),
+                        );
+                        if file_input.changed() {
+                            draft.error = None;
+                        }
+                        if file_input.lost_focus() && draft.name.trim().is_empty() {
+                            draft.name = InstallDraft::suggested_name(std::path::Path::new(&draft.file));
+                        }
                         if luna::action(ui, "Browse…", true, luna_mode).clicked()
-                            && let Some(file) = rfd::FileDialog::new().add_filter("Windows setup", &["exe", "msi"]).pick_file()
+                            && let Some(file) = rfd::FileDialog::new()
+                                .add_filter("Windows setup", &["exe", "msi"])
+                                .pick_file()
                         {
-                            draft.file = file.to_string_lossy().into_owned();
-                            if draft.name.trim().is_empty() {
-                                draft.name = file.file_stem().unwrap_or_default().to_string_lossy().into_owned();
-                            }
+                            draft.choose_file(file);
                         }
                     });
-                    ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
+                    ui.add_space(8.0);
+                    ui.label(RichText::new("2. Confirm the name").strong());
+                    if ui.add(
+                        egui::TextEdit::singleline(&mut draft.name)
+                            .hint_text("Name shown in your library"),
+                    ).changed() {
+                        draft.error = None;
+                    }
+                    ui.small("Suggested from the filename. You can change it.");
+                    ui.add_space(5.0);
+                    ui.checkbox(&mut draft.portable, "This app is portable (no installer)");
+                    if draft.portable {
+                        ui.small("RiceWine will register this EXE directly instead of running setup.");
+                    }
                     ui.add_space(8.0);
                     ui.collapsing("Advanced settings · Wine, Proton and compatibility", |ui| {
                         if luna_mode {
@@ -2896,7 +2918,14 @@ impl RiceWineApp {
                         });
                         Self::runner_fields(ui, draft);
                     });
-                    ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
+                    ui.small("Windows programs can access your Linux user files. Only run software you trust.");
+                    if let Some(error) = &draft.error {
+                        ui.add_space(5.0);
+                        ui.colored_label(Color32::DARK_RED, error);
+                    }
+                    if draft.file.trim().is_empty() {
+                        ui.small("Choose an EXE/MSI to continue.");
+                    }
                     ui.add_space(9.0);
                     ui.separator();
                     let install_label = if draft.portable {
@@ -2905,22 +2934,14 @@ impl RiceWineApp {
                         "Run installer"
                     };
                     ui.horizontal(|ui| {
+                        let ready = !draft.file.trim().is_empty() && !draft.name.trim().is_empty();
                         let start = if win10_mode {
-                            win10::primary_action(ui, install_label, true)
+                            win10::primary_action(ui, install_label, ready)
                         } else {
-                            luna::action(ui, install_label, true, luna_mode)
+                            luna::action(ui, install_label, ready, luna_mode)
                         };
                         if start.clicked() {
-                            submit = Some(InstallDraft {
-                                name: draft.name.clone(),
-                                file: draft.file.clone(),
-                                portable: draft.portable,
-                                runner_kind: draft.runner_kind,
-                                custom_wine: draft.custom_wine.clone(),
-                                proton_dir: draft.proton_dir.clone(),
-                                game_id: draft.game_id.clone(),
-                                template: draft.template,
-                            });
+                            submit = Some(draft.clone());
                         }
                         let cancel = if win10_mode {
                             win10::secondary_action(ui, "Cancel", true)
@@ -2937,8 +2958,15 @@ impl RiceWineApp {
             self.install = None;
         }
         if let Some(draft) = submit {
-            self.install = None;
-            self.install_async(draft);
+            match self.install_async(draft) {
+                Ok(()) => self.install = None,
+                Err(error) => {
+                    self.notice = Some((true, error.clone()));
+                    if let Some(draft) = &mut self.install {
+                        draft.error = Some(error);
+                    }
+                }
+            }
         }
     }
 

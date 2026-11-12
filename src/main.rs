@@ -320,6 +320,7 @@ enum Event {
 
 struct RiceWineApp {
     store: Option<Store>,
+    profile_cache: HashMap<String, Result<PrefixProfile, String>>,
     wine: Option<WineTools>,
     theme: Theme,
     preferences: Preferences,
@@ -435,10 +436,23 @@ impl RiceWineApp {
                     None
                 }
             });
+        // Load runner profiles once, never during per-frame list rendering.
+        let profile_cache = store
+            .as_ref()
+            .ok()
+            .map(|store| {
+                store
+                    .applications()
+                    .iter()
+                    .map(|app| (app.id.clone(), runtime::load_profile(&app.prefix)))
+                    .collect()
+            })
+            .unwrap_or_default();
         // Screenshot-only opt-in for real dialog captures. No fixture programs.
         let capture_dialog = std::env::var("RICEWINE_CAPTURE_DIALOG").ok();
         let mut app = Self {
             store: store.ok(),
+            profile_cache,
             wine: wine.ok(),
             theme,
             preferences,
@@ -853,6 +867,20 @@ impl RiceWineApp {
         });
     }
 
+    fn refresh_profile_cache(&mut self) {
+        self.profile_cache = self
+            .store
+            .as_ref()
+            .map(|store| {
+                store
+                    .applications()
+                    .iter()
+                    .map(|app| (app.id.clone(), runtime::load_profile(&app.prefix)))
+                    .collect()
+            })
+            .unwrap_or_default();
+    }
+
     fn sync_runner_draft(&mut self) {
         self.runner_draft = InstallDraft::default();
         self.launch_args_text.clear();
@@ -868,7 +896,9 @@ impl RiceWineApp {
             return;
         };
         self.name_edit = app.name.clone();
-        match runtime::load_profile(&app.prefix) {
+        let profile = runtime::load_profile(&app.prefix);
+        self.profile_cache.insert(app.id.clone(), profile.clone());
+        match profile {
             Ok(profile) => {
                 self.update_repo_text = profile.update_repository.clone().unwrap_or_default();
                 self.installed_version_text = profile.installed_version.clone();
@@ -1561,6 +1591,10 @@ impl RiceWineApp {
             if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
                 self.search.clear();
             }
+            if ui.small_button("↻ Refresh profiles").clicked() {
+                self.refresh_profile_cache();
+                self.sync_runner_draft();
+            }
         });
         if self.store.is_none() {
             ui.add_space(28.0);
@@ -1672,7 +1706,9 @@ impl RiceWineApp {
                                     if response.clicked() {
                                         next_selected = Some(app.id.clone());
                                     }
-                                    let label = runtime::load_profile(&app.prefix)
+                                    let profile = self.profile_cache.get(&app.id);
+                                    let label = profile
+                                        .and_then(|result| result.as_ref().ok())
                                         .map(|profile| profile.runner.label())
                                         .unwrap_or("Invalid profile");
                                     if self.theme == Theme::MacOS {
@@ -1709,7 +1745,11 @@ impl RiceWineApp {
                     } else {
                         ui.heading(&app.name);
                     }
-                    let selected_profile = runtime::load_profile(&app.prefix);
+                    let selected_profile = self
+                        .profile_cache
+                        .get(&app.id)
+                        .cloned()
+                        .unwrap_or_else(|| Err("Runner profile not loaded; refresh profiles".into()));
                     ui.add_space(8.0);
                     if luna::action(
                         ui,
@@ -2257,6 +2297,8 @@ impl RiceWineApp {
                 });
                 match result {
                     Ok(()) => {
+                        self.profile_cache
+                            .insert(app.id.clone(), runtime::load_profile(&app.prefix));
                         self.latest_app_releases.remove(&app.id);
                         self.notice = Some((false, format!("Runner saved for {}", app.name)));
                     }

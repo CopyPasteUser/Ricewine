@@ -108,7 +108,10 @@ pub fn app_row(
     let icon_rect = Rect::from_min_size(rect.min + Vec2::new(12.0, 14.0), Vec2::splat(32.0));
     painter.rect_filled(icon_rect, 0.0, ACCENT);
     painter.rect_stroke(
-        Rect::from_min_max(icon_rect.min + Vec2::splat(7.0), icon_rect.max - Vec2::splat(7.0)),
+        Rect::from_min_max(
+            icon_rect.min + Vec2::splat(7.0),
+            icon_rect.max - Vec2::splat(7.0),
+        ),
         0.0,
         Stroke::new(1.6, Color32::WHITE),
         egui::StrokeKind::Inside,
@@ -158,7 +161,11 @@ pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
     ui.add_space(12.0);
     ui.separator();
     ui.add_space(26.0);
-    ui.label(RichText::new("No Windows programs are installed yet").size(16.0).color(TEXT));
+    ui.label(
+        RichText::new("No Windows programs are installed yet")
+            .size(16.0)
+            .color(TEXT),
+    );
     ui.add_space(6.0);
     ui.label(
         RichText::new("Choose an EXE or MSI to install it using Wine.")
@@ -170,7 +177,11 @@ pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
         install = true;
     }
     ui.add_space(8.0);
-    ui.label(RichText::new("Existing Wine prefix? Use Import existing prefix.").size(11.5).color(MUTED));
+    ui.label(
+        RichText::new("Existing Wine prefix? Use Import existing prefix.")
+            .size(11.5)
+            .color(MUTED),
+    );
     install
 }
 

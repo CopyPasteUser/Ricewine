@@ -325,6 +325,7 @@ struct RiceWineApp {
     preferences: Preferences,
     page: Page,
     about_open: bool,
+    advanced_open: bool,
     selected: Option<String>,
     search: String,
     name_edit: String,
@@ -443,6 +444,7 @@ impl RiceWineApp {
             preferences,
             page: Page::capture_override(),
             about_open: false,
+            advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
             selected,
             search: String::new(),
             name_edit: String::new(),
@@ -1158,38 +1160,35 @@ impl RiceWineApp {
                 ui.set_min_height((height - 34.0).max(320.0));
                 mac::brand(ui);
                 ui.add_space(25.0);
-                mac::section_label(ui, "FAVORITES");
-                for (page, symbol) in [
-                    (Page::Library, "▦"),
-                    (Page::Prefixes, "◫"),
-                    (Page::Runners, "◎"),
-                ] {
-                    if mac::navigation(ui, symbol, page.label(), self.page == page).clicked() {
-                        self.page = page;
-                    }
+                mac::section_label(ui, "YOUR APPS");
+                if mac::navigation(ui, "▦", "My programs", self.page == Page::Library).clicked() {
+                    self.page = Page::Library;
                 }
                 ui.add_space(12.0);
                 mac::section_label(ui, "PREFERENCES");
                 if mac::navigation(ui, "⚙", "Settings", self.page == Page::Settings).clicked() {
                     self.page = Page::Settings;
                 }
-                ui.add_space(19.0);
-                ui.separator();
-                mac::section_label(ui, "APPEARANCE");
-                egui::ComboBox::from_id_salt("mac_sidebar_rice")
-                    .width(ui.available_width())
-                    .selected_text(self.theme.label())
-                    .show_ui(ui, |ui| {
-                        for theme in Theme::ALL {
-                            if ui
-                                .selectable_label(self.theme == theme, theme.label())
-                                .clicked()
-                            {
-                                self.set_theme(theme, ui.ctx());
-                            }
+                ui.add_space(14.0);
+                if ui
+                    .small_button(if self.advanced_open {
+                        "⌄ Hide advanced tools"
+                    } else {
+                        "› Show advanced tools"
+                    })
+                    .clicked()
+                {
+                    self.advanced_open = !self.advanced_open;
+                }
+                if self.advanced_open {
+                    for (page, symbol) in [(Page::Prefixes, "◫"), (Page::Runners, "◎")] {
+                        if mac::navigation(ui, symbol, page.label(), self.page == page).clicked() {
+                            self.page = page;
                         }
-                    });
+                    }
+                }
                 ui.add_space(16.0);
+                ui.separator();
                 if ui.link("About RiceWine").clicked() {
                     self.about_open = true;
                 }
@@ -1242,13 +1241,38 @@ impl RiceWineApp {
                 luna::task_panel(ui, |ui| {
                     luna::task_header(ui, "Other places");
                     ui.add_space(4.0);
-                    for (page, icon) in [
-                        (Page::Prefixes, luna::XpIcon::Prefix),
-                        (Page::Runners, luna::XpIcon::Runner),
-                        (Page::Settings, luna::XpIcon::Settings),
-                    ] {
-                        if luna::task_link(ui, page.label(), icon, self.page == page).clicked() {
-                            self.page = page;
+                    if luna::task_link(
+                        ui,
+                        "Settings",
+                        luna::XpIcon::Settings,
+                        self.page == Page::Settings,
+                    )
+                    .clicked()
+                    {
+                        self.page = Page::Settings;
+                    }
+                    if luna::task_link(
+                        ui,
+                        if self.advanced_open {
+                            "Hide advanced tools"
+                        } else {
+                            "Show advanced tools"
+                        },
+                        luna::XpIcon::Info,
+                        false,
+                    )
+                    .clicked()
+                    {
+                        self.advanced_open = !self.advanced_open;
+                    }
+                    if self.advanced_open {
+                        for (page, icon) in [
+                            (Page::Prefixes, luna::XpIcon::Prefix),
+                            (Page::Runners, luna::XpIcon::Runner),
+                        ] {
+                            if luna::task_link(ui, page.label(), icon, self.page == page).clicked() {
+                                self.page = page;
+                            }
                         }
                     }
                     ui.add_space(5.0);
@@ -1347,15 +1371,22 @@ impl RiceWineApp {
                         {
                             self.install = Some(InstallDraft::default());
                         }
-                        if ui
-                            .add_enabled(
-                                !self.busy && self.store.is_some(),
-                                egui::Button::new("Import prefix…"),
-                            )
-                            .clicked()
-                        {
-                            self.import = Some(ImportDraft::default());
-                        }
+                        ui.menu_button("More ▾", |ui| {
+                            if ui
+                                .add_enabled(
+                                    !self.busy && self.store.is_some(),
+                                    egui::Button::new("Import existing prefix…"),
+                                )
+                                .clicked()
+                            {
+                                self.import = Some(ImportDraft::default());
+                                ui.close();
+                            }
+                            if ui.button("Settings").clicked() {
+                                self.page = Page::Settings;
+                                ui.close();
+                            }
+                        });
                     });
                 });
             });
@@ -1662,6 +1693,49 @@ impl RiceWineApp {
                     } else {
                         ui.heading(&app.name);
                     }
+                    let selected_profile = runtime::load_profile(&app.prefix);
+                    ui.add_space(8.0);
+                    if luna::action(
+                        ui,
+                        if luna_mode {
+                            "Play program"
+                        } else {
+                            "▶ Play"
+                        },
+                        !self.busy
+                            && !self.compatibility_busy.contains(&app.id)
+                            && app.executable.is_some()
+                            && selected_profile.as_ref().is_ok_and(|p| {
+                                self.wine.is_some() || !matches!(p.runner, Runner::SystemWine)
+                            }),
+                        luna_mode,
+                    )
+                    .clicked()
+                    {
+                        self.play(app.clone());
+                    }
+                    if self.running.contains(&app.id) {
+                        ui.label("● Running");
+                        if luna::action(ui, "Stop program…", true, luna_mode).clicked() {
+                            self.stop_confirmation = Some(app.id.clone());
+                        }
+                    }
+                    if app.executable.is_none() {
+                        ui.small("Choose the program's EXE file to enable Play.");
+                        if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
+                            && let Some(path) = rfd::FileDialog::new()
+                                .add_filter("Windows program", &["exe"])
+                                .pick_file()
+                            && let Some(store) = self.store.as_mut()
+                        {
+                            self.notice = Some(match store.set_executable(&app.id, path) {
+                                Ok(()) => (false, "Launch executable saved".into()),
+                                Err(error) => (true, error),
+                            });
+                        }
+                    }
+                    ui.add_space(14.0);
+                    ui.collapsing("More options · rename, runner, files, remove", |ui| {
                     ui.label("Display name");
                     ui.text_edit_singleline(&mut self.name_edit);
                     if luna::action(
@@ -1700,7 +1774,6 @@ impl RiceWineApp {
                             .strong()
                             .color(self.theme.palette().text),
                     );
-                    let selected_profile = runtime::load_profile(&app.prefix);
                     match &selected_profile {
                         Ok(profile) => ui.label(profile.runner.label()),
                         Err(error) => ui.colored_label(self.theme.error(), error),
@@ -1714,31 +1787,6 @@ impl RiceWineApp {
                     );
                     ui.small(core::readable_path(&app.prefix));
                     ui.add_space(12.0);
-                    if luna::action(
-                        ui,
-                        if luna_mode {
-                            "Play program"
-                        } else {
-                            "▶ Play"
-                        },
-                        !self.busy
-                            && !self.compatibility_busy.contains(&app.id)
-                            && app.executable.is_some()
-                            && selected_profile.as_ref().is_ok_and(|p| {
-                                self.wine.is_some() || !matches!(p.runner, Runner::SystemWine)
-                            }),
-                        luna_mode,
-                    )
-                    .clicked()
-                    {
-                        self.play(app.clone());
-                    }
-                    if self.running.contains(&app.id) {
-                        ui.label("● Running");
-                        if luna::action(ui, "Stop program…", true, luna_mode).clicked() {
-                            self.stop_confirmation = Some(app.id.clone());
-                        }
-                    }
                     if app.executable.is_none() {
                         ui.small("Find or choose the installed EXE to enable Play.");
                     }
@@ -1801,6 +1849,7 @@ impl RiceWineApp {
                         self.remove_confirmation = Some(app.id);
                     }
                     ui.small("This never deletes the Wine prefix.");
+                    });
                 } else {
                     ui.label("Select a program to view details.");
                 }
@@ -2592,6 +2641,7 @@ impl RiceWineApp {
                     });
                     ui.checkbox(&mut draft.portable, "Portable EXE (no installer)");
                     ui.add_space(8.0);
+                    ui.collapsing("Advanced settings · Wine, Proton and compatibility", |ui| {
                     if luna_mode {
                         luna::section_heading(ui, "Compatibility", luna::XpIcon::Runner);
                     }
@@ -2616,6 +2666,7 @@ impl RiceWineApp {
                         }
                     });
                     Self::runner_fields(ui, draft);
+                    });
                     ui.small("A fresh prefix does not sandbox Windows software. Only run applications you trust.");
                     ui.add_space(9.0);
                     ui.separator();

@@ -7,9 +7,9 @@ Native Linux tool for people who want to install and launch Windows software wit
 ## Visual directions
 
 - **Windows 10:** clean flat controls, Segoe-like sans-serif, square geometry, white surface, gray navigation, accent `#0078D7`.
-- **XP Luna Blue:** a dedicated Windows XP Explorer-inspired application surface, not a color-only variation. The *native window title bar and borders stay entirely under the desktop compositor/RiceBowl*. Within the application: compact pale toolbar, blue-gradient Explorer task groups, warm document surface and folder headings, bordered classic controls, Explorer-style library and green primary install action. Dialogs are shared with other Rices and remain functional when Luna is selected.
+- **XP Luna Blue:** a dedicated Windows XP Explorer-inspired application surface, not a color-only variation. The *native window title bar and borders stay entirely under the desktop compositor/RiceBowl*. Within the application: compact pale toolbar, blue-gradient Explorer task groups, warm document surface and folder headings, bordered classic beveled controls and compact Explorer-style library. The primary install/import actions live in the task pane and File menu. Dialogs are shared with other Rices and remain functional when Luna is selected.
 - **XP Luna Olive and Silver:** retain the lightweight shared shell for now. They are intentionally *not* reskinned to the blue layout until that design has been accepted.
-- The five styles remain selectable. Windows 10 Light/Dark and Luna Olive/Silver are unchanged in this visual sprint. The Luna Blue shell is visually tested in a desktop preview; real Wine/Proton and X11/Wayland acceptance remains outstanding before 1.0 stable.
+- The five styles remain selectable. Windows 10 Light/Dark and Luna Olive/Silver are unchanged in this visual sprint. The Luna Blue shell is visually tested in a desktop preview; real Wine/Proton and X11/Wayland acceptance remains outstanding before 2.0 stable.
 
 ## Interaction contracts
 
@@ -38,9 +38,10 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 ## Screenshot validation
 
-The screenshot workflow starts each of four Luna views in an isolated app
-process using RICEWINE_CAPTURE_PAGE. This changes only the initial page and
-does not modify the stored Wine library. Duplicate captures fail the job.
+The screenshot workflow starts all four Luna pages and two additional modal
+dialog views in isolated processes using RICEWINE_CAPTURE_PAGE and
+RICEWINE_CAPTURE_DIALOG. These settings change only test-window presentation,
+not the actual catalog. All six captures must be distinct or the job fails.
 
 ## Luna Blue visual fidelity sprint
 
@@ -58,3 +59,12 @@ does not modify the stored Wine library. Duplicate captures fail the job.
   existing validation and process behavior remain intact.
 - No viewport or compositor decoration changes: RiceBowl remains responsible
   for the native window frame and title bar.
+
+## XP Luna full application overhaul (November 2026)
+
+- Shared classic application controls, functional full-width menu/Explorer toolbar, compact typography and proper disabled/hover/pressed states.
+- Explorer navigation and original vector/pixel-inspired program, Wine, compatibility and maintenance symbols.
+- Grouped library details, prefix management, runner diagnostics, GE-Proton tasks, appearance and metadata settings.
+- Install/import and safety confirmations use consistent controls and centered app-modal windows. Destructive actions retain their original guards.
+- Visual acceptance uses six actual xvfb-rendered screenshots; still requires interactive X11/Wayland and real Wine/Proton manual acceptance.
+- No change to OS/compositor window decorations. No Windows proprietary icons or fonts are bundled.

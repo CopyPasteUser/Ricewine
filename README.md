@@ -18,7 +18,9 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 
 ## Built-in Rices
 
-**XP Luna Blue** has its own XP-inspired window chrome, Explorer task panes and library layout. These are real screenshots of the current Linux build:
+**XP Luna Blue** now uses a dedicated XP-era application UI: functional Explorer menus and address navigation, shaded task panes, original application icons, beveled controls, compact classic forms, and consistent management pages. **The native titlebar and window borders are never replaced**; RiceBowl/the Linux compositor owns them.
+
+These are six genuine screenshots from the Linux build (including real, isolated install/import dialogs):
 
 ![XP Luna Blue — program library](docs/screenshots/luna-library.webp)
 
@@ -27,6 +29,10 @@ Install, organize and launch Windows applications in separate Wine prefixes — 
 | ![XP Luna Blue — prefixes](docs/screenshots/luna-prefixes.webp) | ![XP Luna Blue — settings](docs/screenshots/luna-settings.webp) |
 
 ![XP Luna Blue — runners and GE-Proton management](docs/screenshots/luna-runners.webp)
+
+| Install program | Import existing Wine prefix |
+| :---: | :---: |
+| ![XP Luna Blue — install form](docs/screenshots/luna-install.webp) | ![XP Luna Blue — import form](docs/screenshots/luna-import.webp) |
 
 Windows 10 Light/Dark and XP Luna Olive/Silver remain available but are not part of the current visual refresh. Switch in **Settings**; Rice choice persists across restarts and does not alter your desktop or Wine configuration.
 

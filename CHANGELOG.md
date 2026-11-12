@@ -2,6 +2,13 @@
 
 All entries describe source-code milestones, not automatic confirmation of real Windows app compatibility.
 
+## Unreleased – XP Luna Blue complete application UI overhaul
+
+- Replace the Luna-only interior with functional full-width Explorer menus and navigation, classic shaded task panes, compact forms, original XP-era-style icons and coherent focus/hover/pressed states; preserve OS-owned window decorations.
+- Rework Library details, Prefix backup/cleanup, Wine/Proton runner diagnostics and settings into grouped management surfaces while retaining all existing operations and guards.
+- Rebuild install/import and confirmation dialogs with consistent classic controls and centered windows.
+- Add isolated screenshot coverage for all four pages and both setup dialogs, plus a safe on-demand Rust formatting workflow. Actual Wine/Proton and desktop acceptance remains separate from automated rendering.
+
 ## 2.0.0-beta.1 – guided application lifecycle
 
 - Cancel long-running installations and update installers; stop a tracked Windows application with an explicit warning. Prefixes are never deleted during cancellation.

@@ -51,4 +51,4 @@
 
 ## Progress
 
-Milestones 1–2 are being implemented in the 3.0 development line. Milestones 3–4 remain open and must not be described as shipped or stable without acceptance.
+Milestones 1–2 have been implemented in the 3.0 alpha line (software tests and real-desktop acceptance are separate). Milestones 3–4 remain open and must not be described as shipped or stable without acceptance.

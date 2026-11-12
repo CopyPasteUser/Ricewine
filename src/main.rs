@@ -281,10 +281,11 @@ impl Page {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct InstallDraft {
     name: String,
     file: String,
+    error: Option<String>,
     portable: bool,
     runner_kind: usize,
     custom_wine: String,
@@ -298,9 +299,33 @@ struct ImportDraft {
     name: String,
     prefix: String,
     executable: String,
+    error: Option<String>,
 }
 
 impl InstallDraft {
+    /// A readable suggestion, never a forced rename: users can edit it before setup.
+    fn suggested_name(path: &std::path::Path) -> String {
+        let raw = path.file_stem().unwrap_or_default().to_string_lossy();
+        let normalized = raw.replace(['_', '-'], " ");
+        let mut words: Vec<&str> = normalized.split_whitespace().collect();
+        if words.last().is_some_and(|word| {
+            matches!(word.to_ascii_lowercase().as_str(), "setup" | "installer" | "install")
+        }) {
+            words.pop();
+        }
+        words.join(" ")
+    }
+
+    fn choose_file(&mut self, path: PathBuf) {
+        let previous_suggestion = Self::suggested_name(std::path::Path::new(&self.file));
+        let replace_name = self.name.trim().is_empty() || self.name == previous_suggestion;
+        self.file = core::readable_path(&path);
+        if replace_name {
+            self.name = Self::suggested_name(&path);
+        }
+        self.error = None;
+    }
+
     fn runner(&self) -> Runner {
         match self.runner_kind {
             1 => Runner::CustomWine {
@@ -393,15 +418,9 @@ struct RiceWineApp {
 
 impl RiceWineApp {
     fn install_draft_for_file(path: PathBuf) -> InstallDraft {
-        InstallDraft {
-            name: path
-                .file_stem()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .into_owned(),
-            file: core::readable_path(&path),
-            ..Default::default()
-        }
+        let mut draft = InstallDraft::default();
+        draft.choose_file(path);
+        draft
     }
 
     fn new(ctx: &eframe::CreationContext<'_>, initial_install: Option<PathBuf>) -> Self {
@@ -767,30 +786,21 @@ impl RiceWineApp {
         self.persist_preferences();
     }
 
-    fn install_async(&mut self, draft: InstallDraft) {
-        let Some(store) = self.store.as_ref() else {
-            return;
-        };
+    fn install_async(&mut self, draft: InstallDraft) -> Result<(), String> {
+        let store = self.store.as_ref().ok_or("Library unavailable")?;
         let profile = PrefixProfile {
             runner: draft.runner(),
             template: draft.template,
             ..Default::default()
         };
-        if let Err(error) = runtime::validate_runner(&profile.runner) {
-            self.notice = Some((true, error));
-            return;
-        }
+        // Validate *before* dismissing the setup dialog; invalid inputs remain editable.
+        runtime::validate_profile(&profile)?;
         if self.wine.is_none() && matches!(profile.runner, Runner::SystemWine) {
-            self.notice = Some((true, "Install Wine or choose a different runner".into()));
-            return;
+            return Err("System Wine is missing. Install Wine, or choose a working runner in Advanced settings.".into());
         }
         let file = PathBuf::from(draft.file.trim());
-        if let Err(error) = core::validate_name(&draft.name)
-            .and_then(|_| core::validate_installer(&file, draft.portable))
-        {
-            self.notice = Some((true, error));
-            return;
-        }
+        core::validate_name(&draft.name)?;
+        core::validate_installer(&file, draft.portable)?;
         self.busy = true;
         let control = OperationControl::default();
         self.install_control = Some(control.clone());
@@ -835,6 +845,7 @@ impl RiceWineApp {
             });
             let _ = tx.send(Event::Installed(result));
         });
+        Ok(())
     }
 
     fn play(&mut self, app: Application) {

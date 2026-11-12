@@ -1609,7 +1609,7 @@ impl RiceWineApp {
                 },
             );
             ui.separator();
-            ui.vertical(|ui| {
+            let details = |ui: &mut egui::Ui| {
                 ui.set_min_width(235.0);
                 let selected = self
                     .selected
@@ -1617,15 +1617,20 @@ impl RiceWineApp {
                     .and_then(|id| self.store.as_ref()?.get(id))
                     .cloned();
                 if let Some(app) = selected {
-                    ui.heading(&app.name);
+                    if luna_mode {
+                        ui.label(RichText::new(&app.name).strong().size(13.0));
+                    } else {
+                        ui.heading(&app.name);
+                    }
                     ui.label("Display name");
                     ui.text_edit_singleline(&mut self.name_edit);
-                    if ui
-                        .add_enabled(
-                            !self.busy && !self.running.contains(&app.id),
-                            egui::Button::new("Save name"),
-                        )
-                        .clicked()
+                    if luna::action(
+                        ui,
+                        "Save name",
+                        !self.busy && !self.running.contains(&app.id),
+                        luna_mode,
+                    )
+                    .clicked()
                         && let Some(store) = &mut self.store
                     {
                         match store.rename(&app.id, &self.name_edit) {
@@ -1669,30 +1674,31 @@ impl RiceWineApp {
                     );
                     ui.small(core::readable_path(&app.prefix));
                     ui.add_space(12.0);
-                    if ui
-                        .add_enabled(
-                            !self.busy
-                                && !self.compatibility_busy.contains(&app.id)
-                                && app.executable.is_some()
-                                && selected_profile.as_ref().is_ok_and(|p| {
-                                    self.wine.is_some() || !matches!(p.runner, Runner::SystemWine)
-                                }),
-                            egui::Button::new("▶ Play"),
-                        )
-                        .clicked()
+                    if luna::action(
+                        ui,
+                        if luna_mode { "Play program" } else { "▶ Play" },
+                        !self.busy
+                            && !self.compatibility_busy.contains(&app.id)
+                            && app.executable.is_some()
+                            && selected_profile.as_ref().is_ok_and(|p| {
+                                self.wine.is_some() || !matches!(p.runner, Runner::SystemWine)
+                            }),
+                        luna_mode,
+                    )
+                    .clicked()
                     {
                         self.play(app.clone());
                     }
                     if self.running.contains(&app.id) {
                         ui.label("● Running");
-                        if ui.button("■ Stop program…").clicked() {
+                        if luna::action(ui, "Stop program…", true, luna_mode).clicked() {
                             self.stop_confirmation = Some(app.id.clone());
                         }
                     }
                     if app.executable.is_none() {
                         ui.small("Find or choose the installed EXE to enable Play.");
                     }
-                    if ui.button("Scan installed EXEs").clicked() {
+                    if luna::action(ui, "Scan installed EXEs", true, luna_mode).clicked() {
                         match discovery::scan_executables(&app.prefix, &app.name) {
                             Ok(candidates) => {
                                 self.exe_candidates = candidates;
@@ -1713,7 +1719,7 @@ impl RiceWineApp {
                             let chosen = candidate.path.clone();
                             let label = chosen.file_name().unwrap_or_default().to_string_lossy();
                             if ui
-                                .button(format!("Use {label}"))
+                                .add(egui::Button::new(format!("Use {label}")))
                                 .on_hover_text(core::readable_path(&chosen))
                                 .clicked()
                                 && let Some(store) = self.store.as_mut()
@@ -1725,7 +1731,7 @@ impl RiceWineApp {
                             }
                         }
                     }
-                    if ui.button("Choose launch EXE…").clicked()
+                    if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
                         && let Some(path) = rfd::FileDialog::new()
                             .add_filter("Windows program", &["exe"])
                             .pick_file()
@@ -1737,7 +1743,7 @@ impl RiceWineApp {
                             self.notice = Some((false, "Launch executable saved".into()));
                         }
                     }
-                    if ui.button("Add application-menu shortcut").clicked() {
+                    if luna::action(ui, "Add menu shortcut", true, luna_mode).clicked() {
                         let outcome = std::env::current_exe()
                             .map_err(|e| e.to_string())
                             .and_then(|bin| integration::install_shortcut(&app, &bin));
@@ -1747,14 +1753,19 @@ impl RiceWineApp {
                         });
                     }
                     ui.add_space(18.0);
-                    if ui.button("Remove from library…").clicked() {
+                    if luna::action(ui, "Remove from library…", true, luna_mode).clicked() {
                         self.remove_confirmation = Some(app.id);
                     }
                     ui.small("This never deletes the Wine prefix.");
                 } else {
                     ui.label("Select a program to view details.");
                 }
-            });
+            };
+            if luna_mode {
+                luna::option_group(ui, "Program details", luna::XpIcon::Programs, details);
+            } else {
+                ui.vertical(details);
+            }
         });
         if let Some(id) = next_selected {
             self.selected = Some(id);

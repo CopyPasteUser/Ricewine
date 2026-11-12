@@ -383,6 +383,10 @@ struct RiceWineApp {
     workspace_writable: bool,
     doctor_report: String,
     doctor_busy: bool,
+    troubleshoot_id: Option<String>,
+    troubleshoot_report: String,
+    troubleshoot_log: String,
+    compatibility_confirmation: Option<(String, String)>,
     page: Page,
     about_open: bool,
     advanced_open: bool,
@@ -527,6 +531,10 @@ impl RiceWineApp {
             workspace_writable,
             doctor_report: String::new(),
             doctor_busy: false,
+            troubleshoot_id: None,
+            troubleshoot_report: String::new(),
+            troubleshoot_log: String::new(),
+            compatibility_confirmation: None,
             page: Page::capture_override(),
             about_open: false,
             advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
@@ -888,6 +896,13 @@ impl RiceWineApp {
         thread::spawn(move || {
             let _ = tx.send(Event::DoctorFinished(doctor::check(&apps, wine_available)));
         });
+    }
+
+    fn open_troubleshooter(&mut self, app: &Application) {
+        self.troubleshoot_id = Some(app.id.clone());
+        self.troubleshoot_report =
+            doctor::check(std::slice::from_ref(app), self.wine.is_some()).readable();
+        self.troubleshoot_log.clear();
     }
 
     fn doctor_controls(&mut self, ui: &mut egui::Ui) {
@@ -2135,6 +2150,9 @@ impl RiceWineApp {
                             self.notice = Some((true, format!("Could not save favorite: {error}")));
                         }
                     }
+                    if ui.button("Diagnose & recover…").clicked() {
+                        self.open_troubleshooter(&app);
+                    }
                     let selected_profile =
                         self.profile_cache.get(&app.id).cloned().unwrap_or_else(|| {
                             Err("Runner profile not loaded; refresh profiles".into())
@@ -2786,10 +2804,10 @@ impl RiceWineApp {
                 .add_enabled(!working, egui::Button::new("Apply with Winetricks"))
                 .clicked()
             {
-                self.compatibility_async(
-                    app.clone(),
+                self.compatibility_confirmation = Some((
+                    app.id.clone(),
                     runtime::WINETRICKS_VERBS[self.winetricks_verb].to_owned(),
-                );
+                ));
             }
             if self.compatibility_busy.contains(&app.id) {
                 ui.spinner();
@@ -3412,8 +3430,204 @@ impl RiceWineApp {
         });
     }
 
+    /// Read-only per-app triage. Backup is explicit and does not trigger a repair.
+    fn troubleshoot_dialog(&mut self, ctx: &egui::Context) {
+        let Some(id) = self.troubleshoot_id.clone() else {
+            return;
+        };
+        let Some(app) = self
+            .store
+            .as_ref()
+            .and_then(|store| store.get(&id))
+            .cloned()
+        else {
+            self.troubleshoot_id = None;
+            self.notice = Some((true, "This program is no longer in the library".into()));
+            return;
+        };
+        let luna_mode = self.theme == Theme::Luna;
+        let can_backup = !self.backup_busy
+            && !self.busy
+            && !self.running.contains(&id)
+            && !self.compatibility_busy.contains(&id);
+        let mut keep_open = true;
+        let mut action = 0u8;
+        egui::Window::new(format!("Troubleshoot: {}", app.name))
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .collapsible(false)
+            .default_width(540.0)
+            .open(&mut keep_open)
+            .show(ctx, |ui| {
+                if luna_mode {
+                    luna::dialog_intro(
+                        ui,
+                        luna::XpIcon::Info,
+                        "Program doesn't start?",
+                        "Review problems before changing Wine settings.",
+                    );
+                }
+                ui.label("1. Check this program");
+                ui.small("Only reads the current prefix, selected EXE and runner profile.");
+                ui.horizontal_wrapped(|ui| {
+                    if ui.button("Recheck").clicked() {
+                        action = 1;
+                    }
+                    if ui.button("Read recent Wine log").clicked() {
+                        action = 2;
+                    }
+                });
+                egui::ScrollArea::vertical()
+                    .max_height(150.0)
+                    .show(ui, |ui| {
+                        ui.monospace(&self.troubleshoot_report);
+                    });
+                if !self.troubleshoot_log.is_empty() {
+                    ui.separator();
+                    ui.label("Recent application log (last 12 KiB)");
+                    egui::ScrollArea::vertical()
+                        .max_height(140.0)
+                        .show(ui, |ui| {
+                            ui.monospace(&self.troubleshoot_log);
+                        });
+                }
+                ui.add_space(10.0);
+                ui.separator();
+                ui.label("2. Choose a safe next step");
+                ui.small("A backup is recommended before changing compatibility components. No fixes run automatically.");
+                ui.horizontal_wrapped(|ui| {
+                    if app.executable.is_none() && ui.button("Find launch EXE").clicked() {
+                        action = 3;
+                    }
+                    if ui.button("Runner settings").clicked() {
+                        action = 4;
+                    }
+                    if ui.button("Open backups").clicked() {
+                        action = 7;
+                    }
+                    if ui
+                        .add_enabled(can_backup, egui::Button::new("Back up prefix"))
+                        .clicked()
+                    {
+                        action = 5;
+                    }
+                });
+                if self.backup_busy {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.small("Creating backup…");
+                    });
+                }
+                ui.add_space(6.0);
+                if ui.button("Close").clicked() {
+                    action = 6;
+                }
+            });
+        if !keep_open || action == 6 {
+            self.troubleshoot_id = None;
+            return;
+        }
+        match action {
+            1 => {
+                self.troubleshoot_report =
+                    doctor::check(std::slice::from_ref(&app), self.wine.is_some()).readable();
+            }
+            2 => {
+                self.troubleshoot_log = self
+                    .store
+                    .as_ref()
+                    .map(|store| {
+                        runtime::log_tail(store.root(), &app.id, 12_000)
+                            .unwrap_or_else(|error| format!("Could not read Wine log: {error}"))
+                    })
+                    .unwrap_or_default();
+            }
+            3 => {
+                self.troubleshoot_id = None;
+                self.page = Page::Library;
+                self.selected = Some(app.id.clone());
+                self.workspace.filter = LibraryFilter::All;
+                self.search.clear();
+                if let Err(error) = self.persist_workspace() {
+                    self.notice = Some((true, format!("Could not save Library view: {error}")));
+                }
+                self.scan_executables_async(&app);
+            }
+            4 => {
+                self.troubleshoot_id = None;
+                self.page = Page::Runners;
+                self.selected = Some(app.id);
+                self.sync_runner_draft();
+            }
+            5 => {
+                self.backup_async(app);
+            }
+            7 => {
+                self.troubleshoot_id = None;
+                self.page = Page::Prefixes;
+            }
+            _ => {}
+        }
+    }
+
     fn process_dialogs(&mut self, ctx: &egui::Context) {
         let luna_mode = self.theme == Theme::Luna;
+        if let Some((id, verb)) = self.compatibility_confirmation.clone() {
+            let program = self
+                .store
+                .as_ref()
+                .and_then(|store| store.get(&id))
+                .cloned();
+            let available = program.is_some()
+                && !self.backup_busy
+                && !self.busy
+                && !self.running.contains(&id)
+                && !self.compatibility_busy.contains(&id);
+            let mut decision = 0u8;
+            egui::Window::new("Change Wine compatibility?")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    if luna_mode {
+                        luna::dialog_intro(
+                            ui,
+                            luna::XpIcon::Warning,
+                            "Change Wine compatibility?",
+                            "Back up the prefix before installing components.",
+                        );
+                    }
+                    ui.label(format!("Component: {verb}"));
+                    ui.label("Winetricks can modify files inside the selected Wine prefix. A backup is recommended before applying the change.");
+                    ui.small("Back up first creates an archive only. You must explicitly return and apply the component afterward.");
+                    ui.horizontal_wrapped(|ui| {
+                        if luna::action(ui, "Cancel", true, luna_mode).clicked() {
+                            decision = 1;
+                        }
+                        if luna::action(ui, "Back up first", available, luna_mode).clicked() {
+                            decision = 2;
+                        }
+                        if luna::action(ui, "Apply without backup", available, luna_mode).clicked() {
+                            decision = 3;
+                        }
+                    });
+                });
+            match decision {
+                1 => self.compatibility_confirmation = None,
+                2 => {
+                    self.compatibility_confirmation = None;
+                    if let Some(app) = program {
+                        self.backup_async(app);
+                    }
+                }
+                3 => {
+                    self.compatibility_confirmation = None;
+                    if let Some(app) = program {
+                        self.compatibility_async(app, verb);
+                    }
+                }
+                _ => {}
+            }
+        }
         if let Some(path) = self.ge_remove_confirmation.clone() {
             egui::Window::new("Remove managed GE-Proton runner?")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -3578,6 +3792,7 @@ impl eframe::App for RiceWineApp {
         self.import_dialog(ui.ctx());
         self.remove_dialog(ui.ctx());
         self.process_dialogs(ui.ctx());
+        self.troubleshoot_dialog(ui.ctx());
         if self.about_open {
             egui::Window::new("About RiceWine")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)

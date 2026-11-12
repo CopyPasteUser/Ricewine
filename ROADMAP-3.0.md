@@ -22,12 +22,13 @@
 - [x] Unit tests for missing launch files, invalid profiles, missing Wine and healthy prefixes.
 - [ ] Granular repair previews with explicit backups and rollback before any change.
 
-**Acceptance:** Checks must not run Wine or rewrite user data. Missing system Wine must not make valid Proton profiles appear broken.
+**Acceptance:** Checks must not launch Windows executables/installers or rewrite user data; a read-only Wine version probe is acceptable. Missing system Wine must not make valid Proton profiles appear broken.
 
 ## Milestone 3 · Recovery and compatibility — 3.0 beta
 
-- [ ] Guided app-does-not-start flow, bounded log inspection and human-readable next steps.
-- [ ] Prefix backup prompts before compatibility changes; restored applications must be independent copies.
+- [x] Guided app-does-not-start flow, bounded log inspection and human-readable next steps.
+- [x] Explicit **backup-first prompt** before applying Winetricks components; existing backup/restore keeps restored programs independent. No automatic component apply after backup.
+- [ ] Extend pre-change backup prompts to other high-risk maintenance flows; verify restore on a real machine.
 - [ ] Safer update/reinstall UI with publisher/source review and preserved original data.
 - [ ] Actionable errors for Proton/umu, missing launch executables, dependencies and permissions.
 
@@ -51,4 +52,4 @@
 
 ## Progress
 
-Milestones 1–2 have been implemented in the 3.0 alpha line (software tests and real-desktop acceptance are separate). Milestones 3–4 remain open and must not be described as shipped or stable without acceptance.
+Milestones 1–2 and the first guided-recovery and backup-preview items of Milestone 3 have been implemented in the 3.0 alpha line (software tests and real-desktop acceptance are separate). Milestones 3–4 are not fully finished and must not be described as shipped or stable without acceptance.

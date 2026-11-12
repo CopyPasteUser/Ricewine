@@ -392,6 +392,7 @@ struct RiceWineApp {
     advanced_open: bool,
     selected: Option<String>,
     search: String,
+    search_focus_requested: bool,
     name_edit: String,
     launch_args_text: String,
     launch_env_text: String,
@@ -540,6 +541,7 @@ impl RiceWineApp {
             advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
             selected,
             search: String::new(),
+            search_focus_requested: false,
             name_edit: String::new(),
             launch_args_text: String::new(),
             launch_env_text: String::new(),
@@ -1911,13 +1913,13 @@ impl RiceWineApp {
         });
         ui.add_space(if luna_mode { 5.0 } else { 10.0 });
         if self.store.is_some() {
-            ui.small("Tip: Drop an EXE or MSI into this window to open its installation form.");
+            ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
         }
         ui.horizontal(|ui| {
             if !win10_mode {
                 ui.label(if luna_mode { "Search for:" } else { "Search" });
             }
-            ui.add(
+            let search_response = ui.add(
                 egui::TextEdit::singleline(&mut self.search)
                     .hint_text(if win10_mode {
                         "Search this list"
@@ -1926,6 +1928,10 @@ impl RiceWineApp {
                     })
                     .desired_width(if win10_mode { 280.0 } else { 210.0 }),
             );
+            if self.search_focus_requested {
+                search_response.request_focus();
+                self.search_focus_requested = false;
+            }
             if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
                 self.search.clear();
             }
@@ -3647,22 +3653,69 @@ impl RiceWineApp {
                 });
         }
         if let Some((id, installer)) = self.update_install_confirmation.clone() {
-            egui::Window::new("Run Windows update installer?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {
-                if luna_mode {
-                    luna::dialog_intro(ui, luna::XpIcon::Install, "Run a Windows update?", "Back up the prefix before installing updates.");
-                }
-                ui.label(core::readable_path(&installer));
-                ui.label("The installer runs with the existing application's runner and prefix. Back up the prefix first; only install updates from trusted publishers.");
-                ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() { self.update_install_confirmation = None; }
-                    if luna::action(ui, "Run update now", true, luna_mode).clicked() {
-                        self.update_install_confirmation = None;
-                        if let Some(app) = self.store.as_ref().and_then(|store| store.get(&id)).cloned() {
-                            self.update_app_async(app, installer);
-                        }
+            let app = self
+                .store
+                .as_ref()
+                .and_then(|store| store.get(&id))
+                .cloned();
+            let available = app.is_some()
+                && !self.backup_busy
+                && !self.busy
+                && !self.running.contains(&id)
+                && !self.compatibility_busy.contains(&id);
+            let mut decision = 0u8;
+            egui::Window::new("Run Windows update installer?")
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    if luna_mode {
+                        luna::dialog_intro(
+                            ui,
+                            luna::XpIcon::Install,
+                            "Update an installed Windows app?",
+                            "Back up this prefix before running the update.",
+                        );
                     }
+                    if let Some(app) = &app {
+                        ui.label(format!("Program: {}", app.name));
+                    }
+                    ui.label(format!("Installer: {}", core::readable_path(&installer)));
+                    ui.label("Updates execute within the program's existing Wine prefix. Only select installers from trusted publishers.");
+                    ui.small("Back up first creates a prefix archive. You decide separately whether to run this installer.");
+                    if self.backup_busy {
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.small("Creating backup. Update actions are disabled…");
+                        });
+                    }
+                    ui.horizontal_wrapped(|ui| {
+                        if luna::action(ui, "Cancel", true, luna_mode).clicked() {
+                            decision = 1;
+                        }
+                        if luna::action(ui, "Back up prefix first", available, luna_mode).clicked() {
+                            decision = 2;
+                        }
+                        if luna::action(ui, "Run update now", available, luna_mode).clicked() {
+                            decision = 3;
+                        }
+                    });
                 });
-            });
+            match decision {
+                1 => self.update_install_confirmation = None,
+                2 => {
+                    if let Some(app) = app {
+                        self.backup_async(app);
+                    }
+                }
+                3 => {
+                    self.update_install_confirmation = None;
+                    if let Some(app) = app {
+                        self.update_app_async(app, installer);
+                    }
+                }
+                _ => {}
+            }
         }
         if self.ge_install_confirmation {
             egui::Window::new("Download GE-Proton?").anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).collapsible(false).resizable(false).show(ctx, |ui| {
@@ -3747,6 +3800,19 @@ impl RiceWineApp {
 impl eframe::App for RiceWineApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.poll(ui.ctx());
+        let dialog_open = self.install.is_some()
+            || self.import.is_some()
+            || self.remove_confirmation.is_some()
+            || self.troubleshoot_id.is_some()
+            || self.compatibility_confirmation.is_some();
+        if !dialog_open
+            && ui
+                .ctx()
+                .input_mut(|input| input.consume_key(egui::Modifiers::CTRL, egui::Key::F))
+        {
+            self.page = Page::Library;
+            self.search_focus_requested = true;
+        }
         // Drag-and-drop is a shortcut to the same reviewable setup form,
         // never permission to execute a dropped Windows binary automatically.
         if self.install.is_none()

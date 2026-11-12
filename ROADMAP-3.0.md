@@ -10,7 +10,8 @@
 - [x] Expose Favorites and Recent sorting across all three Rices.
 - [x] Favorite/unfavorite selected apps; atomic persistence with bounded, validated data.
 - [x] Migration-free defaults and unit tests for sorting, persistence and malformed workspace files.
-- [ ] Keyboard-first search/context actions with real X11 and Wayland verification.
+- [x] Ctrl+F navigates to Library and focuses search across all three Rices.
+- [ ] Verify keyboard navigation/context actions interactively on real X11 and Wayland.
 
 **Acceptance:** Old 2.x data opens unchanged; favorites survive restart, only successful launches appear in Recent, and removing an app never deletes its prefix.
 
@@ -29,7 +30,8 @@
 - [x] Guided app-does-not-start flow, bounded log inspection and human-readable next steps.
 - [x] Explicit **backup-first prompt** before applying Winetricks components; existing backup/restore keeps restored programs independent. No automatic component apply after backup.
 - [ ] Extend pre-change backup prompts to other high-risk maintenance flows; verify restore on a real machine.
-- [ ] Safer update/reinstall UI with publisher/source review and preserved original data.
+- [x] Update-installer confirmation offers a backup-first path and keeps execution as a separate explicit choice.
+- [ ] Stronger publisher/source review and safer reinstall UI with preserved original data.
 - [ ] Actionable errors for Proton/umu, missing launch executables, dependencies and permissions.
 
 **Acceptance:** No implicit runner downloads, permission widening, automatic Wine repair, deletion or unreviewed EXE execution. All repairs need preview and rollback.
@@ -52,4 +54,4 @@
 
 ## Progress
 
-Milestones 1–2 and the first guided-recovery and backup-preview items of Milestone 3 have been implemented in the 3.0 alpha line (software tests and real-desktop acceptance are separate). Milestones 3–4 are not fully finished and must not be described as shipped or stable without acceptance.
+Milestones 1–2 and the initial guided recovery, keyboard search and backup-first update items of Milestone 3 have been implemented in the 3.0 alpha line (software tests and real-desktop acceptance are separate). Milestones 3–4 are not fully finished and must not be described as shipped or stable without acceptance.

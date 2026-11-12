@@ -522,14 +522,12 @@ impl RiceWineApp {
             install: initial_install
                 .map(Self::install_draft_for_file)
                 .or_else(|| {
-                    (capture_dialog.as_deref() == Some("install"))
-                        .then(InstallDraft::default)
+                    (capture_dialog.as_deref() == Some("install")).then(InstallDraft::default)
                 }),
             queued_install_files: VecDeque::new(),
             #[cfg(unix)]
             ipc,
-            import: (capture_dialog.as_deref() == Some("import"))
-                .then(ImportDraft::default),
+            import: (capture_dialog.as_deref() == Some("import")).then(ImportDraft::default),
             remove_confirmation: None,
             cancel_install_confirmation: false,
             stop_confirmation: None,

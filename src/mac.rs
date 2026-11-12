@@ -23,7 +23,11 @@ pub fn brand(ui: &mut egui::Ui) {
         ui.add_space(5.0);
         ui.vertical(|ui| {
             ui.label(RichText::new("RiceWine").size(17.0).strong().color(TEXT));
-            ui.label(RichText::new("Your Windows apps").size(10.5).color(SECONDARY));
+            ui.label(
+                RichText::new("Your Windows apps")
+                    .size(10.5)
+                    .color(SECONDARY),
+            );
         });
     });
 }
@@ -34,12 +38,7 @@ pub fn section_label(ui: &mut egui::Ui, label: &str) {
     ui.add_space(4.0);
 }
 
-pub fn navigation(
-    ui: &mut egui::Ui,
-    symbol: &str,
-    label: &str,
-    selected: bool,
-) -> egui::Response {
+pub fn navigation(ui: &mut egui::Ui, symbol: &str, label: &str, selected: bool) -> egui::Response {
     ui.add_sized(
         [ui.available_width(), 35.0],
         egui::Button::selectable(
@@ -66,25 +65,27 @@ pub fn list_header(ui: &mut egui::Ui) {
         .corner_radius(egui::CornerRadius::same(6))
         .show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(RichText::new("APPLICATION").size(10.0).strong().color(SECONDARY));
+                ui.label(
+                    RichText::new("APPLICATION")
+                        .size(10.0)
+                        .strong()
+                        .color(SECONDARY),
+                );
                 ui.add_space(75.0);
-                ui.label(RichText::new("RUNTIME").size(10.0).strong().color(SECONDARY));
+                ui.label(
+                    RichText::new("RUNTIME")
+                        .size(10.0)
+                        .strong()
+                        .color(SECONDARY),
+                );
             });
         });
 }
 
-pub fn program_row(
-    ui: &mut egui::Ui,
-    name: &str,
-    selected: bool,
-    width: f32,
-) -> egui::Response {
+pub fn program_row(ui: &mut egui::Ui, name: &str, selected: bool, width: f32) -> egui::Response {
     ui.add_sized(
         [width, 40.0],
-        egui::Button::selectable(
-            selected,
-            RichText::new(format!("▣  {name}")).size(13.0),
-        ),
+        egui::Button::selectable(selected, RichText::new(format!("▣  {name}")).size(13.0)),
     )
 }
 
@@ -99,7 +100,12 @@ pub fn empty_library(ui: &mut egui::Ui) {
             ui.vertical_centered(|ui| {
                 ui.label(RichText::new("▣").size(42.0).color(ACCENT));
                 ui.add_space(6.0);
-                ui.label(RichText::new("No applications yet").size(18.0).strong().color(TEXT));
+                ui.label(
+                    RichText::new("No applications yet")
+                        .size(18.0)
+                        .strong()
+                        .color(TEXT),
+                );
                 ui.label(
                     RichText::new("Install a Windows program or import an existing Wine prefix.")
                         .color(SECONDARY),

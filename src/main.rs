@@ -1253,7 +1253,8 @@ impl RiceWineApp {
                 ui.set_min_height((height - 34.0).max(320.0));
                 win10::brand(ui);
                 win10::section(ui, "Navigation");
-                if win10::navigation(ui, "▦   My programs", self.page == Page::Library).clicked() {
+                if win10::navigation(ui, "▦   My programs", self.page == Page::Library).clicked()
+                {
                     self.page = Page::Library;
                 }
                 if win10::navigation(ui, "⚙   Settings", self.page == Page::Settings).clicked() {
@@ -1602,7 +1603,9 @@ impl RiceWineApp {
         let status = match self.page {
             Page::Library => format!(
                 "{} programs",
-                self.store.as_ref().map_or(0, |store| store.applications().len())
+                self.store
+                    .as_ref()
+                    .map_or(0, |store| store.applications().len())
             ),
             Page::Prefixes => "Wine prefix management".to_owned(),
             Page::Runners => "Compatibility tools".to_owned(),
@@ -1696,7 +1699,6 @@ impl RiceWineApp {
             luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
         }
         ui.horizontal(|ui| {
-
             if self.busy {
                 ui.spinner();
                 ui.label("Installing…");
@@ -3117,12 +3119,10 @@ impl eframe::App for RiceWineApp {
         } else {
             egui::CentralPanel::default()
         };
-        panel.show(ui, |ui| {
-            match self.theme {
-                Theme::Luna => self.luna_shell(ui),
-                Theme::MacOS => self.mac_shell(ui),
-                Theme::Windows10 => self.win10_shell(ui),
-            }
+        panel.show(ui, |ui| match self.theme {
+            Theme::Luna => self.luna_shell(ui),
+            Theme::MacOS => self.mac_shell(ui),
+            Theme::Windows10 => self.win10_shell(ui),
         });
         self.install_dialog(ui.ctx());
         self.import_dialog(ui.ctx());

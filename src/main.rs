@@ -1994,6 +1994,7 @@ impl RiceWineApp {
                 ui.set_min_height((available_height - 32.0).max(240.0));
                 extra_rices::page_heading(ui, flavor, self.page.label());
                 egui::ScrollArea::vertical()
+                    .max_height((available_height - 82.0).max(160.0))
                     .auto_shrink([false, false])
                     .show(ui, |ui| self.page_body(ui));
             });
@@ -2017,7 +2018,8 @@ impl RiceWineApp {
                                     } else {
                                         "Explore RiceWine"
                                     })
-                                    .strong(),
+                                    .strong()
+                                    .color(self.theme.palette().text),
                                 );
                                 ui.add_space(7.0);
                                 for page in

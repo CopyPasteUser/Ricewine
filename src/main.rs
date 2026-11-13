@@ -1782,7 +1782,39 @@ impl RiceWineApp {
 
     fn page_body(&mut self, ui: &mut egui::Ui) {
         if let Some((is_error, message)) = self.notice.clone() {
-            if self.theme == Theme::Luna {
+            if self.simple_ui {
+                let palette = self.theme.palette();
+                let (fill, border, foreground) = if is_error {
+                    (
+                        Color32::from_rgb(255, 245, 233),
+                        Color32::from_rgb(191, 128, 78),
+                        Color32::from_rgb(115, 47, 28),
+                    )
+                } else {
+                    (palette.button, palette.border, palette.text)
+                };
+                let width = ui.available_width();
+                egui::Frame::new()
+                    .fill(fill)
+                    .stroke(egui::Stroke::new(1.0, border))
+                    .corner_radius(egui::CornerRadius::same(palette.corner_radius))
+                    .inner_margin(egui::Margin::symmetric(10, 8))
+                    .show(ui, |ui| {
+                        ui.set_min_width((width - 22.0).max(0.0));
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(
+                                RichText::new(if is_error { "⚠" } else { "ℹ" })
+                                    .strong()
+                                    .color(foreground),
+                            );
+                            ui.label(RichText::new(message).color(foreground));
+                            if ui.small_button("Dismiss ×").clicked() {
+                                self.notice = None;
+                            }
+                        });
+                    });
+                ui.add_space(12.0);
+            } else if self.theme == Theme::Luna {
                 if luna::notice(ui, is_error, &message) {
                     self.notice = None;
                 }
@@ -2370,14 +2402,29 @@ impl RiceWineApp {
     fn library(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
+        let count = self
+            .store
+            .as_ref()
+            .map_or(0, |store| store.applications().len());
         if self.simple_ui {
             ui.horizontal_wrapped(|ui| {
-                ui.heading("My programs");
-                let count = self
-                    .store
-                    .as_ref()
-                    .map_or(0, |store| store.applications().len());
-                ui.small(format!("{count} installed"));
+                ui.label(
+                    RichText::new("My programs")
+                        .strong()
+                        .size(if matches!(self.theme, Theme::Luna | Theme::Windows98) {
+                            19.0
+                        } else {
+                            23.0
+                        })
+                        .color(self.theme.palette().text),
+                );
+                if count > 0 {
+                    ui.label(
+                        RichText::new(format!("{count} installed"))
+                            .size(12.0)
+                            .color(self.theme.palette().muted),
+                    );
+                }
             });
             if self.busy {
                 ui.horizontal_wrapped(|ui| {
@@ -2388,9 +2435,10 @@ impl RiceWineApp {
                     }
                 });
             }
-            ui.add_space(8.0);
-            let mut changed = false;
-            ui.horizontal_wrapped(|ui| {
+            if count > 0 {
+                ui.add_space(14.0);
+                let mut changed = false;
+                ui.horizontal_wrapped(|ui| {
                 let search_response = ui.add(
                     egui::TextEdit::singleline(&mut self.search)
                         .hint_text("Search your programs")
@@ -2432,10 +2480,11 @@ impl RiceWineApp {
                     });
                 });
             });
-            if changed && let Err(error) = self.persist_workspace() {
-                self.notice = Some((true, format!("Could not save Library view: {error}")));
+                if changed && let Err(error) = self.persist_workspace() {
+                    self.notice = Some((true, format!("Could not save Library view: {error}")));
+                }
+                ui.add_space(12.0);
             }
-            ui.add_space(8.0);
         } else {
             if luna_mode {
                 luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
@@ -2535,25 +2584,62 @@ impl RiceWineApp {
             .is_none_or(|s| s.applications().is_empty())
         {
             if self.simple_ui {
-                ui.add_space(30.0);
+                let palette = self.theme.palette();
+                let enabled = !self.busy && self.store.is_some();
+                ui.add_space(35.0);
                 ui.vertical_centered(|ui| {
-                    ui.heading("No programs yet");
-                    ui.label("Choose an EXE or MSI to add a Windows program.");
+                    let (icon_rect, _) = ui.allocate_exact_size(
+                        egui::vec2(70.0, 66.0),
+                        egui::Sense::hover(),
+                    );
+                    let window = egui::Rect::from_center_size(
+                        icon_rect.center(),
+                        egui::vec2(56.0, 46.0),
+                    );
+                    ui.painter().rect_filled(
+                        window,
+                        palette.corner_radius as f32,
+                        palette.button,
+                    );
+                    ui.painter().rect_filled(
+                        egui::Rect::from_min_size(window.min, egui::vec2(56.0, 9.0)),
+                        0.0,
+                        palette.accent,
+                    );
+                    ui.painter().text(
+                        window.center() + egui::vec2(0.0, 4.0),
+                        egui::Align2::CENTER_CENTER,
+                        "▶",
+                        egui::FontId::proportional(23.0),
+                        palette.accent,
+                    );
                     ui.add_space(10.0);
-                    if ui
-                        .add_enabled(
-                            !self.busy && self.store.is_some(),
-                            egui::Button::new("＋ Install your first program"),
-                        )
-                        .clicked()
-                    {
+                    ui.label(
+                        RichText::new("Your Windows apps, in one place")
+                            .size(21.0)
+                            .strong()
+                            .color(palette.text),
+                    );
+                    ui.add_space(5.0);
+                    ui.label(
+                        RichText::new("Install an EXE or MSI, or import a program you already have.")
+                            .color(palette.muted),
+                    );
+                    ui.add_space(17.0);
+                    let install = egui::Button::new(
+                        RichText::new("＋ Install a Windows program")
+                            .strong()
+                            .color(Color32::WHITE),
+                    )
+                    .fill(palette.accent)
+                    .stroke(egui::Stroke::new(1.0, palette.accent))
+                    .corner_radius(egui::CornerRadius::same(palette.corner_radius));
+                    if ui.add_enabled(enabled, install).clicked() {
                         self.install = Some(InstallDraft::default());
                     }
+                    ui.add_space(6.0);
                     if ui
-                        .add_enabled(
-                            !self.busy && self.store.is_some(),
-                            egui::Button::new("Import existing Wine prefix"),
-                        )
+                        .add_enabled(enabled, egui::Button::new("Import existing prefix…"))
                         .clicked()
                     {
                         self.import = Some(ImportDraft::default());

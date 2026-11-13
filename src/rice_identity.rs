@@ -197,8 +197,10 @@ pub fn icon_button(
     // Aero/Material/Aqua icons sit on pale badges even inside selected buttons.
     // Preserve icon contrast there instead of painting white on white.
     let icon_color = if emphasis
-        && !matches!(rice, Theme::Windows7 | Theme::ChromeOS | Theme::FrutigerAero)
-    {
+        && !matches!(
+            rice,
+            Theme::Windows7 | Theme::ChromeOS | Theme::FrutigerAero
+        ) {
         Color32::WHITE
     } else {
         p.accent

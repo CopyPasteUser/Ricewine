@@ -1524,7 +1524,7 @@ impl RiceWineApp {
             .inner_margin(egui::Margin::symmetric(14, 17))
             .show(ui, |ui| {
                 ui.set_min_width(174.0);
-                ui.set_min_height((height - 34.0).max(320.0));
+                ui.set_min_height((height - 34.0).max(0.0));
                 mac::brand(ui);
                 ui.add_space(25.0);
                 mac::section_label(ui, "YOUR APPS");
@@ -1569,7 +1569,7 @@ impl RiceWineApp {
             .inner_margin(egui::Margin::symmetric(14, 21))
             .show(ui, |ui| {
                 ui.set_min_width(192.0);
-                ui.set_min_height((height - 42.0).max(320.0));
+                ui.set_min_height((height - 42.0).max(0.0));
                 ui.horizontal(|ui| {
                     if ui
                         .button("←")
@@ -1618,7 +1618,7 @@ impl RiceWineApp {
             .stroke(egui::Stroke::new(1.0, Color32::from_rgb(89, 131, 207)))
             .show(ui, |ui| {
                 ui.set_min_width(194.0);
-                ui.set_min_height((ui.available_height() - 22.0).max(300.0));
+                ui.set_min_height((ui.available_height() - 22.0).max(0.0));
                 luna::brand(ui);
                 luna::task_panel(ui, |ui| {
                     luna::task_header(ui, "Program tasks");
@@ -1833,7 +1833,11 @@ impl RiceWineApp {
                 ui.allocate_ui_with_layout(
                     egui::vec2(204.0, available_height),
                     egui::Layout::top_down(egui::Align::Min),
-                    |ui| self.mac_sidebar(ui),
+                    |ui| {
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| self.mac_sidebar(ui));
+                    },
                 );
             }
             let content_width = ui.available_width().max(0.0);
@@ -1883,7 +1887,11 @@ impl RiceWineApp {
                 ui.allocate_ui_with_layout(
                     egui::vec2(235.0, available_height),
                     egui::Layout::top_down(egui::Align::Min),
-                    |ui| self.win10_sidebar(ui),
+                    |ui| {
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| self.win10_sidebar(ui));
+                    },
                 );
                 ui.separator();
             }
@@ -2039,7 +2047,7 @@ impl RiceWineApp {
                             .stroke(egui::Stroke::new(1.0, self.theme.palette().border))
                             .inner_margin(egui::Margin::same(9))
                             .show(ui, |ui| {
-                                ui.set_min_height((available_height - 20.0).max(240.0));
+                                ui.set_min_height((available_height - 20.0).max(0.0));
                                 ui.label(
                                     RichText::new(if flavor == Flavor::Classic98 {
                                         "Folders"
@@ -3432,10 +3440,15 @@ impl RiceWineApp {
             egui::Window::new("Install Windows program")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
-                .resizable(false)
+                .resizable(true)
+                .vscroll(true)
+                .max_size([
+                    (ctx.content_rect().width() - 24.0).max(280.0),
+                    (ctx.content_rect().height() - 24.0).max(220.0),
+                ])
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
-                    ui.set_min_width(460.0);
+                    ui.set_min_width((ctx.content_rect().width() - 64.0).clamp(260.0, 460.0));
                     if luna_mode {
                         luna::dialog_intro(
                             ui,
@@ -3576,9 +3589,16 @@ impl RiceWineApp {
         if let Some(draft) = &mut self.import {
             egui::Window::new("Import existing Wine prefix")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-                .collapsible(false).resizable(false).open(&mut keep_open)
+                .collapsible(false)
+                .resizable(true)
+                .vscroll(true)
+                .max_size([
+                    (ctx.content_rect().width() - 24.0).max(280.0),
+                    (ctx.content_rect().height() - 24.0).max(220.0),
+                ])
+                .open(&mut keep_open)
                 .show(ctx, |ui| {
-                    ui.set_min_width(450.0);
+                    ui.set_min_width((ctx.content_rect().width() - 64.0).clamp(260.0, 450.0));
                     if luna_mode {
                         luna::dialog_intro(
                             ui,
@@ -3757,6 +3777,11 @@ impl RiceWineApp {
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .collapsible(false)
             .default_width(540.0)
+            .vscroll(true)
+            .max_size([
+                (ctx.content_rect().width() - 24.0).max(280.0),
+                (ctx.content_rect().height() - 24.0).max(220.0),
+            ])
             .open(&mut keep_open)
             .show(ctx, |ui| {
                 if luna_mode {

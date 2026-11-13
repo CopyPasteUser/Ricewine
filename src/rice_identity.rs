@@ -220,6 +220,7 @@ pub struct EmptyActions {
 /// Seven separately composed empty library views, not one recolored card.
 /// The caller owns the actions; this only supplies presentation and click
 /// signals. These layouts stay compact enough for 640×480 screenshot tests.
+#[expect(clippy::too_many_arguments, reason = "the colors are named explicitly for each Rice presentation")]
 pub fn empty_library(
     ui: &mut Ui,
     family: Family,
@@ -593,6 +594,7 @@ pub fn symbol(ui: &mut Ui, family: Family, icon: Icon, accent: Color32, size: f3
 
 /// Draw a family-specific button but keep the label as real button text for
 /// accessibility and keyboard navigation.
+#[expect(clippy::too_many_arguments, reason = "the call site specifies text, icon and independent accessible colors")]
 pub fn button(
     ui: &mut Ui,
     family: Family,

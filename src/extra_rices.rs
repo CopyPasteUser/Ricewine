@@ -78,12 +78,15 @@ impl Flavor {
 /// Header layout deliberately differs per rice, while the Linux window frame stays native.
 pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
     let margin = if rice == Flavor::Classic98 { 6 } else { 14 };
+    let header_width = (ui.available_width() - (margin * 2 + 2) as f32).max(200.0);
     egui::Frame::new()
         .fill(rice.surface())
         .stroke(rice.stroke())
         .corner_radius(egui::CornerRadius::same(rice.radius()))
         .inner_margin(egui::Margin::symmetric(margin, 10))
         .show(ui, |ui| {
+            // egui frames otherwise shrink-wrap the title, leaving a floating tile.
+            ui.set_min_width(header_width);
             ui.horizontal(|ui| {
                 let emblem = match rice {
                     Flavor::Classic98 => "▣",

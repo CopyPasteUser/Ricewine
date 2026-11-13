@@ -180,6 +180,11 @@ pub fn icon_button(
         Theme::Windows7 | Theme::MacOS => 35.0,
         Theme::ChromeOS | Theme::FrutigerAero => 39.0,
     };
+    let height = if ui.ctx().content_rect().height() < 600.0 {
+        height.min(31.0)
+    } else {
+        height
+    };
     let button = egui::Button::new(RichText::new(format!("     {label}")).color(fg).strong())
         .fill(bg)
         .stroke(stroke)
@@ -241,7 +246,10 @@ fn brand(ui: &mut Ui, rice: Theme, heading: &str, subline: Option<&str>, fg: Col
                     .strong()
                     .color(fg),
             );
-            if let Some(note) = subline {
+            if let Some(note) = subline.filter(|_| {
+                ui.ctx().content_rect().height() >= 600.0
+                    || matches!(rice, Theme::Luna | Theme::Windows98 | Theme::Windows7)
+            }) {
                 ui.label(
                     RichText::new(note)
                         .size(10.5)
@@ -623,6 +631,7 @@ pub fn toolbar(ui: &mut Ui, rice: Theme, page: Page, can_install: bool) -> Optio
 pub fn page_panel(ui: &mut Ui, rice: Theme, content: impl FnOnce(&mut Ui)) {
     let p = rice.palette();
     let width = ui.available_width();
+    let compact = ui.ctx().content_rect().height() < 600.0;
     let margin = match rice {
         Theme::Windows98 => 7,
         Theme::Luna => 11,
@@ -632,6 +641,7 @@ pub fn page_panel(ui: &mut Ui, rice: Theme, content: impl FnOnce(&mut Ui)) {
         Theme::ChromeOS => 21,
         Theme::FrutigerAero => 17,
     };
+    let margin = if compact { margin.min(10) } else { margin };
     let (fill, border, thickness) = match rice {
         Theme::Windows98 => (
             Color32::from_rgb(224, 224, 224),
@@ -672,6 +682,7 @@ pub fn page_panel(ui: &mut Ui, rice: Theme, content: impl FnOnce(&mut Ui)) {
 
 pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyph: Glyph) {
     let p = rice.palette();
+    let compact = ui.ctx().content_rect().height() < 600.0;
     match rice {
         Theme::Luna => {
             Frame::new()
@@ -684,7 +695,7 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                         inline_icon(ui, rice, glyph, 28.0, p.accent);
                         ui.vertical(|ui| {
                             ui.label(RichText::new(title).strong().size(18.0).color(p.accent));
-                            ui.small(description);
+                            if !description.is_empty() { ui.small(description); }
                         });
                     });
                 });
@@ -700,7 +711,7 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                         ui.label(RichText::new(title).strong().size(17.0));
                     });
                 });
-            ui.small(description);
+            if !description.is_empty() { ui.small(description); }
         }
         Theme::Windows7 => {
             Frame::new()
@@ -710,33 +721,33 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                 .inner_margin(egui::Margin::symmetric(13, 9))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        inline_icon(ui, rice, glyph, 30.0, p.accent);
+                        inline_icon(ui, rice, glyph, if compact { 23.0 } else { 30.0 }, p.accent);
                         ui.vertical(|ui| {
-                            ui.label(RichText::new(title).size(22.0).strong().color(p.text));
-                            ui.label(RichText::new(description).size(11.5).color(p.muted));
+                            ui.label(RichText::new(title).size(if compact { 19.0 } else { 22.0 }).strong().color(p.text));
+                            if !description.is_empty() { ui.label(RichText::new(description).size(11.5).color(p.muted)); }
                         });
                     });
                 });
         }
         Theme::MacOS => {
             ui.horizontal(|ui| {
-                inline_icon(ui, rice, glyph, 23.0, p.muted);
-                ui.label(RichText::new(title).size(21.0).strong().color(p.text));
+                inline_icon(ui, rice, glyph, if compact { 20.0 } else { 23.0 }, p.muted);
+                ui.label(RichText::new(title).size(if compact { 19.0 } else { 21.0 }).strong().color(p.text));
             });
-            ui.small(description);
+            if !description.is_empty() { ui.small(description); }
             ui.separator();
         }
         Theme::Windows10 => {
             ui.horizontal(|ui| {
-                inline_icon(ui, rice, glyph, 23.0, p.accent);
-                ui.label(RichText::new(title).size(25.0).color(p.text));
+                inline_icon(ui, rice, glyph, if compact { 20.0 } else { 23.0 }, p.accent);
+                ui.label(RichText::new(title).size(if compact { 21.0 } else { 25.0 }).color(p.text));
             });
-            ui.label(RichText::new(description).color(p.muted));
+            if !description.is_empty() { if !description.is_empty() { ui.label(RichText::new(description).color(p.muted)); } }
             ui.add_space(3.0);
         }
         Theme::ChromeOS => {
             ui.horizontal(|ui| {
-                inline_icon(ui, rice, glyph, 35.0, p.accent);
+                inline_icon(ui, rice, glyph, if compact { 24.0 } else { 35.0 }, p.accent);
                 ui.vertical(|ui| {
                     ui.label(RichText::new(title).size(22.0).strong().color(p.text));
                     ui.label(RichText::new(description).color(p.muted));
@@ -751,16 +762,16 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                 .inner_margin(egui::Margin::symmetric(14, 10))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        inline_icon(ui, rice, glyph, 34.0, p.accent);
+                        inline_icon(ui, rice, glyph, if compact { 24.0 } else { 34.0 }, p.accent);
                         ui.vertical(|ui| {
-                            ui.label(RichText::new(title).size(23.0).strong().color(p.text));
-                            ui.label(RichText::new(description).size(12.0).color(p.muted));
+                            ui.label(RichText::new(title).size(if compact { 20.0 } else { 23.0 }).strong().color(p.text));
+                            if !description.is_empty() { ui.label(RichText::new(description).size(12.0).color(p.muted)); }
                         });
                     });
                 });
         }
     }
-    ui.add_space(8.0);
+    ui.add_space(if compact { 3.0 } else { 8.0 });
 }
 
 fn empty_panel(
@@ -774,7 +785,7 @@ fn empty_panel(
 ) -> Option<EmptyIntent> {
     let p = rice.palette();
     let mut action = None;
-    let compact = ui.available_height() < 250.0;
+    let compact = ui.ctx().content_rect().height() < 600.0 || ui.available_height() < 250.0;
     let max_width = ui.available_width();
     let fill = match rice {
         Theme::Windows98 => Color32::from_rgb(192, 192, 192),
@@ -786,30 +797,30 @@ fn empty_panel(
         Theme::FrutigerAero => Color32::from_rgb(224, 251, 243),
     };
     let border = Stroke::new(if rice == Theme::Windows98 { 2.0 } else { 1.0 }, p.border);
-    let indent = if rice == Theme::Windows98 { 8 } else { 14 };
+    let indent = if rice == Theme::Windows98 { 8 } else if compact { 7 } else { 14 };
     let mut body = |ui: &mut Ui| {
         let mut body = |ui: &mut Ui| {
             inline_icon(
                 ui,
                 rice,
                 icon_glyph,
-                if compact { 30.0 } else { 40.0 },
+                if compact { 22.0 } else { 40.0 },
                 p.accent,
             );
-            ui.add_space(3.0);
+            ui.add_space(if compact { 1.0 } else { 3.0 });
             ui.label(
                 RichText::new(title)
-                    .size(match rice {
+                    .size(if compact { 18.0 } else { match rice {
                         Theme::Windows98 => 17.0,
                         Theme::Luna => 19.0,
                         Theme::ChromeOS | Theme::FrutigerAero => 22.0,
                         _ => 20.0,
-                    })
+                    } })
                     .strong()
                     .color(p.text),
             );
             ui.label(RichText::new(subtitle).size(12.0).color(p.muted));
-            ui.add_space(if compact { 6.0 } else { 14.0 });
+            ui.add_space(if compact { 3.0 } else { 14.0 });
             ui.horizontal_wrapped(|ui| {
                 if icon_button(
                     ui,
@@ -1102,6 +1113,7 @@ pub fn dialog_banner(ui: &mut Ui, rice: Theme, title: &str, subtitle: &str, glyp
 
 pub fn setting_preview(ui: &mut Ui, rice: Theme) {
     let p = rice.palette();
+    let compact = ui.ctx().content_rect().height() < 600.0;
     ui.add_space(6.0);
     Frame::new()
         .fill(p.sidebar)
@@ -1112,6 +1124,7 @@ pub fn setting_preview(ui: &mut Ui, rice: Theme) {
             ui.horizontal_wrapped(|ui| {
                 inline_icon(ui, rice, Glyph::Brand, 24.0, p.accent);
                 ui.label(RichText::new(rice.label()).strong().color(p.text));
+                if !compact {
                 ui.label(
                     RichText::new(match rice {
                         Theme::Luna => "Task panes • bright XP controls",
@@ -1125,6 +1138,7 @@ pub fn setting_preview(ui: &mut Ui, rice: Theme) {
                     .size(11.0)
                     .color(p.muted),
                 );
+                }
             });
         });
 }

@@ -173,7 +173,7 @@ pub fn icon_button(
         Theme::Windows10 => Stroke::new(if emphasis { 0.0 } else { 1.0 }, p.border),
         Theme::ChromeOS | Theme::FrutigerAero => Stroke::new(1.0, p.border),
     };
-    let height = match rice {
+    let height: f32 = match rice {
         Theme::Windows98 => 29.0,
         Theme::Luna => 32.0,
         Theme::Windows10 => 34.0,

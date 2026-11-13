@@ -54,7 +54,7 @@ pub fn desktop_entry(app: &Application, ricewine_exe: &Path) -> Result<String, S
     }
     let safe_name = app.name.replace('\\', "\\\\");
     Ok(format!(
-        "[Desktop Entry]\nType=Application\nVersion=1.0\nName={safe_name}\nComment=Run with RiceWine\nExec={} --launch {}\nTerminal=false\nStartupNotify=true\nCategories=Utility;\nIcon=ricewine\nX-RiceWine-ID={}\n",
+        "[Desktop Entry]\nType=Application\nVersion=1.0\nName={safe_name}\nComment=Run with RiceWine\nExec={} --launch {}\nTerminal=false\nStartupNotify=true\nCategories=Utility;\nIcon=wine\nX-RiceWine-ID={}\n",
         escape_exec(ricewine_exe),
         app.id,
         app.id

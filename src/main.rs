@@ -274,6 +274,26 @@ impl Theme {
         visuals.menu_corner_radius = egui::CornerRadius::same(palette.corner_radius);
         ctx.set_visuals(visuals);
         ctx.global_style_mut(|style| {
+            // Match the information density to the era without shipping fonts
+            // or changing the user's compositor-owned window decorations.
+            let (body, button, heading) = match self {
+                Self::Windows98 => (12.0, 12.0, 19.0),
+                Self::Luna => (12.5, 12.5, 20.0),
+                Self::Windows7 => (13.0, 13.0, 21.0),
+                Self::Windows10 => (13.0, 13.0, 22.0),
+                Self::MacOS => (13.5, 13.0, 22.0),
+                Self::ChromeOS => (13.5, 13.5, 23.0),
+                Self::FrutigerAero => (13.5, 13.0, 22.0),
+            };
+            style
+                .text_styles
+                .insert(egui::TextStyle::Body, egui::FontId::proportional(body));
+            style
+                .text_styles
+                .insert(egui::TextStyle::Button, egui::FontId::proportional(button));
+            style
+                .text_styles
+                .insert(egui::TextStyle::Heading, egui::FontId::proportional(heading));
             style.spacing.item_spacing = match self {
                 Self::Luna => egui::vec2(6.0, 7.0),
                 Self::MacOS => egui::vec2(8.0, 10.0),
@@ -4855,6 +4875,25 @@ mod rice_tests {
             InstallDraft::suggested_name(std::path::Path::new("My_App_1.2.3_Setup.exe")),
             "My App 1.2.3"
         );
+    }
+
+    #[test]
+    fn all_simple_rices_have_readable_navigation_and_primary_actions() {
+        for theme in Theme::ALL {
+            let palette = theme.palette();
+            assert!(
+                contrast(Color32::WHITE, palette.accent) >= 4.5,
+                "{theme:?} primary action text"
+            );
+            assert!(
+                contrast(palette.text, palette.sidebar) >= 4.5,
+                "{theme:?} toolbar text"
+            );
+            assert!(
+                contrast(palette.text, palette.button) >= 4.5,
+                "{theme:?} program row text"
+            );
+        }
     }
 
     #[test]

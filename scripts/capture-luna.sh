@@ -91,14 +91,47 @@ done
 capture_page library install install
 capture_page library import import
 
+# Render a *populated* library as well as the empty state. These records and
+# non-executable placeholders live only in the isolated XDG_DATA_HOME and can
+# never be launched or modify a real Wine prefix.
+fixture_prefix="$XDG_DATA_HOME/ricewine/prefixes/capture-fixture"
+mkdir -p "$fixture_prefix/drive_c"
+printf 'REGEDIT4\n' > "$fixture_prefix/system.reg"
+: > "$fixture_prefix/drive_c/preview.exe"
+names=(
+    'PhotoPaint 2000'
+    'Audio Studio 7'
+    'Office Writer 2003'
+    'Classic CAD Professional'
+    'Archive Manager'
+    'Retro Image Viewer'
+    'Music Collection'
+    'Pixel Workshop'
+    'Legacy Accounting'
+    'Desktop Publishing Suite'
+    'A Very Long Windows Application Name for Responsive Layout Testing'
+    'Portable Utilities'
+)
+{
+    printf '{"schema":1,"applications":['
+    separator=''
+    for i in "${!names[@]}"; do
+        printf '%s{"id":"preview-%02d","name":"%s","prefix":"%s","executable":"%s","installer":null,"portable":false}' \
+            "$separator" "$i" "${names[$i]}" "$fixture_prefix" "$fixture_prefix/drive_c/preview.exe"
+        separator=','
+    done
+    printf ']}\n'
+} > "$XDG_DATA_HOME/ricewine/applications.json"
+capture_page library '' library-populated
+
 prefix="$theme"
 case "$theme" in
     windows10) prefix="win10" ;;
     windows98) prefix="win98" ;;
     windows7) prefix="win7" ;;
 esac
-unique_count="$(sha256sum docs/screenshots/"$prefix"-{library,prefixes,runners,settings,install,import}"$capture_suffix".webp | awk '{print $1}' | sort -u | wc -l)"
-if [[ "$unique_count" -ne 6 ]]; then
-    echo "Expected six distinct $theme screenshots, found $unique_count" >&2
+unique_count="$(sha256sum docs/screenshots/"$prefix"-{library,prefixes,runners,settings,install,import,library-populated}"$capture_suffix".webp | awk '{print $1}' | sort -u | wc -l)"
+if [[ "$unique_count" -ne 7 ]]; then
+    echo "Expected seven distinct $theme screenshots, found $unique_count" >&2
     exit 1
 fi

@@ -93,9 +93,18 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
                     // Compact, rectangular Win9x application header. The actual
                     // File/View/Help menu lives in the application shell above it.
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new("RiceWine").size(12.0).strong().color(rice.foreground()));
+                        ui.label(
+                            RichText::new("RiceWine")
+                                .size(12.0)
+                                .strong()
+                                .color(rice.foreground()),
+                        );
                         ui.separator();
-                        ui.label(RichText::new(format!("{page} Properties")).size(12.0).color(rice.foreground()));
+                        ui.label(
+                            RichText::new(format!("{page} Properties"))
+                                .size(12.0)
+                                .color(rice.foreground()),
+                        );
                     });
                 }
                 Flavor::Aero7 => {
@@ -284,7 +293,11 @@ pub fn program_row(
     };
     let button = egui::Button::new(
         RichText::new(format!("      {name}"))
-            .size(if rice == Flavor::Classic98 { 12.0 } else { 13.0 })
+            .size(if rice == Flavor::Classic98 {
+                12.0
+            } else {
+                13.0
+            })
             .color(fg),
     )
     .fill(fill)
@@ -301,7 +314,11 @@ pub fn program_row(
         rice.radius()
     }));
     let response = ui.add_sized([width.max(0.0), height], button);
-    let icon_size = if rice == Flavor::Classic98 { 16.0 } else { 22.0 };
+    let icon_size = if rice == Flavor::Classic98 {
+        16.0
+    } else {
+        22.0
+    };
     let rect = egui::Rect::from_center_size(
         response.rect.left_center() + egui::vec2(15.0, 0.0),
         egui::vec2(icon_size, icon_size),
@@ -350,7 +367,11 @@ pub fn empty_library(ui: &mut egui::Ui, rice: Flavor, enabled: bool) -> bool {
     egui::Frame::new()
         .fill(rice.canvas())
         .stroke(rice.stroke())
-        .corner_radius(egui::CornerRadius::same(if rice == Flavor::Classic98 { 0 } else { rice.radius() }))
+        .corner_radius(egui::CornerRadius::same(if rice == Flavor::Classic98 {
+            0
+        } else {
+            rice.radius()
+        }))
         .inner_margin(if rice == Flavor::Classic98 {
             egui::Margin::same(12)
         } else {
@@ -360,7 +381,11 @@ pub fn empty_library(ui: &mut egui::Ui, rice: Flavor, enabled: bool) -> bool {
             ui.label(
                 RichText::new(title)
                     .strong()
-                    .size(if rice == Flavor::Classic98 { 13.0 } else { 18.0 })
+                    .size(if rice == Flavor::Classic98 {
+                        13.0
+                    } else {
+                        18.0
+                    })
                     .color(rice.foreground()),
             );
             ui.add_space(8.0);
@@ -369,15 +394,17 @@ pub fn empty_library(ui: &mut egui::Ui, rice: Flavor, enabled: bool) -> bool {
             install = ui
                 .add_enabled(
                     enabled,
-                    egui::Button::new(
-                        RichText::new(action).color(if rice == Flavor::Classic98 {
-                            rice.foreground()
-                        } else {
-                            Color32::WHITE
-                        }),
-                    )
-                        .fill(if rice == Flavor::Classic98 { rice.surface() } else { rice.accent() })
-                        .corner_radius(egui::CornerRadius::same(rice.radius())),
+                    egui::Button::new(RichText::new(action).color(if rice == Flavor::Classic98 {
+                        rice.foreground()
+                    } else {
+                        Color32::WHITE
+                    }))
+                    .fill(if rice == Flavor::Classic98 {
+                        rice.surface()
+                    } else {
+                        rice.accent()
+                    })
+                    .corner_radius(egui::CornerRadius::same(rice.radius())),
                 )
                 .clicked();
         });
@@ -398,7 +425,12 @@ pub fn dialog_intro(ui: &mut egui::Ui, rice: Flavor, title: &str, description: &
             .inner_margin(egui::Margin::symmetric(10, 9))
             .show(ui, |ui| {
                 ui.vertical(|ui| {
-                    ui.label(RichText::new(title).size(17.0).strong().color(rice.foreground()));
+                    ui.label(
+                        RichText::new(title)
+                            .size(17.0)
+                            .strong()
+                            .color(rice.foreground()),
+                    );
                     ui.small(description);
                 });
             });
@@ -434,7 +466,18 @@ pub fn toolbar_action(
         egui::Button::new(text)
             .fill(fill)
             .stroke(rice.stroke())
-            .corner_radius(egui::CornerRadius::same(if rice == Flavor::Aero7 { 2 } else { rice.radius() }))
-            .min_size(egui::vec2(0.0, if rice == Flavor::Classic98 { 25.0 } else { 31.0 })),
+            .corner_radius(egui::CornerRadius::same(if rice == Flavor::Aero7 {
+                2
+            } else {
+                rice.radius()
+            }))
+            .min_size(egui::vec2(
+                0.0,
+                if rice == Flavor::Classic98 {
+                    25.0
+                } else {
+                    31.0
+                },
+            )),
     )
 }

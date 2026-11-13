@@ -5039,12 +5039,25 @@ mod rice_tests {
 
     #[test]
     fn compact_library_stacks_details_instead_of_overflowing() {
-        for width in [280.0, 400.0, 540.0, 609.0] {
-            let stacked = width < 610.0;
-            let list_width = if stacked { width } else { width - 280.0 };
-            assert!(stacked);
-            assert!(list_width > 0.0);
+        for width in [280.0, 400.0, 540.0, 560.0, 609.0] {
+            assert!(!ui_layout::split_panes(width, 355.0, 235.0));
+            assert!(width > 0.0);
         }
+        for width in [800.0, 1080.0, 1440.0] {
+            assert!(ui_layout::split_panes(width, 355.0, 235.0));
+            assert!(width - 280.0 >= 355.0);
+        }
+    }
+
+    #[test]
+    fn all_four_additional_rices_have_distinct_native_renderers() {
+        assert!(Theme::Luna.extra_flavor().is_none());
+        assert!(Theme::MacOS.extra_flavor().is_none());
+        assert!(Theme::Windows10.extra_flavor().is_none());
+        assert_eq!(Theme::Windows98.extra_flavor(), Some(extra_rices::Flavor::Classic98));
+        assert_eq!(Theme::Windows7.extra_flavor(), Some(extra_rices::Flavor::Aero7));
+        assert_eq!(Theme::ChromeOS.extra_flavor(), Some(extra_rices::Flavor::ChromeOS));
+        assert_eq!(Theme::FrutigerAero.extra_flavor(), Some(extra_rices::Flavor::FrutigerAero));
     }
 
     #[test]

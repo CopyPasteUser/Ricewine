@@ -38,7 +38,8 @@ fn family(rice: Theme) -> Family {
 
 fn xp_glyph(glyph: Glyph) -> XpIcon {
     match glyph {
-        Glyph::Programs | Glyph::Brand | Glyph::Play | Glyph::Search | Glyph::Favorite => {
+        Glyph::Brand => XpIcon::Wine,
+        Glyph::Programs | Glyph::Play | Glyph::Search | Glyph::Favorite => {
             XpIcon::Programs
         }
         Glyph::Tools | Glyph::Settings => XpIcon::Settings,
@@ -68,6 +69,14 @@ fn pixel_98(p: &Painter, rect: Rect, glyph: Glyph) {
         );
     };
     match glyph {
+        Glyph::Brand => {
+            // The same recognizable goblet expressed as a square 16-pixel icon.
+            block(2.0, 2.0, 12.0, 2.0, c);
+            block(3.0, 4.0, 10.0, 4.0, Color32::from_rgb(78, 134, 211));
+            block(5.0, 8.0, 6.0, 2.0, c);
+            block(7.0, 10.0, 2.0, 4.0, gray);
+            block(4.0, 14.0, 8.0, 2.0, gray);
+        }
         Glyph::Prefix | Glyph::Import | Glyph::Backup => {
             block(1.0, 4.0, 14.0, 10.0, gray);
             block(2.0, 3.0, 7.0, 3.0, gold);

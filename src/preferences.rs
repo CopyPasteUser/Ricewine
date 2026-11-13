@@ -110,7 +110,8 @@ pub fn appearance_for_theme(theme: &str) -> Option<Appearance> {
         Some(Appearance::Windows7)
     } else if name.contains("luna") || name.contains("winxp") || name.contains("windows-xp") {
         Some(Appearance::Luna)
-    } else if name.contains("ricehub-ten")
+    } else if name.contains("ricehub-ten-dark")
+        || name.contains("ricehub-ten-light")
         || name.contains("windows-10")
         || name.contains("windows10")
         || name.contains("win10")

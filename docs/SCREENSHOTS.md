@@ -40,6 +40,54 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 | :---: | :---: | :---: |
 | ![Windows 10 prefixes](screenshots/win10-prefixes.webp) | ![Windows 10 runners](screenshots/win10-runners.webp) | ![Windows 10 settings](screenshots/win10-settings.webp) |
 
+## Windows 98
+
+![Windows 98 — library](screenshots/win98-library.webp)
+
+| Install program | Import a prefix |
+| :---: | :---: |
+| ![Windows 98 install dialog](screenshots/win98-install.webp) | ![Windows 98 import dialog](screenshots/win98-import.webp) |
+
+| Wine prefixes | Wine & Proton runners | Settings |
+| :---: | :---: | :---: |
+| ![Windows 98 prefixes](screenshots/win98-prefixes.webp) | ![Windows 98 runners](screenshots/win98-runners.webp) | ![Windows 98 settings](screenshots/win98-settings.webp) |
+
+## Windows 7 Aero
+
+![Windows 7 Aero — library](screenshots/win7-library.webp)
+
+| Install program | Import a prefix |
+| :---: | :---: |
+| ![Windows 7 Aero install dialog](screenshots/win7-install.webp) | ![Windows 7 Aero import dialog](screenshots/win7-import.webp) |
+
+| Wine prefixes | Wine & Proton runners | Settings |
+| :---: | :---: | :---: |
+| ![Windows 7 Aero prefixes](screenshots/win7-prefixes.webp) | ![Windows 7 Aero runners](screenshots/win7-runners.webp) | ![Windows 7 Aero settings](screenshots/win7-settings.webp) |
+
+## ChromeOS
+
+![ChromeOS — library](screenshots/chromeos-library.webp)
+
+| Install program | Import a prefix |
+| :---: | :---: |
+| ![ChromeOS install dialog](screenshots/chromeos-install.webp) | ![ChromeOS import dialog](screenshots/chromeos-import.webp) |
+
+| Wine prefixes | Wine & Proton runners | Settings |
+| :---: | :---: | :---: |
+| ![ChromeOS prefixes](screenshots/chromeos-prefixes.webp) | ![ChromeOS runners](screenshots/chromeos-runners.webp) | ![ChromeOS settings](screenshots/chromeos-settings.webp) |
+
+## Frutiger Aero
+
+![Frutiger Aero — library](screenshots/frutiger-library.webp)
+
+| Install program | Import a prefix |
+| :---: | :---: |
+| ![Frutiger Aero install dialog](screenshots/frutiger-install.webp) | ![Frutiger Aero import dialog](screenshots/frutiger-import.webp) |
+
+| Wine prefixes | Wine & Proton runners | Settings |
+| :---: | :---: | :---: |
+| ![Frutiger Aero prefixes](screenshots/frutiger-prefixes.webp) | ![Frutiger Aero runners](screenshots/frutiger-runners.webp) | ![Frutiger Aero settings](screenshots/frutiger-settings.webp) |
+
 ### Reproducible capture
 
 The maintained workflow [Capture maintained Rice screenshots](../.github/workflows/capture-luna.yml) builds the application from source and executes `scripts/capture-luna.sh` for each Rice in isolated Xvfb environments. It uses a temporary XDG data directory, never your actual Wine prefixes, and rejects duplicate page frames.

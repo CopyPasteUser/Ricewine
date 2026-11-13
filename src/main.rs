@@ -1924,14 +1924,20 @@ impl RiceWineApp {
             ui.horizontal(|ui| {
                 ui.menu_button("File", |ui| {
                     if ui
-                        .add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Install program…"))
+                        .add_enabled(
+                            !self.busy && self.store.is_some(),
+                            egui::Button::new("Install program…"),
+                        )
                         .clicked()
                     {
                         self.install = Some(InstallDraft::default());
                         ui.close();
                     }
                     if ui
-                        .add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Import prefix…"))
+                        .add_enabled(
+                            !self.busy && self.store.is_some(),
+                            egui::Button::new("Import prefix…"),
+                        )
                         .clicked()
                     {
                         self.import = Some(ImportDraft::default());
@@ -1967,10 +1973,16 @@ impl RiceWineApp {
             });
         }
         ui.horizontal_wrapped(|ui| {
-            if ui.add_enabled(can_add, egui::Button::new("＋ Install program")).clicked() {
+            if ui
+                .add_enabled(can_add, egui::Button::new("＋ Install program"))
+                .clicked()
+            {
                 self.install = Some(InstallDraft::default());
             }
-            if ui.add_enabled(can_add, egui::Button::new("Import existing prefix…")).clicked() {
+            if ui
+                .add_enabled(can_add, egui::Button::new("Import existing prefix…"))
+                .clicked()
+            {
                 self.import = Some(ImportDraft::default());
             }
         });
@@ -1997,18 +2009,29 @@ impl RiceWineApp {
                             .inner_margin(egui::Margin::same(9))
                             .show(ui, |ui| {
                                 ui.set_min_height((available_height - 20.0).max(240.0));
-                                ui.label(RichText::new(if flavor == Flavor::Classic98 {
-                                    "Folders"
-                                } else if flavor == Flavor::Aero7 {
-                                    "Control Panel"
-                                } else {
-                                    "Explore RiceWine"
-                                }).strong());
+                                ui.label(
+                                    RichText::new(if flavor == Flavor::Classic98 {
+                                        "Folders"
+                                    } else if flavor == Flavor::Aero7 {
+                                        "Control Panel"
+                                    } else {
+                                        "Explore RiceWine"
+                                    })
+                                    .strong(),
+                                );
                                 ui.add_space(7.0);
-                                for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
+                                for page in
+                                    [Page::Library, Page::Prefixes, Page::Runners, Page::Settings]
+                                {
                                     if extra_rices::navigation(
-                                        ui, flavor, page.label(), self.page == page, false
-                                    ).clicked() {
+                                        ui,
+                                        flavor,
+                                        page.label(),
+                                        self.page == page,
+                                        false,
+                                    )
+                                    .clicked()
+                                    {
                                         self.page = page;
                                     }
                                 }
@@ -2032,7 +2055,10 @@ impl RiceWineApp {
                 );
             });
         }
-        let count = self.store.as_ref().map_or(0, |store| store.applications().len());
+        let count = self
+            .store
+            .as_ref()
+            .map_or(0, |store| store.applications().len());
         extra_rices::status(ui, flavor, count);
     }
 
@@ -4076,7 +4102,7 @@ impl eframe::App for RiceWineApp {
             Theme::Windows10 => self.win10_shell(ui),
             Theme::Windows98 | Theme::Windows7 | Theme::ChromeOS | Theme::FrutigerAero => {
                 self.ricebowl_shell(ui)
-            },
+            }
         });
         self.install_dialog(ui.ctx());
         self.import_dialog(ui.ctx());

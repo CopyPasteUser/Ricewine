@@ -177,6 +177,187 @@ pub fn header_finish(p: &Painter, r: Rect, family: Family, accent: Color32) {
     }
 }
 
+#[derive(Default)]
+pub struct EmptyActions {
+    pub install: bool,
+    pub import: bool,
+}
+
+/// Seven separately composed empty library views, not one recolored card.
+/// The caller owns the actions; this only supplies presentation and click
+/// signals. These layouts stay compact enough for 640×480 screenshot tests.
+pub fn empty_library(
+    ui: &mut Ui,
+    family: Family,
+    accent: Color32,
+    text: Color32,
+    muted: Color32,
+    surface: Color32,
+    border: Color32,
+    enabled: bool,
+) -> EmptyActions {
+    let mut actions = EmptyActions::default();
+    let (heading, description) = empty_copy(family);
+    let primary = |ui: &mut Ui, actions: &mut EmptyActions| {
+        actions.install |= button(
+            ui, family, Icon::Install, "Install Windows program",
+            Color32::WHITE, Color32::WHITE, accent, accent, enabled, 235.0
+        ).clicked();
+    };
+    let secondary = |ui: &mut Ui, actions: &mut EmptyActions| {
+        actions.import |= button(
+            ui, family, Icon::Import, "Import existing prefix",
+            accent, text, surface, border, enabled, 235.0
+        ).clicked();
+    };
+    match family {
+        Family::Luna => {
+            // The cheerful XP task pane: blue header, warm task area.
+            egui::Frame::new()
+                .fill(Color32::from_rgb(246,248,254))
+                .stroke(Stroke::new(1.0, border))
+                .corner_radius(egui::CornerRadius::same(7))
+                .inner_margin(egui::Margin::same(11))
+                .show(ui, |ui| {
+                    let w=ui.available_width();
+                    egui::Frame::new()
+                        .fill(Color32::from_rgb(53,104,199))
+                        .corner_radius(egui::CornerRadius::same(5))
+                        .inner_margin(egui::Margin::symmetric(11,7))
+                        .show(ui, |ui| {
+                            ui.set_min_width((w-46.0).max(0.0));
+                            ui.horizontal(|ui| {
+                                symbol(ui,family,Icon::Programs,Color32::WHITE,22.0);
+                                ui.label(RichText::new(heading).strong().color(Color32::WHITE));
+                            });
+                        });
+                    ui.add_space(8.0);
+                    ui.small(description);
+                    ui.add_space(7.0);
+                    ui.label(RichText::new("Program tasks").strong().color(accent));
+                    ui.horizontal_wrapped(|ui| {
+                        primary(ui,&mut actions);
+                        secondary(ui,&mut actions);
+                    });
+                });
+        }
+        Family::Win98 => {
+            // Sunken gray dialog and simple commands instead of a big hero.
+            egui::Frame::new()
+                .fill(Color32::from_rgb(192,192,192))
+                .stroke(Stroke::new(2.0,Color32::from_rgb(105,105,105)))
+                .inner_margin(egui::Margin::same(9))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        symbol(ui,family,Icon::Programs,accent,28.0);
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new(heading).strong().color(text));
+                            ui.small(description);
+                        });
+                    });
+                    ui.separator();
+                    ui.horizontal_wrapped(|ui| {
+                        primary(ui,&mut actions);
+                        secondary(ui,&mut actions);
+                    });
+                });
+        }
+        Family::Aero7 => {
+            // Explorer/Control Panel: a pale blue pane with a small heading.
+            egui::Frame::new()
+                .fill(Color32::from_rgb(237,247,254))
+                .stroke(Stroke::new(1.0,Color32::from_rgb(142,186,219)))
+                .corner_radius(egui::CornerRadius::same(7))
+                .inner_margin(egui::Margin::same(13))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        symbol(ui,family,Icon::Programs,accent,34.0);
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new(heading).size(18.0).strong().color(text));
+                            ui.label(RichText::new(description).color(muted));
+                        });
+                    });
+                    ui.add_space(11.0);
+                    ui.horizontal_wrapped(|ui| {
+                        primary(ui,&mut actions);
+                        secondary(ui,&mut actions);
+                    });
+                });
+        }
+        Family::Mac => {
+            // Quiet centered Finder-like utility state, no decorative card.
+            ui.vertical_centered(|ui| {
+                ui.add_space(7.0);
+                symbol(ui,family,Icon::Brand,accent,45.0);
+                ui.add_space(5.0);
+                ui.label(RichText::new(heading).size(20.0).strong().color(text));
+                ui.label(RichText::new(description).color(muted));
+                ui.add_space(9.0);
+                primary(ui,&mut actions);
+                ui.add_space(3.0);
+                secondary(ui,&mut actions);
+            });
+        }
+        Family::Win10 => {
+            // Flat settings-style command surface aligned with the page edge.
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    symbol(ui,family,Icon::Programs,accent,36.0);
+                    ui.vertical(|ui| {
+                        ui.label(RichText::new(heading).size(20.0).color(text));
+                        ui.label(RichText::new(description).color(muted));
+                    });
+                });
+                ui.add_space(12.0);
+                ui.horizontal_wrapped(|ui| {
+                    primary(ui,&mut actions);
+                    secondary(ui,&mut actions);
+                });
+            });
+        }
+        Family::Chrome => {
+            // Material-style app onboarding, light and centrally balanced.
+            ui.vertical_centered(|ui| {
+                ui.add_space(4.0);
+                egui::Frame::new()
+                    .fill(Color32::from_rgb(231,240,254))
+                    .corner_radius(egui::CornerRadius::same(22))
+                    .inner_margin(egui::Margin::same(12))
+                    .show(ui, |ui| symbol(ui,family,Icon::Programs,accent,32.0));
+                ui.add_space(7.0);
+                ui.label(RichText::new(heading).size(21.0).strong().color(text));
+                ui.label(RichText::new(description).color(muted));
+                ui.add_space(9.0);
+                primary(ui,&mut actions);
+                secondary(ui,&mut actions);
+            });
+        }
+        Family::Frutiger => {
+            // Organic aqua panel and translucent-feeling mint surface.
+            egui::Frame::new()
+                .fill(Color32::from_rgb(222,249,242))
+                .stroke(Stroke::new(1.0,Color32::from_rgb(106,188,177)))
+                .corner_radius(egui::CornerRadius::same(14))
+                .inner_margin(egui::Margin::same(14))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        symbol(ui,family,Icon::Brand,accent,48.0);
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new(heading).size(21.0).strong().color(text));
+                            ui.label(RichText::new(description).color(muted));
+                        });
+                    });
+                    ui.add_space(11.0);
+                    ui.horizontal_wrapped(|ui| {
+                        primary(ui,&mut actions);
+                        secondary(ui,&mut actions);
+                    });
+                });
+        }
+    }
+    actions
+}
+
 /// Paint an original icon whose silhouette, surface treatment and accent are
 /// selected for a particular Rice. The names are semantic; no Unicode icons
 /// or external font must render correctly.

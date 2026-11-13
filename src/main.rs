@@ -2932,15 +2932,11 @@ impl RiceWineApp {
                         });
                     let start = if self.simple_ui {
                         let palette = self.theme.palette();
-                        let button = egui::Button::new(
-                            RichText::new("▶ Run program")
-                                .strong()
-                                .color(Color32::WHITE),
+                        rice_identity::button(
+                            ui, self.theme.identity(), rice_identity::Icon::Play,
+                            "Run program", Color32::WHITE, Color32::WHITE,
+                            palette.accent, palette.accent, can_play, 156.0,
                         )
-                        .fill(palette.accent)
-                        .stroke(egui::Stroke::new(1.0, palette.accent))
-                        .corner_radius(egui::CornerRadius::same(palette.corner_radius));
-                        ui.add_enabled(can_play, button)
                     } else if win10_mode {
                         win10::primary_action(ui, "Run program", can_play)
                     } else {

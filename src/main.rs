@@ -3316,32 +3316,32 @@ impl RiceWineApp {
             }
         } else {
             ui.label(
-                RichText::new("Rices")
+                RichText::new("Appearance")
                     .strong()
                     .color(self.theme.palette().text),
             );
-            ui.small("Seven RiceBowl-inspired styles. Switching never changes Wine or the desktop theme.");
-            ui.add_space(8.0);
+            ui.small("Rices only change RiceWine, not the desktop or Wine prefixes.");
+            ui.add_space(7.0);
+            let mut selected = None;
             ui.horizontal_wrapped(|ui| {
-                for theme in Theme::ALL {
-                    let palette = theme.palette();
-                    let selected = self.theme == theme;
-                    let button =
-                        egui::Button::new(RichText::new(theme.label()).color(palette.text))
-                            .fill(palette.sidebar)
-                            .stroke(egui::Stroke::new(
-                                if selected { 2.0 } else { 1.0 },
-                                if selected {
-                                    palette.accent
-                                } else {
-                                    palette.border
-                                },
-                            ));
-                    if ui.add_sized([143.0, 42.0], button).clicked() {
-                        self.set_theme(theme, ui.ctx());
-                    }
-                }
+                ui.label("Visual style:");
+                egui::ComboBox::from_id_salt("ricewine_settings_rice")
+                    .width(220.0)
+                    .selected_text(self.theme.label())
+                    .show_ui(ui, |ui| {
+                        for theme in Theme::ALL {
+                            if ui
+                                .selectable_label(self.theme == theme, theme.label())
+                                .clicked()
+                            {
+                                selected = Some(theme);
+                            }
+                        }
+                    });
             });
+            if let Some(theme) = selected {
+                self.set_theme(theme, ui.ctx());
+            }
         }
         ui.add_space(8.0);
         let mut follow = self.preferences.follow_desktop;

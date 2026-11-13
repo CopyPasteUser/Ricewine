@@ -1,5 +1,7 @@
 # RiceWine
 
+![RiceWine application icon](assets/ricewine.png)
+
 **A lightweight Wine & Proton manager for Linux.** Install, organize and launch Windows applications in separate Wine prefixes through a native Rust desktop app. Works standalone or with RiceBowl — no daemon, account or telemetry.
 
 > **Current development version: 3.0.0-alpha.3.** RiceWine is not a stable release yet. Real Wine/Proton and X11/Wayland acceptance tests are still required. See the [3.0 roadmap](ROADMAP-3.0.md).
@@ -25,6 +27,19 @@
 [View all 42 screenshots →](docs/SCREENSHOTS.md)
 
 The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures Library, Install, Import, Prefixes, Runners and Settings for all seven Rices. Linux controls the real window decoration.
+
+## Everyday interface
+
+RiceWine opens with a consistent, reduced layout in **all seven Rices**:
+
+- **Programs:** search your library, select a program and launch it. Filters, favorites and per-program maintenance are available under *View* and *More options*.
+- **Install program:** the main action opens a reviewable EXE/MSI setup dialog. No file runs just by dropping it.
+- **Tools:** Wine prefixes/backups, Wine/Proton runners, importing existing prefixes and refreshing runner profiles.
+- **Settings:** choose your Rice and optionally follow the desktop's recognized theme. Recovery and diagnostic controls remain under *Advanced settings & diagnostics*.
+
+The seven appearances remain visual themes, not seven different navigation systems. For troubleshooting older appearance-specific layouts, start with `RICEWINE_CLASSIC_UI=1 ricewine`. This compatibility escape hatch does not affect Wine configuration or your application data.
+
+The installer registers the bundled **RiceWine goblet icon** in the current user's XDG icon theme; the app-menu launcher and Open With entry use the matching `ricewine` icon name. Shortcuts for individual Windows programs retain their generic Wine icon until application-specific icons are available.
 
 ## Features
 

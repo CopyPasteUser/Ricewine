@@ -29,6 +29,21 @@ esac
 "$binary" --unregister-menu
 "$binary" --unregister-open-with
 "$binary" --unregister-shortcuts
+
+# Remove only the unmodified icon installed by this project. A custom icon
+# belongs to the user and must not be deleted during program removal.
+project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+case "$data_home" in
+    /*) ;;
+    *) data_home="$HOME/.local/share" ;;
+esac
+icon="$data_home/icons/hicolor/128x128/apps/ricewine.png"
+if [ -f "$project_dir/assets/ricewine.png" ] &&
+    [ -f "$icon" ] && [ ! -L "$icon" ] &&
+    cmp -s "$project_dir/assets/ricewine.png" "$icon"; then
+    rm -f -- "$icon"
+fi
 rm -f -- "$binary"
 
 echo "RiceWine program and owned menu entries removed."

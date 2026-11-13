@@ -164,13 +164,13 @@ pub fn navigation(
     selected: bool,
     horizontal: bool,
 ) -> Response {
-    let text_color = if selected && rice != Flavor::Aero7 {
+    let text_color = if selected && matches!(rice, Flavor::ChromeOS | Flavor::FrutigerAero) {
         Color32::WHITE
     } else {
         rice.foreground()
     };
     let fill = match (rice, selected) {
-        (Flavor::Classic98, true) => rice.accent(),
+        (Flavor::Classic98, true) => Color32::from_rgb(240, 240, 240),
         (Flavor::Classic98, false) => rice.surface(),
         (Flavor::Aero7, true) => Color32::from_rgb(202, 230, 251),
         (Flavor::Aero7, false) => Color32::from_rgb(237, 247, 253),
@@ -185,7 +185,7 @@ pub fn navigation(
     };
     let button = egui::Button::new(RichText::new(label).color(text_color).strong())
         .fill(fill)
-        .stroke(if selected {
+        .stroke(if selected && rice != Flavor::Classic98 {
             egui::Stroke::new(1.0, rice.accent())
         } else {
             rice.stroke()
@@ -369,7 +369,13 @@ pub fn empty_library(ui: &mut egui::Ui, rice: Flavor, enabled: bool) -> bool {
             install = ui
                 .add_enabled(
                     enabled,
-                    egui::Button::new(action)
+                    egui::Button::new(
+                        RichText::new(action).color(if rice == Flavor::Classic98 {
+                            rice.foreground()
+                        } else {
+                            Color32::WHITE
+                        }),
+                    )
                         .fill(if rice == Flavor::Classic98 { rice.surface() } else { rice.accent() })
                         .corner_radius(egui::CornerRadius::same(rice.radius())),
                 )

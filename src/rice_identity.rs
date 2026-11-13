@@ -194,13 +194,16 @@ pub fn icon_button(
         .inner;
     let center = egui::pos2(response.rect.left() + 17.0, response.rect.center().y);
     let rect = Rect::from_center_size(center, Vec2::splat(19.0));
-    icon(
-        ui.painter(),
-        rice,
-        glyph,
-        rect,
-        if emphasis { Color32::WHITE } else { p.accent },
-    );
+    // Aero/Material/Aqua icons sit on pale badges even inside selected buttons.
+    // Preserve icon contrast there instead of painting white on white.
+    let icon_color = if emphasis
+        && !matches!(rice, Theme::Windows7 | Theme::ChromeOS | Theme::FrutigerAero)
+    {
+        Color32::WHITE
+    } else {
+        p.accent
+    };
+    icon(ui.painter(), rice, glyph, rect, icon_color);
     if rice == Theme::Windows98 {
         // Raised 3D edge is fundamental to the Win98 language.
         let r = response.rect.shrink(1.0);

@@ -2043,6 +2043,7 @@ impl RiceWineApp {
             Theme::MacOS | Theme::ChromeOS => (1.0, palette.border),
         };
         let rect = header.response.rect;
+        rice_identity::header_finish(ui.painter(), rect, self.theme.identity(), palette.accent);
         ui.painter().rect_filled(
             egui::Rect::from_min_size(
                 egui::pos2(rect.left() + 1.0, rect.bottom() - edge.0 - 1.0),
@@ -2510,7 +2511,7 @@ impl RiceWineApp {
                     20.0,
                 );
                 ui.label(
-                    RichText::new("My programs")
+                    RichText::new(rice_identity::library_heading(self.theme.identity()))
                         .strong()
                         .size(if matches!(self.theme, Theme::Luna | Theme::Windows98) {
                             19.0
@@ -2702,18 +2703,16 @@ impl RiceWineApp {
                         42.0,
                     );
                     ui.add_space(3.0);
+                    let (headline, description) = rice_identity::empty_copy(family);
                     ui.label(
-                        RichText::new("Your Windows apps, in one place")
+                        RichText::new(headline)
                             .size(19.0)
                             .strong()
                             .color(palette.text),
                     );
                     ui.add_space(2.0);
                     ui.label(
-                        RichText::new(
-                            "Install an EXE or MSI, or import a program you already have.",
-                        )
-                        .color(palette.muted),
+                        RichText::new(description).color(palette.muted),
                     );
                     ui.add_space(6.0);
                     if rice_identity::button(

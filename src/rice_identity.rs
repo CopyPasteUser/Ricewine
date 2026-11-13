@@ -351,9 +351,10 @@ pub fn empty_library(
                 ui.label(RichText::new(heading).size(20.0).strong().color(text));
                 ui.label(RichText::new(description).color(muted));
                 ui.add_space(9.0);
-                primary(ui, &mut actions);
-                ui.add_space(3.0);
-                secondary(ui, &mut actions);
+                ui.horizontal_wrapped(|ui| {
+                    primary(ui, &mut actions);
+                    secondary(ui, &mut actions);
+                });
             });
         }
         Family::Win10 => {
@@ -377,17 +378,15 @@ pub fn empty_library(
             // Material-style app onboarding, light and centrally balanced.
             ui.vertical_centered(|ui| {
                 ui.add_space(4.0);
-                egui::Frame::new()
-                    .fill(Color32::from_rgb(231, 240, 254))
-                    .corner_radius(egui::CornerRadius::same(22))
-                    .inner_margin(egui::Margin::same(12))
-                    .show(ui, |ui| symbol(ui, family, Icon::Programs, accent, 32.0));
+                symbol(ui, family, Icon::Brand, accent, 42.0);
                 ui.add_space(7.0);
                 ui.label(RichText::new(heading).size(21.0).strong().color(text));
                 ui.label(RichText::new(description).color(muted));
                 ui.add_space(9.0);
-                primary(ui, &mut actions);
-                secondary(ui, &mut actions);
+                ui.horizontal_wrapped(|ui| {
+                    primary(ui, &mut actions);
+                    secondary(ui, &mut actions);
+                });
             });
         }
         Family::Frutiger => {

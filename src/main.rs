@@ -2828,7 +2828,7 @@ impl RiceWineApp {
             );
         }
         ui.small("Opt-in official GE-Proton releases. Downloads are SHA512-verified and installed only under RiceWine's data directory; no sudo or Steam changes.");
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if luna::action(ui, "Check latest GE-Proton", !self.ge_busy, luna_mode).clicked() {
                 self.check_ge_release();
             }
@@ -2888,7 +2888,7 @@ impl RiceWineApp {
                 .as_ref()
                 .is_some_and(|store| updates::is_managed_runner(store.root(), &candidate.path));
             let removable = managed && !self.runner_in_use(&candidate.path);
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label(&candidate.name);
                 if luna::action(ui, "Use for selected program", true, luna_mode).clicked() {
                     self.runner_draft.runner_kind = 2;
@@ -2955,7 +2955,7 @@ impl RiceWineApp {
                 .desired_width(400.0),
         );
         ui.label("Optional environment overrides (KEY=value, one per line)");
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             egui::ComboBox::from_id_salt("compatibility_presets")
                 .selected_text(CompatibilityPreset::ALL[self.preset_choice].label())
                 .show_ui(ui, |ui| {
@@ -3021,7 +3021,7 @@ impl RiceWineApp {
             || self.storage_busy.contains(&app.id)
             || self.backup_busy
             || self.busy;
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if ui
                 .add_enabled(!working, egui::Button::new("Save runner for program"))
                 .clicked()
@@ -3072,7 +3072,7 @@ impl RiceWineApp {
                 }
             }
         });
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if ui
                 .add_enabled(
                     !working,
@@ -3104,7 +3104,7 @@ impl RiceWineApp {
             );
         }
         ui.small("Winetricks modifies the selected prefix. Apply components only when the program requires them. DXVK and VKD3D are provided by the installed Winetricks version.");
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             egui::ComboBox::from_id_salt("winetricks_component")
                 .selected_text(runtime::WINETRICKS_VERBS[self.winetricks_verb])
                 .show_ui(ui, |ui| {
@@ -3154,7 +3154,7 @@ impl RiceWineApp {
         match draft.runner_kind {
             1 => {
                 ui.label("Wine executable (wineboot must be alongside it)");
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.text_edit_singleline(&mut draft.custom_wine);
                     if ui.button("Browse…").clicked()
                         && let Some(path) = rfd::FileDialog::new().pick_file()
@@ -3165,7 +3165,7 @@ impl RiceWineApp {
             }
             2 => {
                 ui.label("Extracted Proton directory");
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.text_edit_singleline(&mut draft.proton_dir);
                     if ui.button("Browse…").clicked()
                         && let Some(path) = rfd::FileDialog::new().pick_folder()
@@ -3470,7 +3470,7 @@ impl RiceWineApp {
                     ui.label(RichText::new("1. Choose a Windows program").strong());
                     ui.small("Select a setup EXE/MSI, or an EXE that runs without installation.");
                     ui.add_space(3.0);
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         let file_input = ui.add(
                             egui::TextEdit::singleline(&mut draft.file)
                                 .hint_text("Choose an EXE or MSI file…")
@@ -3546,7 +3546,7 @@ impl RiceWineApp {
                     } else {
                         "Run installer"
                     };
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         let ready = !draft.file.trim().is_empty() && !draft.name.trim().is_empty();
                         let start = if win10_mode {
                             win10::primary_action(ui, install_label, ready)
@@ -3622,7 +3622,7 @@ impl RiceWineApp {
                         luna::section_heading(ui, "Existing environment", luna::XpIcon::Prefix);
                     }
                     ui.label("Existing Wine prefix directory");
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.text_edit_singleline(&mut draft.prefix);
                         if luna::action(ui, "Browse…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new().pick_folder()
@@ -3632,7 +3632,7 @@ impl RiceWineApp {
                         }
                     });
                     ui.label("Existing launch EXE");
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.text_edit_singleline(&mut draft.executable);
                         if luna::action(ui, "Browse…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
@@ -3651,7 +3651,7 @@ impl RiceWineApp {
                     }
                     ui.add_space(8.0);
                     ui.separator();
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         let ready = !draft.name.trim().is_empty()
                             && !draft.prefix.trim().is_empty()
                             && !draft.executable.trim().is_empty();

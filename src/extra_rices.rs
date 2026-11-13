@@ -405,3 +405,36 @@ pub fn dialog_intro(ui: &mut egui::Ui, rice: Flavor, title: &str, description: &
     }
     ui.add_space(8.0);
 }
+
+/// Period-specific command bar control; action ownership remains in RiceWineApp.
+pub fn toolbar_action(
+    ui: &mut egui::Ui,
+    rice: Flavor,
+    title: &str,
+    enabled: bool,
+    primary: bool,
+) -> Response {
+    let text = if rice == Flavor::Classic98 {
+        RichText::new(title).size(12.0).color(rice.foreground())
+    } else if rice == Flavor::Aero7 {
+        RichText::new(title).size(12.5).color(rice.accent())
+    } else if primary {
+        RichText::new(title).size(13.0).color(Color32::WHITE)
+    } else {
+        RichText::new(title).size(13.0).color(rice.foreground())
+    };
+    let fill = match rice {
+        Flavor::Classic98 => rice.surface(),
+        Flavor::Aero7 => Color32::from_rgb(237, 247, 253),
+        Flavor::ChromeOS | Flavor::FrutigerAero if primary => rice.accent(),
+        _ => rice.surface(),
+    };
+    ui.add_enabled(
+        enabled,
+        egui::Button::new(text)
+            .fill(fill)
+            .stroke(rice.stroke())
+            .corner_radius(egui::CornerRadius::same(if rice == Flavor::Aero7 { 2 } else { rice.radius() }))
+            .min_size(egui::vec2(0.0, if rice == Flavor::Classic98 { 25.0 } else { 31.0 })),
+    )
+}

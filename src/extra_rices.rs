@@ -75,52 +75,87 @@ impl Flavor {
     }
 }
 
-/// Header layout deliberately differs per rice, while the Linux window frame stays native.
+/// Keep recognizable desktop language, not one generic header with four palettes.
+/// Header text deliberately describes the current page; it does not impersonate
+/// native window chrome (that stays the Linux compositor's responsibility).
 pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
     let margin = if rice == Flavor::Classic98 { 6 } else { 14 };
-    let header_width = (ui.available_width() - (margin * 2 + 2) as f32).max(200.0);
+    let header_width = (ui.available_width() - (margin * 2 + 2) as f32).max(0.0);
     egui::Frame::new()
         .fill(rice.surface())
         .stroke(rice.stroke())
         .corner_radius(egui::CornerRadius::same(rice.radius()))
         .inner_margin(egui::Margin::symmetric(margin, 10))
         .show(ui, |ui| {
-            // egui frames otherwise shrink-wrap the title, leaving a floating tile.
             ui.set_min_width(header_width);
-            ui.horizontal(|ui| {
-                let emblem = match rice {
-                    Flavor::Classic98 => "▣",
-                    Flavor::Aero7 => "◈",
-                    Flavor::ChromeOS => "●",
-                    Flavor::FrutigerAero => "◉",
-                };
-                ui.label(RichText::new(emblem).size(22.0).color(rice.accent()));
-                ui.label(
-                    RichText::new("RiceWine")
-                        .size(if rice == Flavor::Classic98 {
-                            16.0
-                        } else {
-                            21.0
-                        })
-                        .strong()
-                        .color(rice.foreground()),
-                );
-                ui.separator();
-                ui.label(RichText::new(page).color(rice.foreground()));
-            });
             match rice {
-                Flavor::Classic98 => {}
+                Flavor::Classic98 => {
+                    // Compact, rectangular Win9x application header. The actual
+                    // File/View/Help menu lives in the application shell above it.
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(RichText::new("▣").size(18.0).color(rice.accent()));
+                        ui.label(
+                            RichText::new("RiceWine")
+                                .size(16.0)
+                                .strong()
+                                .color(rice.foreground()),
+                        );
+                        ui.separator();
+                        ui.label(RichText::new(page).size(13.0).color(rice.foreground()));
+                    });
+                }
                 Flavor::Aero7 => {
-                    ui.small("Control Panel  ›  Programs  ›  Wine & Proton");
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(
+                            RichText::new(format!("Control Panel  ›  Programs  ›  {page}"))
+                                .size(11.0)
+                                .color(rice.accent()),
+                        );
+                    });
+                    ui.add_space(7.0);
+                    ui.label(
+                        RichText::new("RiceWine")
+                            .size(23.0)
+                            .strong()
+                            .color(rice.foreground()),
+                    );
+                    ui.small("Manage Windows programs and compatibility settings");
                 }
                 Flavor::ChromeOS => {
-                    ui.small("Your Windows apps, neatly in one place");
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(RichText::new("●").size(20.0).color(rice.accent()));
+                        ui.label(
+                            RichText::new("RiceWine")
+                                .size(20.0)
+                                .strong()
+                                .color(rice.foreground()),
+                        );
+                        ui.separator();
+                        ui.label(RichText::new(page).size(14.0).color(rice.foreground()));
+                    });
                 }
                 Flavor::FrutigerAero => {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(RichText::new("◉").size(30.0).color(rice.accent()));
+                        ui.vertical(|ui| {
+                            ui.label(
+                                RichText::new("RiceWine")
+                                    .size(24.0)
+                                    .strong()
+                                    .color(rice.foreground()),
+                            );
+                            ui.label(
+                                RichText::new("Windows on Linux • your personal workspace")
+                                    .size(11.0)
+                                    .color(rice.accent()),
+                            );
+                        });
+                    });
+                    ui.add_space(5.0);
                     ui.label(
-                        RichText::new("Your Windows applications, beautifully organized")
-                            .italics()
-                            .size(12.0)
+                        RichText::new(page)
+                            .size(13.0)
+                            .strong()
                             .color(rice.foreground()),
                     );
                 }
@@ -128,6 +163,8 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
         });
 }
 
+/// Navigation retains genuine button hit targets and a clearly visible selected
+/// state. Win7 uses a light selection rail rather than the dark buttons of 98.
 pub fn navigation(
     ui: &mut egui::Ui,
     rice: Flavor,
@@ -135,31 +172,38 @@ pub fn navigation(
     selected: bool,
     horizontal: bool,
 ) -> Response {
-    let text = if selected {
-        RichText::new(label).color(Color32::WHITE).strong()
+    let text_color = if selected && rice != Flavor::Aero7 {
+        Color32::WHITE
     } else {
-        RichText::new(label).color(rice.foreground())
+        rice.foreground()
     };
-    let fill = if selected {
-        rice.accent()
-    } else if rice == Flavor::Classic98 {
-        rice.surface()
+    let fill = match (rice, selected) {
+        (Flavor::Classic98, true) => rice.accent(),
+        (Flavor::Classic98, false) => rice.surface(),
+        (Flavor::Aero7, true) => Color32::from_rgb(202, 230, 251),
+        (Flavor::Aero7, false) => Color32::from_rgb(237, 247, 253),
+        (Flavor::ChromeOS, true) | (Flavor::FrutigerAero, true) => rice.accent(),
+        (Flavor::ChromeOS, false) => Color32::from_rgb(239, 244, 252),
+        (Flavor::FrutigerAero, false) => Color32::from_rgb(224, 249, 244),
+    };
+    let corner_radius = if rice == Flavor::Aero7 { 3 } else { rice.radius() };
+    let button = egui::Button::new(
+        RichText::new(label)
+            .color(text_color)
+            .strong(),
+    )
+    .fill(fill)
+    .stroke(if selected {
+        egui::Stroke::new(1.0, rice.accent())
     } else {
-        rice.canvas()
-    };
-    let button = egui::Button::new(text)
-        .fill(fill)
-        .stroke(if selected {
-            egui::Stroke::new(1.0, rice.accent())
-        } else {
-            rice.stroke()
-        })
-        .corner_radius(egui::CornerRadius::same(rice.radius()));
+        rice.stroke()
+    })
+    .corner_radius(egui::CornerRadius::same(corner_radius));
     ui.add_sized(
         if horizontal {
-            [120.0, 33.0]
+            [ui.available_width().min(120.0), 33.0]
         } else {
-            [180.0, 36.0]
+            [ui.available_width().min(180.0), 36.0]
         },
         button,
     )

@@ -234,7 +234,10 @@ mod tests {
             for &glyph in &glyphs {
                 let output = ctx.run(Default::default(), |ctx| {
                     egui::CentralPanel::default().show(ctx, |ui| {
-                        standalone(ui, glyph, family, Color32::WHITE, 20.0);
+                        let (rect, _) = ui.allocate_exact_size(
+                            egui::vec2(20.0, 20.0), egui::Sense::hover()
+                        );
+                        paint(ui.painter(), rect, family, glyph, Color32::WHITE);
                     });
                 });
                 assert!(!output.shapes.is_empty(), "{family:?} {glyph:?}");

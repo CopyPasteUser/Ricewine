@@ -2295,7 +2295,9 @@ impl RiceWineApp {
                 ui,
                 self.theme,
                 "My programs",
-                &format!("{count} installed Windows applications"),
+                &if count == 0 { String::new() } else {
+                    format!("{count} installed Windows applications")
+                },
                 rice_icons::Glyph::Programs,
             );
             if self.busy {
@@ -2366,7 +2368,11 @@ impl RiceWineApp {
                 if changed && let Err(error) = self.persist_workspace() {
                     self.notice = Some((true, format!("Could not save Library view: {error}")));
                 }
-                ui.add_space(12.0);
+                ui.add_space(if ui.ctx().content_rect().height() < 600.0 {
+                    6.0
+                } else {
+                    12.0
+                });
             }
         } else {
             if luna_mode {

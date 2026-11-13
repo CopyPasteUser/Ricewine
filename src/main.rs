@@ -1829,7 +1829,10 @@ impl RiceWineApp {
                             }
                             ui.separator();
                             if ui
-                                .add_enabled(can_install, egui::Button::new("Import existing prefix…"))
+                                .add_enabled(
+                                    can_install,
+                                    egui::Button::new("Import existing prefix…"),
+                                )
                                 .clicked()
                             {
                                 self.import = Some(ImportDraft::default());
@@ -2357,11 +2360,7 @@ impl RiceWineApp {
                     ui.add_enabled_ui(self.workspace_writable, |ui| {
                         for order in LibraryOrder::ALL {
                             changed |= ui
-                                .selectable_value(
-                                    &mut self.workspace.order,
-                                    order,
-                                    order.label(),
-                                )
+                                .selectable_value(&mut self.workspace.order, order, order.label())
                                 .changed();
                         }
                     });
@@ -2372,87 +2371,91 @@ impl RiceWineApp {
             }
             ui.add_space(8.0);
         } else {
-        if luna_mode {
-            luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
-        } else if win10_mode {
-            win10::section_heading(ui, "Installed apps");
-        }
-        ui.horizontal(|ui| {
-            if self.busy {
-                ui.spinner();
-                ui.label("Installing…");
-                if ui.button("Cancel installation…").clicked() {
-                    self.cancel_install_confirmation = true;
+            if luna_mode {
+                luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
+            } else if win10_mode {
+                win10::section_heading(ui, "Installed apps");
+            }
+            ui.horizontal(|ui| {
+                if self.busy {
+                    ui.spinner();
+                    ui.label("Installing…");
+                    if ui.button("Cancel installation…").clicked() {
+                        self.cancel_install_confirmation = true;
+                    }
                 }
-            }
-        });
-        ui.add_space(if luna_mode { 5.0 } else { 10.0 });
-        if self.store.is_some() {
-            ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
-        }
-        ui.horizontal_wrapped(|ui| {
-            if !win10_mode {
-                ui.label(if luna_mode { "Search for:" } else { "Search" });
-            }
-            let search_response = ui.add(
-                egui::TextEdit::singleline(&mut self.search)
-                    .hint_text(if win10_mode {
-                        "Search this list"
-                    } else {
-                        "Filter installed programs…"
-                    })
-                    .desired_width(if win10_mode { 280.0 } else { 210.0 }),
-            );
-            if self.search_focus_requested {
-                search_response.request_focus();
-                self.search_focus_requested = false;
-            }
-            if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
-                self.search.clear();
-            }
-            if !win10_mode && ui.small_button("↻ Refresh profiles").clicked() {
-                self.refresh_profile_cache();
-                self.sync_runner_draft();
-            }
-            if win10_mode && win10::link_action(ui, "Refresh", true).clicked() {
-                self.refresh_profile_cache();
-                self.sync_runner_draft();
-            }
-        });
-        let mut workspace_changed = false;
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Show:");
-            ui.add_enabled_ui(self.workspace_writable, |ui| {
-                egui::ComboBox::from_id_salt("ricewine_3_filter")
-                    .selected_text(self.workspace.filter.label())
-                    .show_ui(ui, |ui| {
-                        for filter in LibraryFilter::ALL {
-                            workspace_changed |= ui
-                                .selectable_value(
-                                    &mut self.workspace.filter,
-                                    filter,
-                                    filter.label(),
-                                )
-                                .changed();
-                        }
-                    });
             });
-            ui.label("Order:");
-            ui.add_enabled_ui(self.workspace_writable, |ui| {
-                egui::ComboBox::from_id_salt("ricewine_3_order")
-                    .selected_text(self.workspace.order.label())
-                    .show_ui(ui, |ui| {
-                        for order in LibraryOrder::ALL {
-                            workspace_changed |= ui
-                                .selectable_value(&mut self.workspace.order, order, order.label())
-                                .changed();
-                        }
-                    });
+            ui.add_space(if luna_mode { 5.0 } else { 10.0 });
+            if self.store.is_some() {
+                ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
+            }
+            ui.horizontal_wrapped(|ui| {
+                if !win10_mode {
+                    ui.label(if luna_mode { "Search for:" } else { "Search" });
+                }
+                let search_response = ui.add(
+                    egui::TextEdit::singleline(&mut self.search)
+                        .hint_text(if win10_mode {
+                            "Search this list"
+                        } else {
+                            "Filter installed programs…"
+                        })
+                        .desired_width(if win10_mode { 280.0 } else { 210.0 }),
+                );
+                if self.search_focus_requested {
+                    search_response.request_focus();
+                    self.search_focus_requested = false;
+                }
+                if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
+                    self.search.clear();
+                }
+                if !win10_mode && ui.small_button("↻ Refresh profiles").clicked() {
+                    self.refresh_profile_cache();
+                    self.sync_runner_draft();
+                }
+                if win10_mode && win10::link_action(ui, "Refresh", true).clicked() {
+                    self.refresh_profile_cache();
+                    self.sync_runner_draft();
+                }
             });
-        });
-        if workspace_changed && let Err(error) = self.persist_workspace() {
-            self.notice = Some((true, format!("Could not save Library view: {error}")));
-        }
+            let mut workspace_changed = false;
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Show:");
+                ui.add_enabled_ui(self.workspace_writable, |ui| {
+                    egui::ComboBox::from_id_salt("ricewine_3_filter")
+                        .selected_text(self.workspace.filter.label())
+                        .show_ui(ui, |ui| {
+                            for filter in LibraryFilter::ALL {
+                                workspace_changed |= ui
+                                    .selectable_value(
+                                        &mut self.workspace.filter,
+                                        filter,
+                                        filter.label(),
+                                    )
+                                    .changed();
+                            }
+                        });
+                });
+                ui.label("Order:");
+                ui.add_enabled_ui(self.workspace_writable, |ui| {
+                    egui::ComboBox::from_id_salt("ricewine_3_order")
+                        .selected_text(self.workspace.order.label())
+                        .show_ui(ui, |ui| {
+                            for order in LibraryOrder::ALL {
+                                workspace_changed |= ui
+                                    .selectable_value(
+                                        &mut self.workspace.order,
+                                        order,
+                                        order.label(),
+                                    )
+                                    .changed();
+                            }
+                        });
+                });
+            });
+            if workspace_changed && let Err(error) = self.persist_workspace() {
+                self.notice = Some((true, format!("Could not save Library view: {error}")));
+            }
         }
         if self.store.is_none() {
             ui.add_space(28.0);
@@ -2648,25 +2651,26 @@ impl RiceWineApp {
                         ui.heading(&app.name);
                     }
                     if !self.simple_ui {
-                    if ui
-                        .add_enabled(
-                            self.workspace_writable,
-                            egui::Button::new(if self.workspace.is_favorite(&app.id) {
-                                "★ Remove favorite"
-                            } else {
-                                "☆ Add to favorites"
-                            }),
-                        )
-                        .clicked()
-                    {
-                        self.workspace.toggle_favorite(&app.id);
-                        if let Err(error) = self.persist_workspace() {
-                            self.notice = Some((true, format!("Could not save favorite: {error}")));
+                        if ui
+                            .add_enabled(
+                                self.workspace_writable,
+                                egui::Button::new(if self.workspace.is_favorite(&app.id) {
+                                    "★ Remove favorite"
+                                } else {
+                                    "☆ Add to favorites"
+                                }),
+                            )
+                            .clicked()
+                        {
+                            self.workspace.toggle_favorite(&app.id);
+                            if let Err(error) = self.persist_workspace() {
+                                self.notice =
+                                    Some((true, format!("Could not save favorite: {error}")));
+                            }
                         }
-                    }
-                    if ui.button("Diagnose & recover…").clicked() {
-                        self.open_troubleshooter(&app);
-                    }
+                        if ui.button("Diagnose & recover…").clicked() {
+                            self.open_troubleshooter(&app);
+                        }
                     }
                     let selected_profile =
                         self.profile_cache.get(&app.id).cloned().unwrap_or_else(|| {
@@ -2739,131 +2743,142 @@ impl RiceWineApp {
                     }
                     ui.add_space(14.0);
                     ui.collapsing(
-                        if self.simple_ui { "More options" } else { "More options · rename, runner, files, remove" },
+                        if self.simple_ui {
+                            "More options"
+                        } else {
+                            "More options · rename, runner, files, remove"
+                        },
                         |ui| {
                             if self.simple_ui {
-                        if ui
-                            .add_enabled(
-                                self.workspace_writable,
-                                egui::Button::new(if self.workspace.is_favorite(&app.id) {
-                                    "★ Remove favorite"
-                                } else {
-                                    "☆ Add to favorites"
-                                }),
-                            )
-                            .clicked()
-                        {
-                            self.workspace.toggle_favorite(&app.id);
-                            if let Err(error) = self.persist_workspace() {
-                                self.notice = Some((true, format!("Could not save favorite: {error}")));
-                            }
-                        }
-                        if ui.button("Diagnose & recover…").clicked() {
-                            self.open_troubleshooter(&app);
-                        }
-                            }
-                        ui.label("Display name");
-                        ui.text_edit_singleline(&mut self.name_edit);
-                        if luna::action(
-                            ui,
-                            "Save name",
-                            !self.busy && !self.running.contains(&app.id),
-                            luna_mode,
-                        )
-                        .clicked()
-                            && let Some(store) = &mut self.store
-                        {
-                            match store.rename(&app.id, &self.name_edit) {
-                                Ok(()) => {
-                                    self.notice = Some((false, "Program name updated".into()));
-                                    let updated = store.get(&app.id).cloned();
-                                    if let Some(updated) = updated
-                                        && let Ok(path) = integration::application_directory()
-                                        && path
-                                            .join(format!("ricewine-{}.desktop", app.id))
-                                            .exists()
-                                        && let Ok(binary) = std::env::current_exe()
-                                        && let Err(error) =
-                                            integration::install_shortcut(&updated, &binary)
-                                    {
+                                if ui
+                                    .add_enabled(
+                                        self.workspace_writable,
+                                        egui::Button::new(if self.workspace.is_favorite(&app.id) {
+                                            "★ Remove favorite"
+                                        } else {
+                                            "☆ Add to favorites"
+                                        }),
+                                    )
+                                    .clicked()
+                                {
+                                    self.workspace.toggle_favorite(&app.id);
+                                    if let Err(error) = self.persist_workspace() {
                                         self.notice = Some((
                                             true,
-                                            format!("Name saved, shortcut update failed: {error}"),
+                                            format!("Could not save favorite: {error}"),
                                         ));
                                     }
                                 }
-                                Err(error) => self.notice = Some((true, error)),
-                            }
-                        }
-                        ui.add_space(8.0);
-                        ui.label(
-                            RichText::new("Runner")
-                                .small()
-                                .strong()
-                                .color(self.theme.palette().text),
-                        );
-                        match &selected_profile {
-                            Ok(profile) => ui.label(profile.runner.label()),
-                            Err(error) => ui.colored_label(self.theme.error(), error),
-                        };
-                        ui.add_space(5.0);
-                        ui.label(
-                            RichText::new("Prefix")
-                                .small()
-                                .strong()
-                                .color(self.theme.palette().text),
-                        );
-                        ui.small(core::readable_path(&app.prefix));
-                        ui.add_space(12.0);
-                        if app.executable.is_none() {
-                            ui.small("Use the quick EXE finder above to finish setup.");
-                        }
-                        if luna::action(
-                            ui,
-                            "Scan installed EXEs",
-                            !self.exe_scan_busy.contains(&app.id),
-                            luna_mode,
-                        )
-                        .clicked()
-                        {
-                            self.scan_executables_async(&app);
-                        }
-                        if self.exe_scan_busy.contains(&app.id) {
-                            ui.spinner();
-                            ui.small("Scanning prefix…");
-                        }
-                        if app.executable.is_some() {
-                            self.show_exe_candidates(ui, &app);
-                        }
-                        if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
-                            && let Some(path) = rfd::FileDialog::new()
-                                .add_filter("Windows program", &["exe"])
-                                .pick_file()
-                            && let Some(store) = self.store.as_mut()
-                        {
-                            if let Err(error) = store.set_executable(&app.id, path) {
-                                self.notice = Some((true, error));
-                            } else {
-                                self.notice = Some((false, "Launch executable saved".into()));
-                            }
-                        }
-                        if luna::action(ui, "Add menu shortcut", true, luna_mode).clicked() {
-                            let outcome = std::env::current_exe()
-                                .map_err(|e| e.to_string())
-                                .and_then(|bin| integration::install_shortcut(&app, &bin));
-                            self.notice = Some(match outcome {
-                                Ok(file) => {
-                                    (false, format!("Shortcut created: {}", file.display()))
+                                if ui.button("Diagnose & recover…").clicked() {
+                                    self.open_troubleshooter(&app);
                                 }
-                                Err(error) => (true, error),
-                            });
-                        }
-                        ui.add_space(18.0);
-                        if luna::action(ui, "Remove from library…", true, luna_mode).clicked() {
-                            self.remove_confirmation = Some(app.id);
-                        }
-                        ui.small("This never deletes the Wine prefix.");
-                    });
+                            }
+                            ui.label("Display name");
+                            ui.text_edit_singleline(&mut self.name_edit);
+                            if luna::action(
+                                ui,
+                                "Save name",
+                                !self.busy && !self.running.contains(&app.id),
+                                luna_mode,
+                            )
+                            .clicked()
+                                && let Some(store) = &mut self.store
+                            {
+                                match store.rename(&app.id, &self.name_edit) {
+                                    Ok(()) => {
+                                        self.notice = Some((false, "Program name updated".into()));
+                                        let updated = store.get(&app.id).cloned();
+                                        if let Some(updated) = updated
+                                            && let Ok(path) = integration::application_directory()
+                                            && path
+                                                .join(format!("ricewine-{}.desktop", app.id))
+                                                .exists()
+                                            && let Ok(binary) = std::env::current_exe()
+                                            && let Err(error) =
+                                                integration::install_shortcut(&updated, &binary)
+                                        {
+                                            self.notice = Some((
+                                                true,
+                                                format!(
+                                                    "Name saved, shortcut update failed: {error}"
+                                                ),
+                                            ));
+                                        }
+                                    }
+                                    Err(error) => self.notice = Some((true, error)),
+                                }
+                            }
+                            ui.add_space(8.0);
+                            ui.label(
+                                RichText::new("Runner")
+                                    .small()
+                                    .strong()
+                                    .color(self.theme.palette().text),
+                            );
+                            match &selected_profile {
+                                Ok(profile) => ui.label(profile.runner.label()),
+                                Err(error) => ui.colored_label(self.theme.error(), error),
+                            };
+                            ui.add_space(5.0);
+                            ui.label(
+                                RichText::new("Prefix")
+                                    .small()
+                                    .strong()
+                                    .color(self.theme.palette().text),
+                            );
+                            ui.small(core::readable_path(&app.prefix));
+                            ui.add_space(12.0);
+                            if app.executable.is_none() {
+                                ui.small("Use the quick EXE finder above to finish setup.");
+                            }
+                            if luna::action(
+                                ui,
+                                "Scan installed EXEs",
+                                !self.exe_scan_busy.contains(&app.id),
+                                luna_mode,
+                            )
+                            .clicked()
+                            {
+                                self.scan_executables_async(&app);
+                            }
+                            if self.exe_scan_busy.contains(&app.id) {
+                                ui.spinner();
+                                ui.small("Scanning prefix…");
+                            }
+                            if app.executable.is_some() {
+                                self.show_exe_candidates(ui, &app);
+                            }
+                            if luna::action(ui, "Choose launch EXE…", true, luna_mode).clicked()
+                                && let Some(path) = rfd::FileDialog::new()
+                                    .add_filter("Windows program", &["exe"])
+                                    .pick_file()
+                                && let Some(store) = self.store.as_mut()
+                            {
+                                if let Err(error) = store.set_executable(&app.id, path) {
+                                    self.notice = Some((true, error));
+                                } else {
+                                    self.notice = Some((false, "Launch executable saved".into()));
+                                }
+                            }
+                            if luna::action(ui, "Add menu shortcut", true, luna_mode).clicked() {
+                                let outcome = std::env::current_exe()
+                                    .map_err(|e| e.to_string())
+                                    .and_then(|bin| integration::install_shortcut(&app, &bin));
+                                self.notice = Some(match outcome {
+                                    Ok(file) => {
+                                        (false, format!("Shortcut created: {}", file.display()))
+                                    }
+                                    Err(error) => (true, error),
+                                });
+                            }
+                            ui.add_space(18.0);
+                            if luna::action(ui, "Remove from library…", true, luna_mode).clicked()
+                            {
+                                self.remove_confirmation = Some(app.id);
+                            }
+                            ui.small("This never deletes the Wine prefix.");
+                        },
+                    );
                 } else {
                     ui.label("Select a program to view details.");
                 }
@@ -4417,10 +4432,9 @@ impl eframe::App for RiceWineApp {
                     Theme::Luna => self.luna_shell(ui),
                     Theme::MacOS => self.mac_shell(ui),
                     Theme::Windows10 => self.win10_shell(ui),
-                    Theme::Windows98
-                    | Theme::Windows7
-                    | Theme::ChromeOS
-                    | Theme::FrutigerAero => self.ricebowl_shell(ui),
+                    Theme::Windows98 | Theme::Windows7 | Theme::ChromeOS | Theme::FrutigerAero => {
+                        self.ricebowl_shell(ui)
+                    }
                 }
             }
         });

@@ -78,7 +78,8 @@ impl Flavor {
 /// Keep recognizable desktop language, not one generic header with four palettes.
 /// Header text deliberately describes the current page; it does not impersonate
 /// native window chrome (that stays the Linux compositor's responsibility).
-pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
+pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) -> bool {
+    let mut go_home = false;
     let margin = if rice == Flavor::Classic98 { 6 } else { 14 };
     let header_width = (ui.available_width() - (margin * 2 + 2) as f32).max(0.0);
     egui::Frame::new()
@@ -88,11 +89,32 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
         .inner_margin(egui::Margin::symmetric(margin, 10))
         .show(ui, |ui| {
             ui.set_min_width(header_width);
+            if rice == Flavor::FrutigerAero {
+                // Small, original 2007-era aqua highlight behind the masthead text.
+                let area = ui.available_rect_before_wrap();
+                let highlight = egui::Rect::from_min_size(area.min, egui::vec2(area.width(), 18.0));
+                ui.painter().rect_filled(
+                    highlight,
+                    egui::CornerRadius::same(5),
+                    Color32::from_rgb(222, 255, 250),
+                );
+                ui.painter().line_segment(
+                    [highlight.left_bottom(), highlight.right_bottom()],
+                    egui::Stroke::new(1.0, Color32::from_rgb(128, 205, 202)),
+                );
+            }
             match rice {
                 Flavor::Classic98 => {
                     // Compact, rectangular Win9x application header. The actual
                     // File/View/Help menu lives in the application shell above it.
                     ui.horizontal_wrapped(|ui| {
+                        crate::rice_identity::symbol(
+                            ui,
+                            crate::rice_identity::Family::Win98,
+                            crate::rice_identity::Icon::Brand,
+                            rice.accent(),
+                            16.0,
+                        );
                         ui.label(
                             RichText::new("RiceWine")
                                 .size(12.0)
@@ -109,8 +131,11 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
                 }
                 Flavor::Aero7 => {
                     ui.horizontal_wrapped(|ui| {
+                        if ui.link("Control Panel").clicked() {
+                            go_home = true;
+                        }
                         ui.label(
-                            RichText::new(format!("Control Panel  ›  Programs  ›  {page}"))
+                            RichText::new(format!(" ›  Programs  ›  {page}"))
                                 .size(11.0)
                                 .color(rice.accent()),
                         );
@@ -124,7 +149,13 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
                 }
                 Flavor::ChromeOS => {
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new("◉").size(18.0).color(rice.accent()));
+                        crate::rice_identity::symbol(
+                            ui,
+                            crate::rice_identity::Family::Chrome,
+                            crate::rice_identity::Icon::Brand,
+                            rice.accent(),
+                            22.0,
+                        );
                         ui.label(
                             RichText::new("RiceWine")
                                 .size(20.0)
@@ -137,7 +168,13 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
                 }
                 Flavor::FrutigerAero => {
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new("◉").size(30.0).color(rice.accent()));
+                        crate::rice_identity::symbol(
+                            ui,
+                            crate::rice_identity::Family::Frutiger,
+                            crate::rice_identity::Icon::Brand,
+                            rice.accent(),
+                            33.0,
+                        );
                         ui.vertical(|ui| {
                             ui.label(
                                 RichText::new("RiceWine")
@@ -162,6 +199,7 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
                 }
             }
         });
+    go_home
 }
 
 /// Navigation retains genuine button hit targets and a clearly visible selected
@@ -173,6 +211,34 @@ pub fn navigation(
     selected: bool,
     horizontal: bool,
 ) -> Response {
+    if rice == Flavor::Aero7 {
+        let response = ui.add_sized(
+            if horizontal {
+                [120.0, 30.0]
+            } else {
+                [ui.available_width().min(180.0), 30.0]
+            },
+            egui::Button::new(RichText::new(label).size(12.5).color(rice.accent()))
+                .fill(if selected {
+                    Color32::from_rgb(211, 233, 249)
+                } else {
+                    Color32::TRANSPARENT
+                })
+                .stroke(egui::Stroke::NONE)
+                .corner_radius(egui::CornerRadius::same(2)),
+        );
+        if selected {
+            ui.painter().rect_filled(
+                egui::Rect::from_min_size(
+                    response.rect.min,
+                    egui::vec2(3.0, response.rect.height()),
+                ),
+                0.0,
+                rice.accent(),
+            );
+        }
+        return response;
+    }
     let text_color = if selected && matches!(rice, Flavor::ChromeOS | Flavor::FrutigerAero) {
         Color32::WHITE
     } else {

@@ -1733,6 +1733,24 @@ impl RiceWineApp {
             });
     }
 
+    /// Always reachable when a fixed sidebar would crowd the workspace.
+    fn compact_navigation(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            ui.menu_button(format!("☰  {}", self.page.label()), |ui| {
+                for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
+                    if ui.selectable_label(self.page == page, page.label()).clicked() {
+                        self.page = page;
+                        ui.close();
+                    }
+                }
+            });
+            if ui.small_button("About").clicked() {
+                self.about_open = true;
+            }
+        });
+        ui.add_space(5.0);
+    }
+
     fn page_body(&mut self, ui: &mut egui::Ui) {
         if let Some((is_error, message)) = self.notice.clone() {
             if self.theme == Theme::Luna {
@@ -1757,9 +1775,7 @@ impl RiceWineApp {
         match self.page {
             Page::Library => self.library(ui),
             Page::Prefixes => self.prefixes(ui),
-            Page::Runners => {
-                egui::ScrollArea::vertical().show(ui, |ui| self.runners(ui));
-            }
+            Page::Runners => self.runners(ui),
             Page::Settings => self.settings(ui),
         }
     }
@@ -1807,14 +1823,20 @@ impl RiceWineApp {
                     });
                 });
             });
-        let available_height = (ui.available_height() - 31.0).max(280.0);
+        let compact = ui.available_width() < 760.0;
+        if compact {
+            self.compact_navigation(ui);
+        }
+        let available_height = (ui.available_height() - 31.0).max(0.0);
         ui.horizontal_top(|ui| {
-            ui.allocate_ui_with_layout(
-                egui::vec2(204.0, available_height),
-                egui::Layout::top_down(egui::Align::Min),
-                |ui| self.mac_sidebar(ui),
-            );
-            let content_width = ui.available_width();
+            if !compact {
+                ui.allocate_ui_with_layout(
+                    egui::vec2(204.0, available_height),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| self.mac_sidebar(ui),
+                );
+            }
+            let content_width = ui.available_width().max(0.0);
             ui.allocate_ui_with_layout(
                 egui::vec2(content_width, available_height),
                 egui::Layout::top_down(egui::Align::Min),
@@ -1823,14 +1845,9 @@ impl RiceWineApp {
                         .fill(mac::CANVAS)
                         .inner_margin(egui::Margin::same(18))
                         .show(ui, |ui| {
-                            ui.set_min_height((available_height - 36.0).max(300.0));
-                            if self.page == Page::Settings {
-                                egui::ScrollArea::vertical()
-                                    .auto_shrink([false, false])
-                                    .show(ui, |ui| self.page_body(ui));
-                            } else {
-                                self.page_body(ui);
-                            }
+                            egui::ScrollArea::vertical()
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| self.page_body(ui));
                         });
                 },
             );
@@ -1856,15 +1873,21 @@ impl RiceWineApp {
             Page::Runners => "Wine & Proton",
             Page::Settings => "Appearance",
         };
-        let available_height = ui.available_height().max(300.0);
+        let compact = ui.available_width() < 760.0;
+        if compact {
+            self.compact_navigation(ui);
+        }
+        let available_height = ui.available_height().max(0.0);
         ui.horizontal_top(|ui| {
-            ui.allocate_ui_with_layout(
-                egui::vec2(235.0, available_height),
-                egui::Layout::top_down(egui::Align::Min),
-                |ui| self.win10_sidebar(ui),
-            );
-            ui.separator();
-            let content_width = ui.available_width();
+            if !compact {
+                ui.allocate_ui_with_layout(
+                    egui::vec2(235.0, available_height),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| self.win10_sidebar(ui),
+                );
+                ui.separator();
+            }
+            let content_width = ui.available_width().max(0.0);
             ui.allocate_ui_with_layout(
                 egui::vec2(content_width, available_height),
                 egui::Layout::top_down(egui::Align::Min),
@@ -1873,7 +1896,6 @@ impl RiceWineApp {
                         .fill(win10::CANVAS)
                         .inner_margin(egui::Margin::symmetric(27, 22))
                         .show(ui, |ui| {
-                            ui.set_min_height((available_height - 44.0).max(250.0));
                             win10::page_heading(ui, title);
                             if self.page == Page::Library {
                                 ui.add_space(10.0);
@@ -1988,16 +2010,24 @@ impl RiceWineApp {
         });
         ui.add_space(7.0);
 
-        let available_height = (ui.available_height() - 29.0).max(290.0);
-        if flavor == Flavor::ChromeOS {
-            extra_rices::content_frame(flavor).show(ui, |ui| {
-                ui.set_min_height((available_height - 32.0).max(240.0));
-                extra_rices::page_heading(ui, flavor, self.page.label());
-                egui::ScrollArea::vertical()
-                    .max_height((available_height - 82.0).max(160.0))
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| self.page_body(ui));
-            });
+        let compact = flavor != Flavor::ChromeOS && ui.available_width() < 740.0;
+        if compact {
+            self.compact_navigation(ui);
+        }
+        let available_height = (ui.available_height() - 29.0).max(0.0);
+        if flavor == Flavor::ChromeOS || compact {
+            ui.allocate_ui_with_layout(
+                egui::vec2(ui.available_width().max(0.0), available_height),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| {
+                    extra_rices::content_frame(flavor).show(ui, |ui| {
+                        extra_rices::page_heading(ui, flavor, self.page.label());
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| self.page_body(ui));
+                    });
+                },
+            );
         } else {
             ui.horizontal_top(|ui| {
                 ui.allocate_ui_with_layout(
@@ -2041,13 +2071,12 @@ impl RiceWineApp {
                     },
                 );
                 ui.add_space(6.0);
-                let width = ui.available_width().max(360.0);
+                let width = ui.available_width().max(0.0);
                 ui.allocate_ui_with_layout(
                     egui::vec2(width, available_height),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
                         extra_rices::content_frame(flavor).show(ui, |ui| {
-                            ui.set_min_height((available_height - 32.0).max(240.0));
                             extra_rices::page_heading(ui, flavor, self.page.label());
                             egui::ScrollArea::vertical()
                                 .auto_shrink([false, false])
@@ -2087,15 +2116,25 @@ impl RiceWineApp {
             _ => {}
         }
         ui.add_space(5.0);
-        let available_height = (ui.available_height() - 27.0).max(250.0);
+        let compact = ui.available_width() < 760.0;
+        if compact {
+            self.compact_navigation(ui);
+        }
+        let available_height = (ui.available_height() - 27.0).max(0.0);
         ui.horizontal_top(|ui| {
-            ui.allocate_ui_with_layout(
-                egui::vec2(225.0, available_height),
-                egui::Layout::top_down(egui::Align::Min),
-                |ui| self.luna_sidebar(ui),
-            );
-            ui.add_space(6.0);
-            let content_width = ui.available_width().max(390.0);
+            if !compact {
+                ui.allocate_ui_with_layout(
+                    egui::vec2(225.0, available_height),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| self.luna_sidebar(ui));
+                    },
+                );
+                ui.add_space(6.0);
+            }
+            let content_width = ui.available_width().max(0.0);
             ui.allocate_ui_with_layout(
                 egui::vec2(content_width, available_height),
                 egui::Layout::top_down(egui::Align::Min),
@@ -2106,7 +2145,6 @@ impl RiceWineApp {
                         .inner_margin(11.0)
                         .corner_radius(egui::CornerRadius::same(2))
                         .show(ui, |ui| {
-                            ui.set_min_height((available_height - 28.0).max(380.0));
                             let (title, subtitle) = match self.page {
                                 Page::Library => {
                                     ("Program Library", "Manage your Windows applications")
@@ -2124,7 +2162,9 @@ impl RiceWineApp {
                             };
                             luna::content_heading(ui, title, subtitle);
                             ui.add_space(9.0);
-                            self.page_body(ui);
+                            egui::ScrollArea::vertical()
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| self.page_body(ui));
                         });
                 },
             );
@@ -2164,7 +2204,7 @@ impl RiceWineApp {
         if self.store.is_some() {
             ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
         }
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if !win10_mode {
                 ui.label(if luna_mode { "Search for:" } else { "Search" });
             }
@@ -2270,17 +2310,21 @@ impl RiceWineApp {
             }
             return;
         }
-        let width = if win10_mode {
-            ui.available_width().max(300.0)
+        // Split only when the list and details genuinely fit side by side.
+        let stacked = win10_mode || ui.available_width() < 610.0;
+        let width = if stacked {
+            ui.available_width().max(0.0)
         } else {
-            (ui.available_width() - 280.0).max(260.0)
+            (ui.available_width() - 280.0).max(0.0)
         };
         let mut next_selected: Option<String> = None;
         let display = |ui: &mut egui::Ui| {
             let list_height = if win10_mode {
                 254.0
+            } else if stacked {
+                260.0
             } else {
-                ui.available_height()
+                340.0
             };
             ui.allocate_ui_with_layout(
                 egui::vec2(width, list_height),
@@ -2346,14 +2390,14 @@ impl RiceWineApp {
                                                 ui,
                                                 &display_name,
                                                 selected,
-                                                width - 112.0,
+                                                (width - 112.0).max(80.0),
                                             )
                                         } else {
                                             mac::program_row(
                                                 ui,
                                                 &display_name,
                                                 selected,
-                                                width - 112.0,
+                                                (width - 112.0).max(80.0),
                                             )
                                         };
                                         if response.clicked() {
@@ -2371,7 +2415,9 @@ impl RiceWineApp {
                 ui.separator();
             }
             let details = |ui: &mut egui::Ui| {
-                ui.set_min_width(235.0);
+                if !stacked {
+                    ui.set_min_width(235.0);
+                }
                 let selected = self
                     .selected
                     .as_ref()
@@ -2597,7 +2643,7 @@ impl RiceWineApp {
                 ui.vertical(details);
             }
         };
-        if win10_mode {
+        if stacked {
             ui.vertical(display);
         } else {
             ui.horizontal_top(display);
@@ -2629,7 +2675,7 @@ impl RiceWineApp {
             .as_ref()
             .map(|store| store.applications().to_vec())
             .unwrap_or_default();
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        ui.vertical(|ui| {
             if apps.is_empty() && luna_mode {
                 egui::Frame::new()
                     .fill(Color32::from_rgb(249, 250, 252))
@@ -3126,7 +3172,7 @@ impl RiceWineApp {
 
     /// XP Luna Control Panel-style settings; other Rices retain their layouts.
     fn luna_settings(&mut self, ui: &mut egui::Ui) {
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        ui.vertical(|ui| {
             luna::option_group(ui, "Appearance", luna::XpIcon::Settings, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Visual style:");
@@ -4251,7 +4297,7 @@ fn main() -> eframe::Result {
         renderer: eframe::Renderer::Glow,
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1080.0, 700.0])
-            .with_min_inner_size([780.0, 500.0]),
+            .with_min_inner_size([560.0, 400.0]),
         ..Default::default()
     };
     eframe::run_native(
@@ -4305,6 +4351,16 @@ mod rice_tests {
             InstallDraft::suggested_name(std::path::Path::new("My_App_1.2.3_Setup.exe")),
             "My App 1.2.3"
         );
+    }
+
+    #[test]
+    fn compact_library_stacks_details_instead_of_overflowing() {
+        for width in [280.0, 400.0, 540.0, 609.0] {
+            let stacked = width < 610.0;
+            let list_width = if stacked { width } else { width - 280.0 };
+            assert!(stacked);
+            assert!(list_width > 0.0);
+        }
     }
 
     #[test]

@@ -3,9 +3,9 @@
 mod extra_rices;
 mod luna;
 mod luna_icons;
+mod mac;
 mod rice_icons;
 mod rice_identity;
-mod mac;
 mod win10;
 
 use eframe::egui::{self, Color32, RichText};
@@ -1836,7 +1836,11 @@ impl RiceWineApp {
                             rice_identity::inline_icon(
                                 ui,
                                 self.theme,
-                                if is_error { rice_icons::Glyph::Warning } else { rice_icons::Glyph::Info },
+                                if is_error {
+                                    rice_icons::Glyph::Warning
+                                } else {
+                                    rice_icons::Glyph::Info
+                                },
                                 21.0,
                                 foreground,
                             );
@@ -2486,7 +2490,11 @@ impl RiceWineApp {
             .is_none_or(|s| s.applications().is_empty())
         {
             if self.simple_ui {
-                match rice_identity::empty_library(ui, self.theme, !self.busy && self.store.is_some()) {
+                match rice_identity::empty_library(
+                    ui,
+                    self.theme,
+                    !self.busy && self.store.is_some(),
+                ) {
                     Some(rice_identity::EmptyIntent::Install) => {
                         self.install = Some(InstallDraft::default());
                     }
@@ -2618,7 +2626,9 @@ impl RiceWineApp {
                                             selected,
                                             (width - 116.0).max(80.0),
                                             row_height,
-                                        ).clicked() {
+                                        )
+                                        .clicked()
+                                        {
                                             next_selected = Some(app.id.clone());
                                         }
                                         ui.label(
@@ -2973,9 +2983,13 @@ impl RiceWineApp {
     fn prefixes(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         if self.simple_ui {
-            rice_identity::page_title(ui, self.theme, "Wine environments",
+            rice_identity::page_title(
+                ui,
+                self.theme,
+                "Wine environments",
                 "Back up, restore and manage your program environments.",
-                rice_icons::Glyph::Prefix);
+                rice_icons::Glyph::Prefix,
+            );
         } else if luna_mode {
             luna::section_heading(ui, "Wine prefix maintenance", luna::XpIcon::Prefix);
             ui.small("Back up your Windows environments before changing runners or components.");
@@ -3055,7 +3069,11 @@ impl RiceWineApp {
                 };
                 if self.simple_ui {
                     rice_identity::group_box(
-                        ui, self.theme, &app_name, rice_icons::Glyph::Prefix, render
+                        ui,
+                        self.theme,
+                        &app_name,
+                        rice_icons::Glyph::Prefix,
+                        render,
                     );
                     ui.add_space(8.0);
                 } else if luna_mode {
@@ -3110,9 +3128,13 @@ impl RiceWineApp {
     fn runners(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         if self.simple_ui {
-            rice_identity::page_title(ui, self.theme, "Wine & Proton",
+            rice_identity::page_title(
+                ui,
+                self.theme,
+                "Wine & Proton",
                 "Choose runtimes and manage Proton compatibility.",
-                rice_icons::Glyph::Runner);
+                rice_icons::Glyph::Runner,
+            );
         } else if luna_mode {
             luna::section_heading(ui, "Installed runtime tools", luna::XpIcon::Runner);
         }
@@ -3613,9 +3635,13 @@ impl RiceWineApp {
 
     fn settings(&mut self, ui: &mut egui::Ui) {
         if self.simple_ui {
-            rice_identity::page_title(ui, self.theme, "Settings",
+            rice_identity::page_title(
+                ui,
+                self.theme,
+                "Settings",
                 "Appearance, desktop integration and diagnostics.",
-                rice_icons::Glyph::Settings);
+                rice_icons::Glyph::Settings,
+            );
         }
         if self.theme == Theme::Luna && !self.simple_ui {
             self.luna_settings(ui);

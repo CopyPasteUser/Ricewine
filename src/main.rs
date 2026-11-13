@@ -2295,16 +2295,16 @@ impl RiceWineApp {
             });
         }
         ui.horizontal_wrapped(|ui| {
-            if ui
-                .add_enabled(can_add, egui::Button::new("＋ Install program"))
-                .clicked()
-            {
+            let install_label = match flavor {
+                Flavor::Classic98 => "Install…",
+                Flavor::Aero7 => "Install a program",
+                Flavor::ChromeOS => "Add app",
+                Flavor::FrutigerAero => "Add program",
+            };
+            if extra_rices::toolbar_action(ui, flavor, install_label, can_add, true).clicked() {
                 self.install = Some(InstallDraft::default());
             }
-            if ui
-                .add_enabled(can_add, egui::Button::new("Import existing prefix…"))
-                .clicked()
-            {
+            if extra_rices::toolbar_action(ui, flavor, "Import existing…", can_add, false).clicked() {
                 self.import = Some(ImportDraft::default());
             }
         });

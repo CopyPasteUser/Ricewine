@@ -178,11 +178,19 @@ impl Theme {
         let palette = self.palette();
         let is_classic = matches!(self, Self::Luna | Self::Windows98);
         let label = RichText::new(title)
-            .color(if selected { Color32::WHITE } else { palette.text })
+            .color(if selected {
+                Color32::WHITE
+            } else {
+                palette.text
+            })
             .size(if is_classic { 12.5 } else { 13.0 })
             .strong();
         let button = egui::Button::new(label)
-            .fill(if selected { palette.accent } else { palette.sidebar })
+            .fill(if selected {
+                palette.accent
+            } else {
+                palette.sidebar
+            })
             .stroke(if selected {
                 egui::Stroke::new(1.0, palette.accent)
             } else if self == Self::Windows98 {
@@ -291,9 +299,10 @@ impl Theme {
             style
                 .text_styles
                 .insert(egui::TextStyle::Button, egui::FontId::proportional(button));
-            style
-                .text_styles
-                .insert(egui::TextStyle::Heading, egui::FontId::proportional(heading));
+            style.text_styles.insert(
+                egui::TextStyle::Heading,
+                egui::FontId::proportional(heading),
+            );
             style.spacing.item_spacing = match self {
                 Self::Luna => egui::vec2(6.0, 7.0),
                 Self::MacOS => egui::vec2(8.0, 10.0),
@@ -1873,12 +1882,19 @@ impl RiceWineApp {
         let header = egui::Frame::new()
             .fill(palette.sidebar)
             .stroke(egui::Stroke::new(1.0, palette.border))
-            .inner_margin(egui::Margin::symmetric(pad, if is_classic { 8 } else { 10 }))
+            .inner_margin(egui::Margin::symmetric(
+                pad,
+                if is_classic { 8 } else { 10 },
+            ))
             .corner_radius(egui::CornerRadius::same(palette.corner_radius))
             .show(ui, |ui| {
                 ui.set_min_width((available_width - (pad * 2 + 2) as f32).max(0.0));
                 ui.horizontal_wrapped(|ui| {
-                    let mark = if self.theme == Theme::Windows98 { "▣" } else { "◧" };
+                    let mark = if self.theme == Theme::Windows98 {
+                        "▣"
+                    } else {
+                        "◧"
+                    };
                     ui.label(
                         RichText::new(mark)
                             .strong()
@@ -1991,15 +2007,17 @@ impl RiceWineApp {
                 egui::Frame::new()
                     .fill(palette.panel)
                     .stroke(egui::Stroke::new(
-                        if self.theme == Theme::Windows98 { 1.5 } else { 1.0 },
+                        if self.theme == Theme::Windows98 {
+                            1.5
+                        } else {
+                            1.0
+                        },
                         palette.border,
                     ))
                     .corner_radius(egui::CornerRadius::same(palette.corner_radius))
                     .inner_margin(egui::Margin::same(inner_margin))
                     .show(ui, |ui| {
-                        ui.set_min_width(
-                            (page_width - (inner_margin * 2 + 2) as f32).max(0.0),
-                        );
+                        ui.set_min_width((page_width - (inner_margin * 2 + 2) as f32).max(0.0));
                         egui::ScrollArea::vertical()
                             .auto_shrink([false, false])
                             .show(ui, |ui| self.page_body(ui));
@@ -2459,47 +2477,51 @@ impl RiceWineApp {
                 ui.add_space(14.0);
                 let mut changed = false;
                 ui.horizontal_wrapped(|ui| {
-                let search_response = ui.add(
-                    egui::TextEdit::singleline(&mut self.search)
-                        .hint_text("Search your programs")
-                        .desired_width(260.0),
-                );
-                if self.search_focus_requested {
-                    search_response.request_focus();
-                    self.search_focus_requested = false;
-                }
-                if !self.search.is_empty() && ui.small_button("Clear").clicked() {
-                    self.search.clear();
-                }
-                let view_label = if self.workspace.filter == LibraryFilter::Favorites {
-                    "Favorites ▾"
-                } else {
-                    "View ▾"
-                };
-                ui.menu_button(view_label, |ui| {
-                    ui.label("Show");
-                    ui.add_enabled_ui(self.workspace_writable, |ui| {
-                        for filter in LibraryFilter::ALL {
-                            changed |= ui
-                                .selectable_value(
-                                    &mut self.workspace.filter,
-                                    filter,
-                                    filter.label(),
-                                )
-                                .changed();
-                        }
-                    });
-                    ui.separator();
-                    ui.label("Sort");
-                    ui.add_enabled_ui(self.workspace_writable, |ui| {
-                        for order in LibraryOrder::ALL {
-                            changed |= ui
-                                .selectable_value(&mut self.workspace.order, order, order.label())
-                                .changed();
-                        }
+                    let search_response = ui.add(
+                        egui::TextEdit::singleline(&mut self.search)
+                            .hint_text("Search your programs")
+                            .desired_width(260.0),
+                    );
+                    if self.search_focus_requested {
+                        search_response.request_focus();
+                        self.search_focus_requested = false;
+                    }
+                    if !self.search.is_empty() && ui.small_button("Clear").clicked() {
+                        self.search.clear();
+                    }
+                    let view_label = if self.workspace.filter == LibraryFilter::Favorites {
+                        "Favorites ▾"
+                    } else {
+                        "View ▾"
+                    };
+                    ui.menu_button(view_label, |ui| {
+                        ui.label("Show");
+                        ui.add_enabled_ui(self.workspace_writable, |ui| {
+                            for filter in LibraryFilter::ALL {
+                                changed |= ui
+                                    .selectable_value(
+                                        &mut self.workspace.filter,
+                                        filter,
+                                        filter.label(),
+                                    )
+                                    .changed();
+                            }
+                        });
+                        ui.separator();
+                        ui.label("Sort");
+                        ui.add_enabled_ui(self.workspace_writable, |ui| {
+                            for order in LibraryOrder::ALL {
+                                changed |= ui
+                                    .selectable_value(
+                                        &mut self.workspace.order,
+                                        order,
+                                        order.label(),
+                                    )
+                                    .changed();
+                            }
+                        });
                     });
                 });
-            });
                 if changed && let Err(error) = self.persist_workspace() {
                     self.notice = Some((true, format!("Could not save Library view: {error}")));
                 }
@@ -2608,19 +2630,12 @@ impl RiceWineApp {
                 let enabled = !self.busy && self.store.is_some();
                 ui.add_space(35.0);
                 ui.vertical_centered(|ui| {
-                    let (icon_rect, _) = ui.allocate_exact_size(
-                        egui::vec2(70.0, 66.0),
-                        egui::Sense::hover(),
-                    );
-                    let window = egui::Rect::from_center_size(
-                        icon_rect.center(),
-                        egui::vec2(56.0, 46.0),
-                    );
-                    ui.painter().rect_filled(
-                        window,
-                        palette.corner_radius as f32,
-                        palette.button,
-                    );
+                    let (icon_rect, _) =
+                        ui.allocate_exact_size(egui::vec2(70.0, 66.0), egui::Sense::hover());
+                    let window =
+                        egui::Rect::from_center_size(icon_rect.center(), egui::vec2(56.0, 46.0));
+                    ui.painter()
+                        .rect_filled(window, palette.corner_radius as f32, palette.button);
                     ui.painter().rect_filled(
                         egui::Rect::from_min_size(window.min, egui::vec2(56.0, 9.0)),
                         0.0,
@@ -2642,8 +2657,10 @@ impl RiceWineApp {
                     );
                     ui.add_space(5.0);
                     ui.label(
-                        RichText::new("Install an EXE or MSI, or import a program you already have.")
-                            .color(palette.muted),
+                        RichText::new(
+                            "Install an EXE or MSI, or import a program you already have.",
+                        )
+                        .color(palette.muted),
                     );
                     ui.add_space(17.0);
                     let install = egui::Button::new(
@@ -2782,13 +2799,23 @@ impl RiceWineApp {
                                     let palette = self.theme.palette();
                                     ui.horizontal(|ui| {
                                         let name = egui::Button::new(
-                                            RichText::new(&display_name)
-                                                .strong()
-                                                .color(if selected { Color32::WHITE } else { palette.text }),
+                                            RichText::new(&display_name).strong().color(
+                                                if selected {
+                                                    Color32::WHITE
+                                                } else {
+                                                    palette.text
+                                                },
+                                            ),
                                         )
-                                        .fill(if selected { palette.accent } else { palette.button })
+                                        .fill(if selected {
+                                            palette.accent
+                                        } else {
+                                            palette.button
+                                        })
                                         .stroke(egui::Stroke::new(1.0, palette.border))
-                                        .corner_radius(egui::CornerRadius::same(palette.corner_radius));
+                                        .corner_radius(egui::CornerRadius::same(
+                                            palette.corner_radius,
+                                        ));
                                         if ui
                                             .add_sized(
                                                 [(width - 116.0).max(80.0), row_height - 5.0],
@@ -2799,9 +2826,7 @@ impl RiceWineApp {
                                             next_selected = Some(app.id.clone());
                                         }
                                         ui.label(
-                                            RichText::new(status)
-                                                .size(11.5)
-                                                .color(palette.muted),
+                                            RichText::new(status).size(11.5).color(palette.muted),
                                         );
                                     });
                                 } else if win10_mode {

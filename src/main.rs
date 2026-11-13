@@ -2342,7 +2342,10 @@ impl RiceWineApp {
                 let mut changed = false;
                 ui.horizontal_wrapped(|ui| {
                     rice_identity::inline_icon(
-                        ui, self.theme, rice_icons::Glyph::Search, 23.0,
+                        ui,
+                        self.theme,
+                        rice_icons::Glyph::Search,
+                        23.0,
                         self.theme.palette().accent,
                     );
                     let search_response = ui.add(
@@ -3091,9 +3094,13 @@ impl RiceWineApp {
             }
 
             if self.simple_ui {
-                rice_identity::page_title(ui, self.theme, "Backup archives",
+                rice_identity::page_title(
+                    ui,
+                    self.theme,
+                    "Backup archives",
                     "Safe copies of your Windows program environments.",
-                    rice_icons::Glyph::Backup);
+                    rice_icons::Glyph::Backup,
+                );
             } else if luna_mode {
                 luna::section_heading(ui, "Backup archives", luna::XpIcon::Disk);
             } else {

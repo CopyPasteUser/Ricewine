@@ -1164,13 +1164,14 @@ mod tests {
             Theme::ChromeOS,
             Theme::FrutigerAero,
         ] {
-            let out = ctx.run_ui(Default::default(), |ctx| {
+            let mut out = ctx.run_ui(Default::default(), |ctx| {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     inline_icon(ui, rice, Glyph::Brand, 28.0, rice.palette().accent);
                     let _ = empty_library(ui, rice, false);
                 });
             });
             assert!(!out.shapes.is_empty(), "{rice:?}");
+            out.textures_delta.clear();
         }
     }
 }

@@ -2691,64 +2691,22 @@ impl RiceWineApp {
         {
             if self.simple_ui {
                 let palette = self.theme.palette();
-                let family = self.theme.identity();
-                let enabled = !self.busy && self.store.is_some();
-                ui.add_space(7.0);
-                ui.vertical_centered(|ui| {
-                    rice_identity::symbol(
-                        ui,
-                        family,
-                        rice_identity::Icon::Programs,
-                        palette.accent,
-                        42.0,
-                    );
-                    ui.add_space(3.0);
-                    let (headline, description) = rice_identity::empty_copy(family);
-                    ui.label(
-                        RichText::new(headline)
-                            .size(19.0)
-                            .strong()
-                            .color(palette.text),
-                    );
-                    ui.add_space(2.0);
-                    ui.label(
-                        RichText::new(description).color(palette.muted),
-                    );
-                    ui.add_space(6.0);
-                    if rice_identity::button(
-                        ui,
-                        family,
-                        rice_identity::Icon::Install,
-                        "Install Windows program",
-                        Color32::WHITE,
-                        Color32::WHITE,
-                        palette.accent,
-                        palette.accent,
-                        enabled,
-                        235.0,
-                    )
-                    .clicked()
-                    {
-                        self.install = Some(InstallDraft::default());
-                    }
-                    ui.add_space(2.0);
-                    if rice_identity::button(
-                        ui,
-                        family,
-                        rice_identity::Icon::Import,
-                        "Import existing prefix",
-                        palette.accent,
-                        palette.text,
-                        palette.button,
-                        palette.border,
-                        enabled,
-                        235.0,
-                    )
-                    .clicked()
-                    {
-                        self.import = Some(ImportDraft::default());
-                    }
-                });
+                let actions = rice_identity::empty_library(
+                    ui,
+                    self.theme.identity(),
+                    palette.accent,
+                    palette.text,
+                    palette.muted,
+                    palette.button,
+                    palette.border,
+                    !self.busy && self.store.is_some(),
+                );
+                if actions.install {
+                    self.install = Some(InstallDraft::default());
+                }
+                if actions.import {
+                    self.import = Some(ImportDraft::default());
+                }
             } else if self.theme == Theme::Luna {
                 ui.add_space(7.0);
                 luna::empty_library(ui);

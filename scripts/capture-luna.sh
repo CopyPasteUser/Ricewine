@@ -14,6 +14,19 @@ done
 [[ -v DISPLAY ]] || { echo "DISPLAY is required (use xvfb-run)" >&2; exit 1; }
 [[ -x target/release/ricewine ]] || { echo "Build target/release/ricewine first" >&2; exit 1; }
 
+capture_width="${RICEWINE_CAPTURE_WIDTH:-1120}"
+capture_height="${RICEWINE_CAPTURE_HEIGHT:-700}"
+capture_suffix="${RICEWINE_CAPTURE_SUFFIX:-}"
+if ! [[ "$capture_width" =~ ^[0-9]+$ && "$capture_height" =~ ^[0-9]+$ &&
+         "$capture_suffix" =~ ^(-[a-z0-9]+)?$ ]]; then
+    echo "Invalid screenshot dimensions or suffix" >&2
+    exit 2
+fi
+if (( capture_width < 560 || capture_height < 400 )); then
+    echo "Capture size must be at least 560x400" >&2
+    exit 2
+fi
+
 preview_dir="$(mktemp -d)"
 ricewine_pid=''
 cleanup() {
@@ -45,7 +58,7 @@ capture_page() {
     done
     [[ -n "$window_id" ]] || { echo "RiceWine window did not appear" >&2; exit 1; }
     xdotool windowmove "$window_id" 0 0
-    xdotool windowsize "$window_id" 1120 700
+    xdotool windowsize "$window_id" "$capture_width" "$capture_height"
     sleep 2
 
     local prefix="$theme"
@@ -55,12 +68,12 @@ capture_page() {
         windows7) prefix="win7" ;;
         *) prefix="$theme" ;;
     esac
-    local output="docs/screenshots/${prefix}-$output_name.webp"
+    local output="docs/screenshots/${prefix}-$output_name${capture_suffix}.webp"
     import -window "$window_id" -quality 92 "$output"
     # Validate that each new capture is a full-sized, readable desktop frame.
     local captured_size
     captured_size="$(identify -format '%wx%h' "$output")"
-    if [[ "$captured_size" != "1120x700" ]]; then
+    if [[ "$captured_size" != "${capture_width}x${capture_height}" ]]; then
         echo "Unexpected screenshot dimensions for $output: $captured_size" >&2
         exit 1
     fi
@@ -84,7 +97,7 @@ case "$theme" in
     windows98) prefix="win98" ;;
     windows7) prefix="win7" ;;
 esac
-unique_count="$(sha256sum docs/screenshots/"$prefix"-{library,prefixes,runners,settings,install,import}.webp | awk '{print $1}' | sort -u | wc -l)"
+unique_count="$(sha256sum docs/screenshots/"$prefix"-{library,prefixes,runners,settings,install,import}"$capture_suffix".webp | awk '{print $1}' | sort -u | wc -l)"
 if [[ "$unique_count" -ne 6 ]]; then
     echo "Expected six distinct $theme screenshots, found $unique_count" >&2
     exit 1

@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod extra_rices;
 mod luna;
 mod luna_icons;
 mod mac;
@@ -30,6 +31,10 @@ enum Theme {
     Luna,
     MacOS,
     Windows10,
+    Windows98,
+    Windows7,
+    ChromeOS,
+    FrutigerAero,
 }
 
 #[derive(Clone, Copy)]
@@ -48,13 +53,25 @@ struct RicePalette {
 }
 
 impl Theme {
-    const ALL: [Self; 3] = [Self::Luna, Self::MacOS, Self::Windows10];
+    const ALL: [Self; 7] = [
+        Self::Luna,
+        Self::MacOS,
+        Self::Windows10,
+        Self::Windows98,
+        Self::Windows7,
+        Self::ChromeOS,
+        Self::FrutigerAero,
+    ];
 
     fn label(self) -> &'static str {
         match self {
             Self::Luna => "XP Luna Blue",
             Self::MacOS => "macOS",
             Self::Windows10 => "Windows 10",
+            Self::Windows98 => "Windows 98",
+            Self::Windows7 => "Windows 7 Aero",
+            Self::ChromeOS => "ChromeOS",
+            Self::FrutigerAero => "Frutiger Aero",
         }
     }
 
@@ -99,6 +116,58 @@ impl Theme {
                 border: rgb(198, 198, 198),
                 dark: false,
                 corner_radius: 0,
+            },
+            Self::Windows98 => RicePalette {
+                accent: rgb(0, 51, 153),
+                sidebar: rgb(192, 192, 192),
+                panel: rgb(224, 224, 224),
+                button: rgb(192, 192, 192),
+                hover: rgb(240, 240, 225),
+                input: rgb(255, 255, 255),
+                text: rgb(28, 28, 28),
+                muted: rgb(66, 66, 66),
+                border: rgb(110, 110, 110),
+                dark: false,
+                corner_radius: 0,
+            },
+            Self::Windows7 => RicePalette {
+                accent: rgb(23, 92, 152),
+                sidebar: rgb(219, 233, 245),
+                panel: rgb(247, 251, 255),
+                button: rgb(233, 241, 250),
+                hover: rgb(205, 230, 249),
+                input: rgb(255, 255, 255),
+                text: rgb(25, 48, 71),
+                muted: rgb(65, 92, 113),
+                border: rgb(149, 187, 218),
+                dark: false,
+                corner_radius: 6,
+            },
+            Self::ChromeOS => RicePalette {
+                accent: rgb(24, 86, 166),
+                sidebar: rgb(237, 242, 251),
+                panel: rgb(255, 255, 255),
+                button: rgb(232, 239, 252),
+                hover: rgb(218, 232, 250),
+                input: rgb(255, 255, 255),
+                text: rgb(32, 43, 59),
+                muted: rgb(85, 98, 115),
+                border: rgb(213, 222, 233),
+                dark: false,
+                corner_radius: 14,
+            },
+            Self::FrutigerAero => RicePalette {
+                accent: rgb(9, 99, 119),
+                sidebar: rgb(207, 240, 236),
+                panel: rgb(246, 255, 253),
+                button: rgb(222, 248, 243),
+                hover: rgb(195, 240, 231),
+                input: rgb(255, 255, 255),
+                text: rgb(6, 56, 64),
+                muted: rgb(62, 98, 103),
+                border: rgb(126, 192, 190),
+                dark: false,
+                corner_radius: 12,
             },
         }
     }
@@ -187,21 +256,37 @@ impl Theme {
                 Self::Luna => egui::vec2(6.0, 7.0),
                 Self::MacOS => egui::vec2(8.0, 10.0),
                 Self::Windows10 => egui::vec2(8.0, 7.0),
+                Self::Windows98 => egui::vec2(5.0, 5.0),
+                Self::Windows7 => egui::vec2(8.0, 8.0),
+                Self::ChromeOS => egui::vec2(11.0, 10.0),
+                Self::FrutigerAero => egui::vec2(10.0, 9.0),
             };
             style.spacing.button_padding = match self {
                 Self::Luna => egui::vec2(8.0, 4.0),
                 Self::MacOS => egui::vec2(12.0, 7.0),
                 Self::Windows10 => egui::vec2(12.0, 5.0),
+                Self::Windows98 => egui::vec2(7.0, 3.0),
+                Self::Windows7 => egui::vec2(11.0, 5.0),
+                Self::ChromeOS => egui::vec2(14.0, 7.0),
+                Self::FrutigerAero => egui::vec2(13.0, 7.0),
             };
             style.spacing.interact_size = match self {
                 Self::Luna => egui::vec2(36.0, 24.0),
                 Self::MacOS => egui::vec2(40.0, 28.0),
                 Self::Windows10 => egui::vec2(40.0, 30.0),
+                Self::Windows98 => egui::vec2(34.0, 22.0),
+                Self::Windows7 => egui::vec2(40.0, 28.0),
+                Self::ChromeOS => egui::vec2(42.0, 36.0),
+                Self::FrutigerAero => egui::vec2(42.0, 34.0),
             };
             let (body, heading, button, small, monospace) = match self {
                 Self::Luna => (12.0, 17.0, 12.0, 11.0, 11.0),
                 Self::MacOS => (14.0, 19.0, 14.0, 12.0, 13.0),
                 Self::Windows10 => (13.0, 26.0, 13.0, 11.5, 12.0),
+                Self::Windows98 => (12.0, 17.0, 12.0, 11.0, 11.0),
+                Self::Windows7 => (13.0, 23.0, 13.0, 11.5, 12.0),
+                Self::ChromeOS => (14.0, 22.0, 14.0, 12.0, 12.0),
+                Self::FrutigerAero => (14.0, 24.0, 13.0, 12.0, 12.0),
             };
             for (kind, size, family) in [
                 (egui::TextStyle::Body, body, egui::FontFamily::Proportional),
@@ -240,6 +325,10 @@ impl From<Appearance> for Theme {
             Appearance::Luna => Self::Luna,
             Appearance::MacOS => Self::MacOS,
             Appearance::Windows10 => Self::Windows10,
+            Appearance::Windows98 => Self::Windows98,
+            Appearance::Windows7 => Self::Windows7,
+            Appearance::ChromeOS => Self::ChromeOS,
+            Appearance::FrutigerAero => Self::FrutigerAero,
         }
     }
 }
@@ -250,6 +339,10 @@ impl From<Theme> for Appearance {
             Theme::Luna => Self::Luna,
             Theme::MacOS => Self::MacOS,
             Theme::Windows10 => Self::Windows10,
+            Theme::Windows98 => Self::Windows98,
+            Theme::Windows7 => Self::Windows7,
+            Theme::ChromeOS => Self::ChromeOS,
+            Theme::FrutigerAero => Self::FrutigerAero,
         }
     }
 }
@@ -1815,6 +1908,134 @@ impl RiceWineApp {
         });
     }
 
+    /// Four RiceBowl-inspired shells share Wine workflows, but not their navigation chrome.
+    fn ricebowl_shell(&mut self, ui: &mut egui::Ui) {
+        use extra_rices::Flavor;
+        let flavor = match self.theme {
+            Theme::Windows98 => Flavor::Classic98,
+            Theme::Windows7 => Flavor::Aero7,
+            Theme::ChromeOS => Flavor::ChromeOS,
+            Theme::FrutigerAero => Flavor::FrutigerAero,
+            _ => return,
+        };
+
+        // Classic desktop menus use real program actions, not decorative text.
+        if flavor == Flavor::Classic98 {
+            ui.horizontal(|ui| {
+                ui.menu_button("File", |ui| {
+                    if ui
+                        .add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Install program…"))
+                        .clicked()
+                    {
+                        self.install = Some(InstallDraft::default());
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Import prefix…"))
+                        .clicked()
+                    {
+                        self.import = Some(ImportDraft::default());
+                        ui.close();
+                    }
+                });
+                ui.menu_button("View", |ui| {
+                    for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
+                        if ui.button(page.label()).clicked() {
+                            self.page = page;
+                            ui.close();
+                        }
+                    }
+                });
+                if ui.button("Help").clicked() {
+                    self.about_open = true;
+                }
+            });
+        }
+
+        extra_rices::masthead(ui, flavor, self.page.label());
+        ui.add_space(8.0);
+        let can_add = !self.busy && self.store.is_some();
+        if flavor == Flavor::ChromeOS {
+            ui.horizontal_wrapped(|ui| {
+                for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
+                    if extra_rices::navigation(ui, flavor, page.label(), self.page == page, true)
+                        .clicked()
+                    {
+                        self.page = page;
+                    }
+                }
+            });
+        }
+        ui.horizontal_wrapped(|ui| {
+            if ui.add_enabled(can_add, egui::Button::new("＋ Install program")).clicked() {
+                self.install = Some(InstallDraft::default());
+            }
+            if ui.add_enabled(can_add, egui::Button::new("Import existing prefix…")).clicked() {
+                self.import = Some(ImportDraft::default());
+            }
+        });
+        ui.add_space(7.0);
+
+        let available_height = (ui.available_height() - 29.0).max(290.0);
+        if flavor == Flavor::ChromeOS {
+            extra_rices::content_frame(flavor).show(ui, |ui| {
+                ui.set_min_height((available_height - 32.0).max(240.0));
+                extra_rices::page_heading(ui, flavor, self.page.label());
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| self.page_body(ui));
+            });
+        } else {
+            ui.horizontal_top(|ui| {
+                ui.allocate_ui_with_layout(
+                    egui::vec2(202.0, available_height),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        egui::Frame::new()
+                            .fill(self.theme.palette().sidebar)
+                            .stroke(egui::Stroke::new(1.0, self.theme.palette().border))
+                            .inner_margin(egui::Margin::same(9))
+                            .show(ui, |ui| {
+                                ui.set_min_height((available_height - 20.0).max(240.0));
+                                ui.label(RichText::new(if flavor == Flavor::Classic98 {
+                                    "Folders"
+                                } else if flavor == Flavor::Aero7 {
+                                    "Control Panel"
+                                } else {
+                                    "Explore RiceWine"
+                                }).strong());
+                                ui.add_space(7.0);
+                                for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
+                                    if extra_rices::navigation(
+                                        ui, flavor, page.label(), self.page == page, false
+                                    ).clicked() {
+                                        self.page = page;
+                                    }
+                                }
+                            });
+                    },
+                );
+                ui.add_space(6.0);
+                let width = ui.available_width().max(360.0);
+                ui.allocate_ui_with_layout(
+                    egui::vec2(width, available_height),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        extra_rices::content_frame(flavor).show(ui, |ui| {
+                            ui.set_min_height((available_height - 32.0).max(240.0));
+                            extra_rices::page_heading(ui, flavor, self.page.label());
+                            egui::ScrollArea::vertical()
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| self.page_body(ui));
+                        });
+                    },
+                );
+            });
+        }
+        let count = self.store.as_ref().map_or(0, |store| store.applications().len());
+        extra_rices::status(ui, flavor, count);
+    }
+
     fn luna_shell(&mut self, ui: &mut egui::Ui) {
         match luna::application_menu(ui) {
             luna::MenuAction::Install if !self.busy && self.store.is_some() => {
@@ -3014,7 +3235,7 @@ impl RiceWineApp {
                     .strong()
                     .color(self.theme.palette().text),
             );
-            ui.small("Three maintained Rices. Switching never changes Wine or the desktop theme.");
+            ui.small("Seven RiceBowl-inspired styles. Switching never changes Wine or the desktop theme.");
             ui.add_space(8.0);
             ui.horizontal_wrapped(|ui| {
                 for theme in Theme::ALL {
@@ -3853,6 +4074,9 @@ impl eframe::App for RiceWineApp {
             Theme::Luna => self.luna_shell(ui),
             Theme::MacOS => self.mac_shell(ui),
             Theme::Windows10 => self.win10_shell(ui),
+            Theme::Windows98 | Theme::Windows7 | Theme::ChromeOS | Theme::FrutigerAero => {
+                self.ricebowl_shell(ui)
+            },
         });
         self.install_dialog(ui.ctx());
         self.import_dialog(ui.ctx());

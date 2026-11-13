@@ -2294,7 +2294,9 @@ impl RiceWineApp {
             });
         }
 
-        extra_rices::masthead(ui, flavor, self.page.label());
+        if extra_rices::masthead(ui, flavor, self.page.label()) {
+            self.page = Page::Library;
+        }
         ui.add_space(8.0);
         let can_add = !self.busy && self.store.is_some();
         // Windows 98 uses a compact property-sheet tab strip; Frutiger has

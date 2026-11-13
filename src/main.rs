@@ -3175,7 +3175,10 @@ impl RiceWineApp {
 
     fn prefixes(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
-        if luna_mode {
+        if self.simple_ui {
+            ui.heading("Wine environments");
+            ui.label("Back up, restore and manage your program environments.");
+        } else if luna_mode {
             luna::section_heading(ui, "Wine prefix maintenance", luna::XpIcon::Prefix);
             ui.small("Back up your Windows environments before changing runners or components.");
         } else {
@@ -3299,10 +3302,10 @@ impl RiceWineApp {
 
     fn runners(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
-        if luna_mode {
+        if self.simple_ui {
+            ui.heading("Wine & Proton");
+        } else if luna_mode {
             luna::section_heading(ui, "Installed runtime tools", luna::XpIcon::Runner);
-        } else if self.theme == Theme::Luna {
-            ui.heading("Runners");
         }
         ui.small("Wine and Proton are configured independently for each Windows program.");
         ui.add_space(7.0);
@@ -3798,6 +3801,10 @@ impl RiceWineApp {
     }
 
     fn settings(&mut self, ui: &mut egui::Ui) {
+        if self.simple_ui {
+            ui.heading("Settings");
+            ui.add_space(10.0);
+        }
         if self.theme == Theme::Luna && !self.simple_ui {
             self.luna_settings(ui);
             return;

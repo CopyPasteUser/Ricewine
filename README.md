@@ -39,7 +39,7 @@ RiceWine opens with a consistent, reduced layout in **all seven Rices**:
 
 The seven appearances remain visual themes, not seven different navigation systems. For troubleshooting older appearance-specific layouts, start with `RICEWINE_CLASSIC_UI=1 ricewine`. This compatibility escape hatch does not affect Wine configuration or your application data.
 
-The installer registers the bundled **RiceWine goblet icon** in the current user's XDG icon theme; the app-menu launcher, Open With entry and generated RiceWine shortcuts use the matching `ricewine` icon name.
+The installer registers the bundled **RiceWine goblet icon** in the current user's XDG icon theme; the app-menu launcher and Open With entry use the matching `ricewine` icon name. Shortcuts for individual Windows programs retain their generic Wine icon until application-specific icons are available.
 
 ## Features
 

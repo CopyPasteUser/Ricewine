@@ -186,19 +186,19 @@ pub fn navigation(
         (Flavor::ChromeOS, false) => Color32::from_rgb(239, 244, 252),
         (Flavor::FrutigerAero, false) => Color32::from_rgb(224, 249, 244),
     };
-    let corner_radius = if rice == Flavor::Aero7 { 3 } else { rice.radius() };
-    let button = egui::Button::new(
-        RichText::new(label)
-            .color(text_color)
-            .strong(),
-    )
-    .fill(fill)
-    .stroke(if selected {
-        egui::Stroke::new(1.0, rice.accent())
+    let corner_radius = if rice == Flavor::Aero7 {
+        3
     } else {
-        rice.stroke()
-    })
-    .corner_radius(egui::CornerRadius::same(corner_radius));
+        rice.radius()
+    };
+    let button = egui::Button::new(RichText::new(label).color(text_color).strong())
+        .fill(fill)
+        .stroke(if selected {
+            egui::Stroke::new(1.0, rice.accent())
+        } else {
+            rice.stroke()
+        })
+        .corner_radius(egui::CornerRadius::same(corner_radius));
     ui.add_sized(
         if horizontal {
             [ui.available_width().min(120.0), 33.0]

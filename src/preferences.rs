@@ -27,6 +27,14 @@ pub enum Appearance {
         alias = "windows_10"
     )]
     Windows10,
+    #[serde(alias = "win98", alias = "windows_98", alias = "winclassic")]
+    Windows98,
+    #[serde(alias = "win7", alias = "windows_7", alias = "aero")]
+    Windows7,
+    #[serde(alias = "chrome_os", alias = "chrome")]
+    ChromeOS,
+    #[serde(alias = "frutiger", alias = "aqua")]
+    FrutigerAero,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -78,15 +86,39 @@ pub fn save(data_root: &Path, preferences: &Preferences) -> Result<(), String> {
 /// leave the current application appearance untouched.
 pub fn appearance_for_theme(theme: &str) -> Option<Appearance> {
     let name = theme.to_ascii_lowercase();
-    if name.contains("luna") || name.contains("winxp") || name.contains("windows-xp") {
+    // Match specific RiceBowl family names before generic visual keywords:
+    // "frutiger-aero" must not be confused with Windows 7 Aero.
+    if name.contains("frutiger") {
+        Some(Appearance::FrutigerAero)
+    } else if name.contains("ricehub-classic")
+        || name.contains("windows-98")
+        || name.contains("windows98")
+        || name.contains("winclassic")
+        || name.contains("win98")
+    {
+        Some(Appearance::Windows98)
+    } else if name.contains("ricehub-chrome")
+        || name.contains("chromeos")
+        || name.contains("chrome-os")
+    {
+        Some(Appearance::ChromeOS)
+    } else if name.contains("ricehub-aero")
+        || name.contains("windows-7")
+        || name.contains("windows7")
+        || name.contains("win7")
+    {
+        Some(Appearance::Windows7)
+    } else if name.contains("luna") || name.contains("winxp") || name.contains("windows-xp") {
         Some(Appearance::Luna)
-    } else if name.contains("windows-10")
+    } else if name.contains("ricehub-ten")
+        || name.contains("windows-10")
         || name.contains("windows10")
         || name.contains("win10")
         || name.contains("fluent")
     {
         Some(Appearance::Windows10)
     } else if name.contains("whitesur")
+        || name.contains("macrice")
         || name.contains("macos")
         || name.contains("mac-os")
         || name.contains("cupertino")
@@ -132,7 +164,15 @@ mod tests {
 
     #[test]
     fn only_curated_rices_round_trip() {
-        for appearance in [Appearance::Luna, Appearance::MacOS, Appearance::Windows10] {
+        for appearance in [
+            Appearance::Luna,
+            Appearance::MacOS,
+            Appearance::Windows10,
+            Appearance::Windows98,
+            Appearance::Windows7,
+            Appearance::ChromeOS,
+            Appearance::FrutigerAero,
+        ] {
             let json = serde_json::to_string(&appearance).unwrap();
             let decoded: Appearance = serde_json::from_str(&json).unwrap();
             assert_eq!(decoded, appearance);
@@ -144,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    fn desktop_detection_does_not_reintroduce_retired_rices() {
+    fn desktop_detection_supports_all_seven_ricebowl_families() {
         assert_eq!(
             appearance_for_theme("WhiteSur-Dark"),
             Some(Appearance::MacOS)
@@ -162,6 +202,38 @@ mod tests {
             serde_json::from_str::<Appearance>(r#""windows10_dark""#).unwrap(),
             Appearance::Windows10
         );
+        for (name, expected) in [
+            ("RiceHub-Luna", Appearance::Luna),
+            ("RiceHub-Ten-Dark", Appearance::Windows10),
+            ("RiceHub-Ten-Light", Appearance::Windows10),
+            ("RiceHub-Classic", Appearance::Windows98),
+            ("RiceHub-Aero", Appearance::Windows7),
+            ("RiceHub-Chrome", Appearance::ChromeOS),
+            ("RiceHub-Frutiger", Appearance::FrutigerAero),
+            ("Frutiger-Aero", Appearance::FrutigerAero),
+            ("MacRice", Appearance::MacOS),
+        ] {
+            assert_eq!(appearance_for_theme(name), Some(expected), "{name}");
+        }
         assert_eq!(appearance_for_theme("Adwaita"), None);
+        // Imported or unknown desktop themes must not silently reset the manual choice.
+        assert_eq!(appearance_for_theme("Some-Unknown-Rice"), None);
+    }
+
+    #[test]
+    fn old_preferences_still_deserialize_as_their_maintained_families() {
+        for (old, current) in [
+            ("winclassic", Appearance::Windows98),
+            ("win7", Appearance::Windows7),
+            ("chrome_os", Appearance::ChromeOS),
+            ("frutiger", Appearance::FrutigerAero),
+            ("windows10_light", Appearance::Windows10),
+            ("luna_olive", Appearance::Luna),
+        ] {
+            let json = format!(r#"{{"appearance":"{old}","follow_desktop":true}}"#);
+            let parsed: Preferences = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed.appearance, current, "{old}");
+            assert!(parsed.follow_desktop);
+        }
     }
 }

@@ -594,6 +594,45 @@ pub fn empty_library(ui: &mut Ui, rice: Theme, enabled: bool) -> Option<EmptyInt
     }
 }
 
+/// Era-specific grouping for the Prefix/Backup tools. The visual shell owns
+/// its surfaces, while the caller owns the potentially destructive actions.
+pub fn group_box(ui: &mut Ui, rice: Theme, title: &str, glyph: Glyph, content: impl FnOnce(&mut Ui)) {
+    let p = rice.palette();
+    let (fill, border, radius) = match rice {
+        Theme::Windows98 => (Color32::from_rgb(192,192,192), Color32::from_rgb(100,100,100), 0),
+        Theme::Luna => (Color32::from_rgb(248,250,255), Color32::from_rgb(141,172,219), 6),
+        Theme::Windows7 => (Color32::from_rgb(241,249,255), Color32::from_rgb(162,203,233), 8),
+        Theme::MacOS => (Color32::from_rgb(247,248,250), Color32::from_rgb(216,219,227), 9),
+        Theme::Windows10 => (Color32::from_rgb(248,248,248), Color32::from_rgb(220,220,220), 0),
+        Theme::ChromeOS => (Color32::from_rgb(244,248,254), Color32::from_rgb(221,230,242), 16),
+        Theme::FrutigerAero => (Color32::from_rgb(221,249,242), Color32::from_rgb(120,196,187), 12),
+    };
+    Frame::new()
+        .fill(fill)
+        .stroke(Stroke::new(1.0, border))
+        .corner_radius(radius)
+        .inner_margin(egui::Margin::same(if rice == Theme::Windows98 { 7 } else { 12 }))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                inline_icon(ui, rice, glyph, if rice == Theme::Windows98 { 18.0 } else { 24.0 }, p.accent);
+                ui.label(RichText::new(title).strong().size(15.0).color(p.text));
+            });
+            ui.add_space(6.0);
+            content(ui);
+        });
+}
+
+pub fn diagnostics_panel(ui: &mut Ui, rice: Theme, lines: &[String]) {
+    group_box(ui, rice, "Runtime status", Glyph::Info, |ui| {
+        if lines.is_empty() {
+            ui.small("No runtime information available.");
+        }
+        for line in lines {
+            ui.label(RichText::new(line).size(11.5).color(rice.palette().muted));
+        }
+    });
+}
+
 pub fn program_row(ui: &mut Ui, rice: Theme, name: &str, status: &str, selected: bool, width: f32, row_height: f32) -> Response {
     let p = rice.palette();
     let response = ui.add_sized(

@@ -2315,10 +2315,14 @@ impl RiceWineApp {
             });
         }
 
-        if extra_rices::masthead(ui, flavor, self.page.label()) {
+        // The classic property sheet already has a File/View menu and tabs.
+        // A second masthead wastes enough vertical space to hide the program list.
+        if flavor != Flavor::Classic98
+            && extra_rices::masthead(ui, flavor, self.page.label())
+        {
             self.page = Page::Library;
         }
-        ui.add_space(8.0);
+        ui.add_space(if ui.available_width() < 740.0 { 3.0 } else { 8.0 });
         let can_add = !self.busy && self.store.is_some();
         // Windows 98 uses a compact property-sheet tab strip; Frutiger has
         // a 2007-era segmented command bar; ChromeOS uses its app navigation.
@@ -2368,7 +2372,9 @@ impl RiceWineApp {
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
                     extra_rices::content_frame(flavor).show(ui, |ui| {
-                        extra_rices::page_heading(ui, flavor, self.page.label());
+                        if ui.available_width() >= 740.0 {
+                            extra_rices::page_heading(ui, flavor, self.page.label());
+                        }
                         egui::ScrollArea::vertical()
                             .auto_shrink([false, false])
                             .show(ui, |ui| self.page_body(ui));
@@ -2533,6 +2539,7 @@ impl RiceWineApp {
     fn library(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
+        let tight_library = ui.available_width() < 720.0;
         let count = self
             .store
             .as_ref()
@@ -2629,7 +2636,7 @@ impl RiceWineApp {
             }
         } else {
             let condensed_win10 = win10_mode && ui.available_width() < 760.0;
-            if luna_mode {
+            if luna_mode && !tight_library {
                 luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
             } else if win10_mode && !condensed_win10 {
                 win10::section_heading(ui, "Installed apps");
@@ -2643,8 +2650,8 @@ impl RiceWineApp {
                     }
                 }
             });
-            ui.add_space(if condensed_win10 { 2.0 } else if luna_mode { 5.0 } else { 10.0 });
-            if self.store.is_some() && !condensed_win10 {
+            ui.add_space(if tight_library { 2.0 } else if luna_mode { 5.0 } else { 10.0 });
+            if self.store.is_some() && !tight_library {
                 ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
             }
             ui.horizontal_wrapped(|ui| {

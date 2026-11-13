@@ -765,9 +765,7 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                 );
             });
             if !description.is_empty() {
-                if !description.is_empty() {
-                    ui.label(RichText::new(description).color(p.muted));
-                }
+                ui.label(RichText::new(description).color(p.muted));
             }
             ui.add_space(3.0);
         }

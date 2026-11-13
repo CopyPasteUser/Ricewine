@@ -31,9 +31,9 @@ pub enum Appearance {
     Windows98,
     #[serde(alias = "win7", alias = "windows_7", alias = "aero")]
     Windows7,
-    #[serde(alias = "chrome_os", alias = "chrome")]
+    #[serde(rename = "chromeos", alias = "chrome_os", alias = "chrome")]
     ChromeOS,
-    #[serde(alias = "frutiger", alias = "aqua")]
+    #[serde(rename = "frutiger", alias = "frutiger_aero", alias = "aqua")]
     FrutigerAero,
 }
 

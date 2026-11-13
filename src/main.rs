@@ -3053,7 +3053,12 @@ impl RiceWineApp {
                         }
                     });
                 };
-                if luna_mode {
+                if self.simple_ui {
+                    rice_identity::group_box(
+                        ui, self.theme, &app_name, rice_icons::Glyph::Prefix, render
+                    );
+                    ui.add_space(8.0);
+                } else if luna_mode {
                     luna::option_group(ui, &app_name, luna::XpIcon::Prefix, render);
                 } else {
                     ui.group(render);
@@ -3114,7 +3119,9 @@ impl RiceWineApp {
         ui.small("Wine and Proton are configured independently for each Windows program.");
         ui.add_space(7.0);
         let diagnostics = runtime::diagnostics(self.wine.as_ref());
-        if luna_mode {
+        if self.simple_ui {
+            rice_identity::diagnostics_panel(ui, self.theme, &diagnostics);
+        } else if luna_mode {
             egui::Frame::new()
                 .fill(Color32::from_rgb(248, 250, 254))
                 .stroke(egui::Stroke::new(1.0, Color32::from_rgb(170, 187, 212)))
@@ -4096,14 +4103,22 @@ impl RiceWineApp {
     }
 
     fn remove_dialog(&mut self, ctx: &egui::Context) {
-        let luna_mode = self.theme == Theme::Luna;
+        let simplified = self.simple_ui;
+        let theme = self.theme;
+        let luna_mode = self.theme == Theme::Luna && !simplified;
         let Some(id) = self.remove_confirmation.clone() else {
             return;
         };
         egui::Window::new("Remove from library?")
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .collapsible(false).resizable(false).show(ctx, |ui| {
-            if luna_mode {
+            if simplified {
+                rice_identity::dialog_banner(
+                    ui, theme, "Remove library entry?",
+                    "The installed files and Wine environment stay on disk.",
+                    rice_icons::Glyph::Warning,
+                );
+            } else if luna_mode {
                 luna::dialog_intro(
                     ui,
                     luna::XpIcon::Warning,
@@ -4113,8 +4128,18 @@ impl RiceWineApp {
             }
             ui.label("The catalog entry will be removed. The Wine prefix and installed files will remain on disk.");
             ui.horizontal(|ui| {
-                if luna::action(ui, "Cancel", true, luna_mode).clicked() { self.remove_confirmation = None; }
-                if luna::action(ui, "Remove entry", true, luna_mode).clicked() {
+                let cancel = if simplified { ui.button("Cancel") }
+                    else { luna::action(ui, "Cancel", true, luna_mode) };
+                if cancel.clicked() { self.remove_confirmation = None; }
+                let remove = if simplified {
+                    rice_identity::icon_button(
+                        ui, theme, "Remove entry", rice_icons::Glyph::Warning,
+                        true, false, 153.0,
+                    )
+                } else {
+                    luna::action(ui, "Remove entry", true, luna_mode)
+                };
+                if remove.clicked() {
                     if let Some(store) = &mut self.store {
                         match store.remove_from_library(&id) {
                             Ok(()) => {
@@ -4139,6 +4164,8 @@ impl RiceWineApp {
 
     /// Read-only per-app triage. Backup is explicit and does not trigger a repair.
     fn troubleshoot_dialog(&mut self, ctx: &egui::Context) {
+        let theme = self.theme;
+        let simplified = self.simple_ui;
         let Some(id) = self.troubleshoot_id.clone() else {
             return;
         };
@@ -4170,7 +4197,13 @@ impl RiceWineApp {
             ])
             .open(&mut keep_open)
             .show(ctx, |ui| {
-                if luna_mode {
+                if simplified {
+                    rice_identity::dialog_banner(
+                        ui, theme, "Program doesn't start?",
+                        "Inspect first, then back up before changing compatibility settings.",
+                        rice_icons::Glyph::Info,
+                    );
+                } else if luna_mode {
                     luna::dialog_intro(
                         ui,
                         luna::XpIcon::Info,

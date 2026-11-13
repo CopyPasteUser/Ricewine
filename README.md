@@ -14,9 +14,17 @@
 | :---: | :---: |
 | ![RiceWine — macOS library](docs/screenshots/macos-library.webp) | ![RiceWine — Windows 10 Apps & features](docs/screenshots/win10-library.webp) |
 
-[View all 18 screenshots →](docs/SCREENSHOTS.md)
+| Windows 98 | Windows 7 Aero |
+| :---: | :---: |
+| ![RiceWine — Windows 98 classic library](docs/screenshots/win98-library.webp) | ![RiceWine — Windows 7 Aero library](docs/screenshots/win7-library.webp) |
 
-The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures Library, Install, Import, Prefixes, Runners and Settings for all three maintained Rices. Linux controls the real window decoration.
+| ChromeOS | Frutiger Aero |
+| :---: | :---: |
+| ![RiceWine — ChromeOS library](docs/screenshots/chromeos-library.webp) | ![RiceWine — Frutiger Aero library](docs/screenshots/frutiger-library.webp) |
+
+[View all 42 screenshots →](docs/SCREENSHOTS.md)
+
+The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures Library, Install, Import, Prefixes, Runners and Settings for all seven Rices. Linux controls the real window decoration.
 
 ## Features
 
@@ -28,15 +36,19 @@ The screenshots show the **real Linux application** rendered in an isolated Xvfb
 - **Maintenance:** inspect disk usage, preview safe temporary-file cleanup and optionally review GitHub-hosted application updates.
 - **Desktop integration:** create Linux application-menu shortcuts and optionally enable *Open with RiceWine*.
 
-### Three maintained Rices
+### Seven RiceBowl-inspired Rices
 
 | Rice | Style |
 | --- | --- |
-| **XP Luna Blue** | Classic Explorer menus, task panes, beveled controls and XP-inspired icons |
-| **macOS** | Finder-inspired navigation, toolbar and compact application lists |
-| **Windows 10** | Settings / Apps & features layout, sidebar and native-feeling controls |
+| **XP Luna Blue** | Classic Explorer menus, task panes and XP-inspired icons |
+| **macOS** | Finder-inspired navigation and compact application lists |
+| **Windows 10** | Settings / Apps & features layout |
+| **Windows 98** | Gray classic shell, square beveled controls and desktop-style menus |
+| **Windows 7 Aero** | Pale blue shell with Control Panel navigation |
+| **ChromeOS** | Compact top-level navigation with rounded controls |
+| **Frutiger Aero** | Aqua-inspired navigation and bright translucent-looking surfaces |
 
-Choose a Rice in **Settings**. Changing it does not alter the Linux desktop, installed applications or Wine prefixes. Former XP Olive/Silver and Windows 10 Light/Dark preferences migrate to their maintained equivalents.
+Choose a Rice in **Settings**, or enable **Follow desktop** to recognize matching RiceBowl GTK theme families. All seven share the same working Wine management workflows; changing the Rice never alters the Linux desktop, installed applications or Wine prefixes. The Linux window decorations remain native. Former XP Olive/Silver and Windows 10 Light/Dark preferences migrate to their maintained equivalents.
 
 ## Install
 

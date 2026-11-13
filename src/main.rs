@@ -172,6 +172,28 @@ impl Theme {
         }
     }
 
+    /// Navigation stays at the same position in every Rice, but active states,
+    /// density and borders follow the desktop style rather than a generic skin.
+    fn simple_nav(self, ui: &mut egui::Ui, title: &str, selected: bool) -> egui::Response {
+        let palette = self.palette();
+        let is_classic = matches!(self, Self::Luna | Self::Windows98);
+        let label = RichText::new(title)
+            .color(if selected { Color32::WHITE } else { palette.text })
+            .size(if is_classic { 12.5 } else { 13.0 })
+            .strong();
+        let button = egui::Button::new(label)
+            .fill(if selected { palette.accent } else { palette.sidebar })
+            .stroke(if selected {
+                egui::Stroke::new(1.0, palette.accent)
+            } else if self == Self::Windows98 {
+                egui::Stroke::new(1.0, palette.border)
+            } else {
+                egui::Stroke::NONE
+            })
+            .corner_radius(egui::CornerRadius::same(palette.corner_radius));
+        ui.add_sized([if is_classic { 92.0 } else { 98.0 }, 32.0], button)
+    }
+
     fn accent(self) -> Color32 {
         self.palette().accent
     }
@@ -1787,38 +1809,52 @@ impl RiceWineApp {
         }
     }
 
-    /// One predictable workflow across all seven Rices. A Rice changes color,
-    /// typography and control shape, never where the essential actions live.
+    /// The same discoverable workflow across seven independently styled Rices.
+    /// Use a full-width toolbar; the previous auto-sized Frame left most of the
+    /// window empty and made the header look detached from the content.
     fn simple_shell(&mut self, ui: &mut egui::Ui) {
         let palette = self.theme.palette();
         let can_install = !self.busy && self.store.is_some();
-        egui::Frame::new()
+        let is_classic = matches!(self.theme, Theme::Windows98 | Theme::Luna);
+        let available_width = ui.available_width();
+        let pad = if is_classic { 9 } else { 14 };
+        let header = egui::Frame::new()
             .fill(palette.sidebar)
             .stroke(egui::Stroke::new(1.0, palette.border))
-            .inner_margin(egui::Margin::symmetric(12, 10))
+            .inner_margin(egui::Margin::symmetric(pad, if is_classic { 8 } else { 10 }))
             .corner_radius(egui::CornerRadius::same(palette.corner_radius))
             .show(ui, |ui| {
+                ui.set_min_width((available_width - (pad * 2 + 2) as f32).max(0.0));
                 ui.horizontal_wrapped(|ui| {
+                    let mark = if self.theme == Theme::Windows98 { "▣" } else { "◧" };
+                    ui.label(
+                        RichText::new(mark)
+                            .strong()
+                            .size(if is_classic { 18.0 } else { 20.0 })
+                            .color(palette.accent),
+                    );
                     ui.label(
                         RichText::new("RiceWine")
                             .strong()
-                            .size(19.0)
+                            .size(if is_classic { 17.0 } else { 19.0 })
                             .color(palette.text),
                     );
-                    ui.add_space(8.0);
-                    if ui
-                        .selectable_label(self.page == Page::Library, "Programs")
+                    ui.add_space(12.0);
+                    if self
+                        .theme
+                        .simple_nav(ui, "Programs", self.page == Page::Library)
                         .clicked()
                     {
                         self.page = Page::Library;
                     }
                     ui.menu_button(
                         if matches!(self.page, Page::Prefixes | Page::Runners) {
-                            format!("Tools · {}", self.page.label())
+                            "Tools •".to_owned()
                         } else {
                             "Tools ▾".to_owned()
                         },
                         |ui| {
+                            ui.set_min_width(214.0);
                             if ui.button("Wine prefixes & backups").clicked() {
                                 self.page = Page::Prefixes;
                                 ui.close();
@@ -1850,38 +1886,68 @@ impl RiceWineApp {
                             }
                         },
                     );
-                    if ui
-                        .selectable_label(self.page == Page::Settings, "Settings")
+                    if self
+                        .theme
+                        .simple_nav(ui, "Settings", self.page == Page::Settings)
                         .clicked()
                     {
                         self.page = Page::Settings;
                     }
-                    if ui
-                        .add_enabled(
-                            can_install,
-                            egui::Button::new(
-                                RichText::new("＋ Install program")
-                                    .strong()
-                                    .color(Color32::WHITE),
-                            )
-                            .fill(palette.accent),
-                        )
-                        .clicked()
-                    {
+                    ui.add_space(4.0);
+                    let install = egui::Button::new(
+                        RichText::new("＋ Install program")
+                            .size(if is_classic { 12.5 } else { 13.0 })
+                            .strong()
+                            .color(Color32::WHITE),
+                    )
+                    .fill(palette.accent)
+                    .stroke(egui::Stroke::new(1.0, palette.accent))
+                    .corner_radius(egui::CornerRadius::same(palette.corner_radius));
+                    if ui.add_enabled(can_install, install).clicked() {
                         self.install = Some(InstallDraft::default());
                     }
                 });
             });
-        ui.add_space(8.0);
+
+        // A simple era-specific toolbar edge, not a fake window titlebar.
+        let edge = match self.theme {
+            Theme::Luna => (3.0, Color32::from_rgb(55, 111, 210)),
+            Theme::Windows98 => (3.0, Color32::from_rgb(0, 0, 128)),
+            Theme::Windows7 => (2.0, Color32::from_rgb(127, 180, 211)),
+            Theme::FrutigerAero => (2.0, Color32::from_rgb(63, 183, 165)),
+            Theme::Windows10 => (1.0, palette.border),
+            Theme::MacOS | Theme::ChromeOS => (1.0, palette.border),
+        };
+        let rect = header.response.rect;
+        ui.painter().rect_filled(
+            egui::Rect::from_min_size(
+                egui::pos2(rect.left() + 1.0, rect.bottom() - edge.0 - 1.0),
+                egui::vec2((rect.width() - 2.0).max(0.0), edge.0),
+            ),
+            0.0,
+            edge.1,
+        );
+        ui.add_space(10.0);
+
         let height = ui.available_height().max(0.0);
+        let page_width = ui.available_width();
+        let inner_margin = if is_classic { 12 } else { 18 };
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width().max(0.0), height),
+            egui::vec2(page_width.max(0.0), height),
             egui::Layout::top_down(egui::Align::Min),
             |ui| {
                 egui::Frame::new()
                     .fill(palette.panel)
-                    .inner_margin(egui::Margin::same(12))
+                    .stroke(egui::Stroke::new(
+                        if self.theme == Theme::Windows98 { 1.5 } else { 1.0 },
+                        palette.border,
+                    ))
+                    .corner_radius(egui::CornerRadius::same(palette.corner_radius))
+                    .inner_margin(egui::Margin::same(inner_margin))
                     .show(ui, |ui| {
+                        ui.set_min_width(
+                            (page_width - (inner_margin * 2 + 2) as f32).max(0.0),
+                        );
                         egui::ScrollArea::vertical()
                             .auto_shrink([false, false])
                             .show(ui, |ui| self.page_body(ui));

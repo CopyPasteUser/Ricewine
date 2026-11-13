@@ -2628,41 +2628,41 @@ impl RiceWineApp {
             if self.simple_ui {
                 let palette = self.theme.palette();
                 let enabled = !self.busy && self.store.is_some();
-                ui.add_space(35.0);
+                ui.add_space(7.0);
                 ui.vertical_centered(|ui| {
                     let (icon_rect, _) =
-                        ui.allocate_exact_size(egui::vec2(70.0, 66.0), egui::Sense::hover());
+                        ui.allocate_exact_size(egui::vec2(58.0, 43.0), egui::Sense::hover());
                     let window =
-                        egui::Rect::from_center_size(icon_rect.center(), egui::vec2(56.0, 46.0));
+                        egui::Rect::from_center_size(icon_rect.center(), egui::vec2(46.0, 36.0));
                     ui.painter()
                         .rect_filled(window, palette.corner_radius as f32, palette.button);
                     ui.painter().rect_filled(
-                        egui::Rect::from_min_size(window.min, egui::vec2(56.0, 9.0)),
+                        egui::Rect::from_min_size(window.min, egui::vec2(46.0, 7.0)),
                         0.0,
                         palette.accent,
                     );
                     ui.painter().text(
-                        window.center() + egui::vec2(0.0, 4.0),
+                        window.center() + egui::vec2(0.0, 3.0),
                         egui::Align2::CENTER_CENTER,
                         "▶",
-                        egui::FontId::proportional(23.0),
+                        egui::FontId::proportional(19.0),
                         palette.accent,
                     );
-                    ui.add_space(10.0);
+                    ui.add_space(3.0);
                     ui.label(
                         RichText::new("Your Windows apps, in one place")
-                            .size(21.0)
+                            .size(19.0)
                             .strong()
                             .color(palette.text),
                     );
-                    ui.add_space(5.0);
+                    ui.add_space(2.0);
                     ui.label(
                         RichText::new(
                             "Install an EXE or MSI, or import a program you already have.",
                         )
                         .color(palette.muted),
                     );
-                    ui.add_space(17.0);
+                    ui.add_space(6.0);
                     let install = egui::Button::new(
                         RichText::new("＋ Install a Windows program")
                             .strong()
@@ -2674,7 +2674,7 @@ impl RiceWineApp {
                     if ui.add_enabled(enabled, install).clicked() {
                         self.install = Some(InstallDraft::default());
                     }
-                    ui.add_space(6.0);
+                    ui.add_space(2.0);
                     if ui
                         .add_enabled(enabled, egui::Button::new("Import existing prefix…"))
                         .clicked()
@@ -3203,7 +3203,11 @@ impl RiceWineApp {
                     .inner_margin(egui::Margin::same(12))
                     .show(ui, |ui| {
                         ui.label("No Wine prefixes are registered yet.");
-                        ui.small("Install or import a program from the Program tasks pane.");
+                        ui.small(if self.simple_ui {
+                            "Use Install program above, or Tools → Import existing prefix."
+                        } else {
+                            "Install or import a program from the Program tasks pane."
+                        });
                     });
             }
             for app in apps {

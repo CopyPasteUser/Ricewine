@@ -32,6 +32,12 @@ fn fixture(temp: &Temp) -> (PathBuf, PathBuf) {
     let project = temp.0.join("project");
     fs::create_dir_all(project.join("scripts")).unwrap();
     fs::create_dir_all(project.join("target/release")).unwrap();
+    fs::create_dir_all(project.join("assets")).unwrap();
+    fs::write(
+        project.join("assets/ricewine.png"),
+        include_bytes!("../assets/ricewine.png"),
+    )
+    .unwrap();
     fs::write(
         project.join("scripts/install-user.sh"),
         include_str!("../scripts/install-user.sh"),
@@ -79,11 +85,14 @@ fn installer_and_uninstaller_preserve_application_data() {
     let binary = temp.0.join(".local/bin/ricewine");
     let menu = temp.0.join("share/applications/ricewine.desktop");
     assert!(binary.is_file());
-    assert!(
-        fs::read_to_string(&menu)
-            .unwrap()
-            .contains("X-RiceWine-Launcher=true")
+    let icon = temp.0.join("share/icons/hicolor/128x128/apps/ricewine.png");
+    assert_eq!(
+        fs::read(&icon).unwrap(),
+        include_bytes!("../assets/ricewine.png")
     );
+    let desktop = fs::read_to_string(&menu).unwrap();
+    assert!(desktop.contains("X-RiceWine-Launcher=true"));
+    assert!(desktop.contains("Icon=ricewine"));
     let shortcut_dir = menu.parent().unwrap();
     let owned_shortcut = shortcut_dir.join("ricewine-owned-id.desktop");
     let unrelated_shortcut = shortcut_dir.join("ricewine-unrelated.desktop");
@@ -108,6 +117,7 @@ fn installer_and_uninstaller_preserve_application_data() {
     );
     assert!(!binary.exists());
     assert!(!menu.exists());
+    assert!(!icon.exists());
     assert!(!owned_shortcut.exists());
     assert!(unrelated_shortcut.exists());
     assert!(
@@ -130,12 +140,16 @@ fn installer_rolls_back_existing_binary_on_registration_failure() {
     let previous = "#!/bin/sh\nif [ \"$1\" = --version ]; then echo 'RiceWine 0.9.0'; fi\n";
     fs::write(&binary, previous).unwrap();
     fs::set_permissions(&binary, fs::Permissions::from_mode(0o700)).unwrap();
+    let icon = temp.0.join("share/icons/hicolor/128x128/apps/ricewine.png");
+    fs::create_dir_all(icon.parent().unwrap()).unwrap();
+    fs::write(&icon, "old icon data").unwrap();
     let failing = project.join("target/release/ricewine");
     fs::write(&failing, "#!/bin/sh\nexit 1\n").unwrap();
     fs::set_permissions(&failing, fs::Permissions::from_mode(0o700)).unwrap();
     let output = run_script(&project.join("scripts/install-user.sh"), &temp, &fake_bin);
     assert!(!output.status.success());
     assert_eq!(fs::read_to_string(binary).unwrap(), previous);
+    assert_eq!(fs::read_to_string(icon).unwrap(), "old icon data");
 }
 
 #[test]
@@ -197,4 +211,22 @@ fn installer_does_not_replace_a_symlink_to_another_binary() {
             .is_symlink()
     );
     assert_eq!(fs::read_to_string(outside).unwrap(), "do not replace");
+}
+
+#[test]
+fn uninstall_preserves_a_user_customized_icon() {
+    let temp = Temp::new();
+    let (project, fake_bin) = fixture(&temp);
+    fs::copy(
+        env!("CARGO_BIN_EXE_ricewine"),
+        project.join("target/release/ricewine"),
+    )
+    .unwrap();
+    let installer = run_script(&project.join("scripts/install-user.sh"), &temp, &fake_bin);
+    assert!(installer.status.success());
+    let icon = temp.0.join("share/icons/hicolor/128x128/apps/ricewine.png");
+    fs::write(&icon, b"personal artwork").unwrap();
+    let removal = run_script(&project.join("scripts/uninstall-user.sh"), &temp, &fake_bin);
+    assert!(removal.status.success());
+    assert_eq!(fs::read(&icon).unwrap(), b"personal artwork");
 }

@@ -1580,12 +1580,12 @@ impl RiceWineApp {
                 mac::brand(ui);
                 ui.add_space(25.0);
                 mac::section_label(ui, "YOUR APPS");
-                if mac::navigation(ui, "▦", "My programs", self.page == Page::Library).clicked() {
+                if mac::navigation(ui, rice_identity::Icon::Programs, "My programs", self.page == Page::Library).clicked() {
                     self.page = Page::Library;
                 }
                 ui.add_space(12.0);
                 mac::section_label(ui, "PREFERENCES");
-                if mac::navigation(ui, "⚙", "Settings", self.page == Page::Settings).clicked() {
+                if mac::navigation(ui, rice_identity::Icon::Settings, "Settings", self.page == Page::Settings).clicked() {
                     self.page = Page::Settings;
                 }
                 ui.add_space(14.0);
@@ -1600,8 +1600,11 @@ impl RiceWineApp {
                     self.advanced_open = !self.advanced_open;
                 }
                 if self.advanced_open {
-                    for (page, symbol) in [(Page::Prefixes, "◫"), (Page::Runners, "◎")] {
-                        if mac::navigation(ui, symbol, page.label(), self.page == page).clicked() {
+                    for (page, icon) in [
+                        (Page::Prefixes, rice_identity::Icon::Tools),
+                        (Page::Runners, rice_identity::Icon::Runner),
+                    ] {
+                        if mac::navigation(ui, icon, page.label(), self.page == page).clicked() {
                             self.page = page;
                         }
                     }
@@ -4042,6 +4045,9 @@ impl RiceWineApp {
                     }
                     if luna_mode {
                         luna::section_heading(ui, "Program information", luna::XpIcon::Programs);
+                    } else if self.theme == Theme::MacOS {
+                        mac::dialog_intro(ui, "Install Windows program",
+                            "Select a setup file and configure its Wine environment.");
                     } else if let Some(flavor) = flavor {
                         extra_rices::dialog_intro(ui, flavor, "Install a Windows program",
                             "Choose a setup file and review its compatibility settings.");
@@ -4193,6 +4199,9 @@ impl RiceWineApp {
                             "Import an existing prefix",
                             "Register a program without moving any of its files.",
                         );
+                    } else if self.theme == Theme::MacOS {
+                        mac::dialog_intro(ui, "Import Windows program",
+                            "Register an existing application without moving its files.");
                     } else if let Some(flavor) = flavor {
                         extra_rices::dialog_intro(ui, flavor, "Import existing program",
                             "Register a Wine environment without moving or deleting its files.");

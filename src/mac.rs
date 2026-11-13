@@ -13,13 +13,13 @@ const HAIRLINE: Color32 = Color32::from_rgb(211, 216, 224);
 
 pub fn brand(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
-        egui::Frame::new()
-            .fill(ACCENT)
-            .corner_radius(egui::CornerRadius::same(9))
-            .inner_margin(egui::Margin::symmetric(10, 6))
-            .show(ui, |ui| {
-                ui.label(RichText::new("W").size(19.0).strong().color(Color32::WHITE));
-            });
+        crate::rice_identity::symbol(
+            ui,
+            crate::rice_identity::Family::Mac,
+            crate::rice_identity::Icon::Brand,
+            ACCENT,
+            35.0,
+        );
         ui.add_space(5.0);
         ui.vertical(|ui| {
             ui.label(RichText::new("RiceWine").size(17.0).strong().color(TEXT));
@@ -38,17 +38,33 @@ pub fn section_label(ui: &mut egui::Ui, label: &str) {
     ui.add_space(4.0);
 }
 
-pub fn navigation(ui: &mut egui::Ui, symbol: &str, label: &str, selected: bool) -> egui::Response {
-    ui.add_sized(
-        [ui.available_width(), 35.0],
+pub fn navigation(
+    ui: &mut egui::Ui,
+    icon: crate::rice_identity::Icon,
+    label: &str,
+    selected: bool,
+) -> egui::Response {
+    let response = ui.add_sized(
+        [ui.available_width().max(0.0), 33.0],
         egui::Button::selectable(
             selected,
-            RichText::new(format!("{symbol}   {label}"))
+            RichText::new(format!("       {label}"))
                 .size(13.0)
-                .strong()
                 .color(if selected { Color32::WHITE } else { TEXT }),
         ),
-    )
+    );
+    let bounds = egui::Rect::from_center_size(
+        response.rect.left_center() + egui::vec2(15.0, 0.0),
+        egui::vec2(18.0, 18.0),
+    );
+    crate::rice_identity::paint(
+        ui.painter(),
+        bounds,
+        crate::rice_identity::Family::Mac,
+        icon,
+        if selected { Color32::WHITE } else { ACCENT },
+    );
+    response.on_hover_text(label)
 }
 
 pub fn toolbar_title(ui: &mut egui::Ui, title: &str, description: &str) {
@@ -79,10 +95,22 @@ pub fn list_header(ui: &mut egui::Ui) {
 }
 
 pub fn program_row(ui: &mut egui::Ui, name: &str, selected: bool, width: f32) -> egui::Response {
-    ui.add_sized(
-        [width, 40.0],
-        egui::Button::selectable(selected, RichText::new(format!("▣  {name}")).size(13.0)),
-    )
+    let response = ui.add_sized(
+        [width.max(0.0), 38.0],
+        egui::Button::selectable(selected, RichText::new(format!("       {name}")).size(13.0)),
+    );
+    let rect = egui::Rect::from_center_size(
+        response.rect.left_center() + egui::vec2(16.0, 0.0),
+        egui::vec2(20.0, 20.0),
+    );
+    crate::rice_identity::paint(
+        ui.painter(),
+        rect,
+        crate::rice_identity::Family::Mac,
+        crate::rice_identity::Icon::Programs,
+        ACCENT,
+    );
+    response.on_hover_text(name)
 }
 
 pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
@@ -95,7 +123,13 @@ pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
         .inner_margin(egui::Margin::same(24))
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new("▣").size(42.0).color(ACCENT));
+                crate::rice_identity::symbol(
+                    ui,
+                    crate::rice_identity::Family::Mac,
+                    crate::rice_identity::Icon::Programs,
+                    ACCENT,
+                    44.0,
+                );
                 ui.add_space(6.0);
                 ui.label(
                     RichText::new("No applications yet")
@@ -137,4 +171,23 @@ pub fn status_bar(ui: &mut egui::Ui, status: &str) {
                 });
             });
         });
+}
+
+/// Finder/SysPrefs-era inspector intro, without a fake macOS titlebar or controls.
+pub fn dialog_intro(ui: &mut egui::Ui, title: &str, description: &str) {
+    ui.horizontal(|ui| {
+        crate::rice_identity::symbol(
+            ui,
+            crate::rice_identity::Family::Mac,
+            crate::rice_identity::Icon::Install,
+            ACCENT,
+            30.0,
+        );
+        ui.vertical(|ui| {
+            ui.label(RichText::new(title).strong().size(17.0).color(TEXT));
+            ui.label(RichText::new(description).size(11.5).color(SECONDARY));
+        });
+    });
+    ui.add_space(8.0);
+    ui.separator();
 }

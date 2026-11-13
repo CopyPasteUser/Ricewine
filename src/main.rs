@@ -2212,33 +2212,54 @@ impl RiceWineApp {
                 |ui| {
                     egui::Frame::new()
                         .fill(win10::CANVAS)
-                        .inner_margin(egui::Margin::symmetric(27, 22))
+                        .inner_margin(egui::Margin::symmetric(
+                            if compact { 12 } else { 27 },
+                            if compact { 8 } else { 22 },
+                        ))
                         .show(ui, |ui| {
-                            win10::page_heading(ui, title);
-                            if self.page == Page::Library {
-                                ui.add_space(10.0);
+                            if compact {
                                 ui.horizontal_wrapped(|ui| {
-                                    if win10::link_action(
-                                        ui,
-                                        "＋  Install a Windows program",
-                                        !self.busy && self.store.is_some(),
-                                    )
-                                    .clicked()
-                                    {
-                                        self.install = Some(InstallDraft::default());
-                                    }
-                                    if win10::link_action(
-                                        ui,
-                                        "Import existing prefix",
-                                        !self.busy && self.store.is_some(),
-                                    )
-                                    .clicked()
-                                    {
-                                        self.import = Some(ImportDraft::default());
+                                    ui.label(RichText::new(title).size(19.0).color(win10::TEXT));
+                                    if self.page == Page::Library {
+                                        if win10::link_action(
+                                            ui,
+                                            "＋ Install",
+                                            !self.busy && self.store.is_some(),
+                                        ).clicked() {
+                                            self.install = Some(InstallDraft::default());
+                                        }
+                                        if win10::link_action(
+                                            ui,
+                                            "Import…",
+                                            !self.busy && self.store.is_some(),
+                                        ).clicked() {
+                                            self.import = Some(ImportDraft::default());
+                                        }
                                     }
                                 });
+                            } else {
+                                win10::page_heading(ui, title);
+                                if self.page == Page::Library {
+                                    ui.add_space(10.0);
+                                    ui.horizontal_wrapped(|ui| {
+                                        if win10::link_action(
+                                            ui,
+                                            "＋  Install a Windows program",
+                                            !self.busy && self.store.is_some(),
+                                        ).clicked() {
+                                            self.install = Some(InstallDraft::default());
+                                        }
+                                        if win10::link_action(
+                                            ui,
+                                            "Import existing prefix",
+                                            !self.busy && self.store.is_some(),
+                                        ).clicked() {
+                                            self.import = Some(ImportDraft::default());
+                                        }
+                                    });
+                                }
+                                ui.add_space(10.0);
                             }
-                            ui.add_space(10.0);
                             egui::ScrollArea::vertical()
                                 .auto_shrink([false, false])
                                 .show(ui, |ui| self.page_body(ui));
@@ -2607,9 +2628,10 @@ impl RiceWineApp {
                 ui.add_space(12.0);
             }
         } else {
+            let condensed_win10 = win10_mode && ui.available_width() < 760.0;
             if luna_mode {
                 luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
-            } else if win10_mode {
+            } else if win10_mode && !condensed_win10 {
                 win10::section_heading(ui, "Installed apps");
             }
             ui.horizontal(|ui| {
@@ -2621,8 +2643,8 @@ impl RiceWineApp {
                     }
                 }
             });
-            ui.add_space(if luna_mode { 5.0 } else { 10.0 });
-            if self.store.is_some() {
+            ui.add_space(if condensed_win10 { 2.0 } else if luna_mode { 5.0 } else { 10.0 });
+            if self.store.is_some() && !condensed_win10 {
                 ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
             }
             ui.horizontal_wrapped(|ui| {

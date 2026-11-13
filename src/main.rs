@@ -3766,6 +3766,8 @@ impl RiceWineApp {
     }
 
     fn install_dialog(&mut self, ctx: &egui::Context) {
+        let simplified = self.simple_ui;
+        let visual = self.theme;
         let mut submit = None;
         let mut keep_open = true;
         let mut cancel_dialog = false;
@@ -3784,7 +3786,13 @@ impl RiceWineApp {
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width((ctx.content_rect().width() - 64.0).clamp(260.0, 460.0));
-                    if luna_mode {
+                    if simplified {
+                        rice_identity::dialog_banner(
+                            ui, visual, "Install Windows program",
+                            "Choose a setup file and a Wine environment.",
+                            rice_icons::Glyph::Install,
+                        );
+                    } else if luna_mode {
                         luna::dialog_intro(
                             ui,
                             luna::XpIcon::Install,
@@ -3792,9 +3800,9 @@ impl RiceWineApp {
                             "Choose a setup file and its Wine environment.",
                         );
                     }
-                    if luna_mode {
+                    if luna_mode && !simplified {
                         luna::section_heading(ui, "Program information", luna::XpIcon::Programs);
-                    } else if win10_mode {
+                    } else if win10_mode && !simplified {
                         ui.label(RichText::new("Install a Windows app").size(20.0).color(win10::TEXT));
                         ui.small("Select an EXE or MSI; Wine handles the installation.");
                         ui.separator();
@@ -3814,7 +3822,14 @@ impl RiceWineApp {
                         if file_input.lost_focus() && draft.name.trim().is_empty() {
                             draft.name = InstallDraft::suggested_name(std::path::Path::new(&draft.file));
                         }
-                        if luna::action(ui, "Browse…", true, luna_mode).clicked()
+                        let browse = if simplified {
+                            rice_identity::icon_button(
+                                ui, visual, "Browse", rice_icons::Glyph::Import, true, false, 115.0
+                            )
+                        } else {
+                            luna::action(ui, "Browse…", true, luna_mode)
+                        };
+                        if browse.clicked()
                             && let Some(file) = rfd::FileDialog::new()
                                 .add_filter("Windows setup", &["exe", "msi"])
                                 .pick_file()
@@ -3880,7 +3895,12 @@ impl RiceWineApp {
                     };
                     ui.horizontal_wrapped(|ui| {
                         let ready = !draft.file.trim().is_empty() && !draft.name.trim().is_empty();
-                        let start = if win10_mode {
+                        let start = if simplified {
+                            rice_identity::icon_button(
+                                ui, visual, install_label, rice_icons::Glyph::Install,
+                                ready, true, 175.0
+                            )
+                        } else if win10_mode {
                             win10::primary_action(ui, install_label, ready)
                         } else {
                             luna::action(ui, install_label, ready, luna_mode)
@@ -3888,7 +3908,9 @@ impl RiceWineApp {
                         if start.clicked() {
                             submit = Some(draft.clone());
                         }
-                        let cancel = if win10_mode {
+                        let cancel = if simplified {
+                            ui.button("Cancel")
+                        } else if win10_mode {
                             win10::secondary_action(ui, "Cancel", true)
                         } else {
                             luna::action(ui, "Cancel", true, luna_mode)
@@ -3916,6 +3938,8 @@ impl RiceWineApp {
     }
 
     fn import_dialog(&mut self, ctx: &egui::Context) {
+        let simplified = self.simple_ui;
+        let visual = self.theme;
         let mut keep_open = true;
         let mut cancel_dialog = false;
         let mut imported = None;
@@ -3934,7 +3958,13 @@ impl RiceWineApp {
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width((ctx.content_rect().width() - 64.0).clamp(260.0, 450.0));
-                    if luna_mode {
+                    if simplified {
+                        rice_identity::dialog_banner(
+                            ui, visual, "Import existing environment",
+                            "Link an existing Wine prefix without changing its files.",
+                            rice_icons::Glyph::Import,
+                        );
+                    } else if luna_mode {
                         luna::dialog_intro(
                             ui,
                             luna::XpIcon::Import,
@@ -3956,7 +3986,14 @@ impl RiceWineApp {
                     ui.label("Existing Wine prefix directory");
                     ui.horizontal_wrapped(|ui| {
                         ui.text_edit_singleline(&mut draft.prefix);
-                        if luna::action(ui, "Browse…", true, luna_mode).clicked()
+                        let browse = if simplified {
+                            rice_identity::icon_button(
+                                ui, visual, "Browse", rice_icons::Glyph::Prefix, true, false, 115.0
+                            )
+                        } else {
+                            luna::action(ui, "Browse…", true, luna_mode)
+                        };
+                        if browse.clicked()
                             && let Some(path) = rfd::FileDialog::new().pick_folder()
                         {
                             draft.prefix = core::readable_path(&path);
@@ -3966,7 +4003,14 @@ impl RiceWineApp {
                     ui.label("Existing launch EXE");
                     ui.horizontal_wrapped(|ui| {
                         ui.text_edit_singleline(&mut draft.executable);
-                        if luna::action(ui, "Browse…", true, luna_mode).clicked()
+                        let browse = if simplified {
+                            rice_identity::icon_button(
+                                ui, visual, "Browse", rice_icons::Glyph::Prefix, true, false, 115.0
+                            )
+                        } else {
+                            luna::action(ui, "Browse…", true, luna_mode)
+                        };
+                        if browse.clicked()
                             && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
                         {
                             draft.executable = core::readable_path(&path);
@@ -3987,7 +4031,12 @@ impl RiceWineApp {
                         let ready = !draft.name.trim().is_empty()
                             && !draft.prefix.trim().is_empty()
                             && !draft.executable.trim().is_empty();
-                        let start = if win10_mode {
+                        let start = if simplified {
+                            rice_identity::icon_button(
+                                ui, visual, "Import program", rice_icons::Glyph::Import,
+                                ready, true, 178.0
+                            )
+                        } else if win10_mode {
                             win10::primary_action(ui, "Import program", ready)
                         } else {
                             luna::action(ui, "Import program", ready, luna_mode)
@@ -3999,7 +4048,9 @@ impl RiceWineApp {
                                 &PathBuf::from(draft.executable.trim()),
                             ));
                         }
-                        let cancel = if win10_mode {
+                        let cancel = if simplified {
+                            ui.button("Cancel")
+                        } else if win10_mode {
                             win10::secondary_action(ui, "Cancel", true)
                         } else {
                             luna::action(ui, "Cancel", true, luna_mode)

@@ -80,6 +80,103 @@ impl Family {
     }
 }
 
+/// Seven independent editorial treatments. Their copy and title hierarchy
+/// intentionally follow each historical interface rather than only swapping
+/// palette variables.
+pub fn library_heading(family: Family) -> &'static str {
+    match family {
+        Family::Luna => "Installed Programs",
+        Family::Mac => "Applications",
+        Family::Win10 => "Apps & features",
+        Family::Win98 => "Programs",
+        Family::Aero7 => "Programs and Features",
+        Family::Chrome => "Your apps",
+        Family::Frutiger => "Program Explorer",
+    }
+}
+
+pub fn empty_copy(family: Family) -> (&'static str, &'static str) {
+    match family {
+        Family::Luna => (
+            "Welcome to RiceWine",
+            "Select a program task below to get started.",
+        ),
+        Family::Mac => (
+            "No Applications",
+            "Add a Windows app or import an existing environment.",
+        ),
+        Family::Win10 => (
+            "No apps installed",
+            "Install a Windows app to add it to your library.",
+        ),
+        Family::Win98 => (
+            "No programs found",
+            "Use Install to add a Windows program.",
+        ),
+        Family::Aero7 => (
+            "Get started with programs",
+            "Install a program or bring in an existing Wine prefix.",
+        ),
+        Family::Chrome => (
+            "Your app shelf is empty",
+            "Choose a Windows app to add to your collection.",
+        ),
+        Family::Frutiger => (
+            "A fresh start",
+            "Discover Windows apps on your Linux desktop.",
+        ),
+    }
+}
+
+/// Distinct era-specific finish to the shell's chrome. Painted after
+/// layout, these details stay within the existing header rectangle and do
+/// not change hit testing, tab order or small-window layout.
+pub fn header_finish(p: &Painter, r: Rect, family: Family, accent: Color32) {
+    let l = r.left() + 2.0;
+    let right = r.right() - 2.0;
+    let top = r.top() + 2.0;
+    let bottom = r.bottom() - 2.0;
+    match family {
+        Family::Luna => {
+            p.line_segment([Pos2::new(l,bottom-1.0),Pos2::new(right,bottom-1.0)],
+                           Stroke::new(2.0,Color32::from_rgb(52,111,216)));
+            p.line_segment([Pos2::new(l+3.0,top+1.0),Pos2::new(right-3.0,top+1.0)],
+                           Stroke::new(1.0,Color32::from_rgb(240,249,255)));
+        }
+        Family::Mac => {
+            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
+                           Stroke::new(1.0,Color32::from_rgb(180,187,199)));
+        }
+        Family::Win10 => {
+            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
+                           Stroke::new(1.0,Color32::from_rgb(208,208,208)));
+        }
+        Family::Win98 => {
+            let white=Color32::WHITE;
+            let dark=Color32::from_rgb(100,100,100);
+            p.line_segment([Pos2::new(l,top),Pos2::new(right,top)],Stroke::new(1.0,white));
+            p.line_segment([Pos2::new(l,top),Pos2::new(l,bottom)],Stroke::new(1.0,white));
+            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],Stroke::new(1.0,dark));
+            p.line_segment([Pos2::new(right,top),Pos2::new(right,bottom)],Stroke::new(1.0,dark));
+        }
+        Family::Aero7 => {
+            p.line_segment([Pos2::new(l+5.0,top+1.0),Pos2::new(right-5.0,top+1.0)],
+                           Stroke::new(1.0,Color32::from_rgb(255,255,255)));
+            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
+                           Stroke::new(2.0,Color32::from_rgb(131,184,221)));
+        }
+        Family::Chrome => {
+            p.circle_filled(Pos2::new(right-7.0,top+8.0),2.0,accent);
+        }
+        Family::Frutiger => {
+            p.line_segment([Pos2::new(l+7.0,top+1.0),Pos2::new(right-7.0,top+1.0)],
+                           Stroke::new(1.5,Color32::from_rgb(236,255,251)));
+            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
+                           Stroke::new(2.0,Color32::from_rgb(66,187,171)));
+        }
+    }
+}
+
 /// Paint an original icon whose silhouette, surface treatment and accent are
 /// selected for a particular Rice. The names are semantic; no Unicode icons
 /// or external font must render correctly.

@@ -2,7 +2,7 @@
 //! All icons use egui geometry: no external icon font, image loader, or
 //! proprietary operating-system artwork is required.
 
-use eframe::egui::{self, Color32, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2};
+use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, Vec2};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Glyph {
@@ -35,6 +35,7 @@ pub enum Family {
 }
 
 impl Family {
+    #[cfg(test)]
     pub const ALL: [Self; 7] = [
         Self::Pixel,
         Self::Luna,
@@ -214,71 +215,6 @@ pub fn paint(p: &Painter, bounds: Rect, family: Family, glyph: Glyph, color: Col
         let r = Rect::from_min_size(xy(1.0, 1.0), Vec2::splat(2.0 * scale));
         p.rect_filled(r, rounded, color);
     }
-}
-
-/// The label lives in the actual egui button for keyboard and accessibility
-/// semantics. The pictogram is painted into reserved left padding.
-pub fn button(
-    ui: &mut Ui,
-    label: &str,
-    glyph: Glyph,
-    family: Family,
-    text: Color32,
-    fill: Color32,
-    border: Color32,
-    radius: u8,
-    enabled: bool,
-    width: f32,
-) -> Response {
-    let caption = format!("    {label}");
-    let button = egui::Button::new(egui::RichText::new(caption).color(text).strong())
-        .fill(fill)
-        .stroke(Stroke::new(1.0, border))
-        .corner_radius(egui::CornerRadius::same(radius));
-    let response = ui.add_enabled_sized(egui::vec2(width, 35.0), enabled, button);
-    let color = if enabled { text } else { text.gamma_multiply(0.45) };
-    decorate_button(ui.painter(), &response, family, glyph, color);
-    response
-}
-
-pub fn decorate_button(
-    painter: &Painter,
-    response: &Response,
-    family: Family,
-    glyph: Glyph,
-    color: Color32,
-) {
-    let side = 16.0;
-    let icon = Rect::from_center_size(
-        Pos2::new(response.rect.left() + 14.0, response.rect.center().y),
-        Vec2::splat(side),
-    );
-    paint(painter, icon, family, glyph, color);
-}
-
-pub fn standalone(ui: &mut Ui, glyph: Glyph, family: Family, color: Color32, side: f32) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::splat(side), Sense::hover());
-    paint(ui.painter(), rect, family, glyph, color);
-}
-
-pub fn heading(
-    ui: &mut Ui,
-    title: &str,
-    glyph: Glyph,
-    family: Family,
-    foreground: Color32,
-    accent: Color32,
-) {
-    ui.horizontal(|ui| {
-        standalone(ui, glyph, family, accent, 24.0);
-        ui.add_space(4.0);
-        ui.label(
-            egui::RichText::new(title)
-                .size(22.0)
-                .strong()
-                .color(foreground),
-        );
-    });
 }
 
 #[cfg(test)]

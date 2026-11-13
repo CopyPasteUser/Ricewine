@@ -13,6 +13,15 @@ on:
       - src/win10.rs
       - src/extra_rices.rs
       - src/preferences.rs
+  pull_request:
+    paths:
+      - .github/workflows/capture-luna.yml
+      - scripts/capture-luna.sh
+      - src/main.rs
+      - src/luna.rs
+      - src/mac.rs
+      - src/win10.rs
+      - src/extra_rices.rs
   workflow_dispatch:
 
 # Do not publish an older page capture after a newer visual commit.
@@ -36,7 +45,12 @@ jobs:
           sudo apt-get install -y -qq xvfb xdotool imagemagick libgl1-mesa-dri libxkbcommon-x11-0
       - name: Build current application
         run: cargo build --release --locked
+      - name: Check Rust formatting and tests
+        run: |
+          cargo fmt --all -- --check
+          cargo test --locked --all-targets
       - name: Capture real desktop frames
+        if: github.event_name != 'pull_request'
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh luna
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh macos
@@ -45,7 +59,18 @@ jobs:
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh windows7
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh chromeos
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh frutiger
+      - name: Smoke-test all pages at 640x480 (all seven Rices)
+        if: github.event_name == 'pull_request'
+        env:
+          RICEWINE_CAPTURE_WIDTH: '640'
+          RICEWINE_CAPTURE_HEIGHT: '480'
+          RICEWINE_CAPTURE_SUFFIX: '-compact'
+        run: |
+          for rice in luna macos windows10 windows98 windows7 chromeos frutiger; do
+            xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh "$rice"
+          done
       - name: Publish screenshots
+        if: github.event_name == 'push'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

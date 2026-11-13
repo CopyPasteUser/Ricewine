@@ -9,6 +9,8 @@ on:
       - src/main.rs
       - src/luna.rs
       - src/luna_icons.rs
+      - src/rice_identity.rs
+      - src/rice_icons.rs
       - src/mac.rs
       - src/win10.rs
       - src/extra_rices.rs

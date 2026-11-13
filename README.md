@@ -28,6 +28,28 @@
 
 The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures Library, Install, Import, Prefixes, Runners and Settings for all seven Rices. Linux controls the real window decoration.
 
+## Seven separate visual identities
+
+RiceWine keeps a single application catalog and Wine/Proton action model, but
+renders the same workflows through **seven independently art-directed Rices**.
+Selecting a Rice changes layout, buttons, icons, content grouping, navigation
+and dialog headers—not just the accent color:
+
+| Rice | Interface vocabulary |
+|---|---|
+| XP Luna | Blue task ribbons, shaded classic pictograms and friendly task panes |
+| Windows 98 | Square raised controls, compact bitmapped icons and recessed groups |
+| Windows 7 Aero | Explorer breadcrumbs, glazed blue controls and glossy icon badges |
+| macOS | Discreet utility toolbar, monochrome icons and quiet separators |
+| Windows 10 | Flat command surfaces, crisp geometric icons and rectangular spacing |
+| ChromeOS | Rounded material chips, airy workspaces and circular icon tokens |
+| Frutiger Aero | Aqua surfaces, soft highlights and translucent-style icon badges |
+
+All icons are drawn locally with egui; no external icon font, telemetry,
+network image requests or new runtime dependencies are needed. The Linux menu
+launcher continues to use `assets/ricewine.png`. Your compositor retains
+control of window decorations.
+
 ## Everyday interface
 
 RiceWine opens with a consistent, reduced layout in **all seven Rices**:

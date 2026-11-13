@@ -1917,8 +1917,11 @@ impl RiceWineApp {
                         self.page = Page::Library;
                     }
                     rice_identity::symbol(
-                        ui, self.theme.identity(), rice_identity::Icon::Tools,
-                        palette.accent, 18.0,
+                        ui,
+                        self.theme.identity(),
+                        rice_identity::Icon::Tools,
+                        palette.accent,
+                        18.0,
                     );
                     ui.menu_button(
                         if matches!(self.page, Page::Prefixes | Page::Runners) {
@@ -3274,8 +3277,12 @@ impl RiceWineApp {
 
             if self.simple_ui {
                 rice_identity::title(
-                    ui, self.theme.identity(), rice_identity::Icon::Backup,
-                    "Backups", self.theme.accent(), self.theme.palette().text,
+                    ui,
+                    self.theme.identity(),
+                    rice_identity::Icon::Backup,
+                    "Backups",
+                    self.theme.accent(),
+                    self.theme.palette().text,
                 );
             } else if luna_mode {
                 luna::section_heading(ui, "Backup archives", luna::XpIcon::Disk);

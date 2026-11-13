@@ -2,7 +2,7 @@
 //! All icons use egui geometry: no external icon font, image loader, or
 //! proprietary operating-system artwork is required.
 
-use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, Vec2};
+use eframe::egui::{self, Color32, Painter, Rect, Stroke, Vec2};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Glyph {

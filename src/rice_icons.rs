@@ -260,7 +260,7 @@ mod tests {
         let ctx = egui::Context::default();
         for family in Family::ALL {
             for &glyph in &glyphs {
-                let output = ctx.run(Default::default(), |ctx| {
+                let output = ctx.run_ui(Default::default(), |ctx| {
                     egui::CentralPanel::default().show(ctx, |ui| {
                         let (rect, _) =
                             ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());

@@ -2697,14 +2697,28 @@ impl RiceWineApp {
                 egui::vec2(width, list_height),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
-                    if self.theme == Theme::Luna {
+                    if self.simple_ui {
+                        ui.label(
+                            RichText::new("PROGRAMS")
+                                .size(10.5)
+                                .strong()
+                                .color(self.theme.palette().muted),
+                        );
+                        ui.separator();
+                    } else if self.theme == Theme::Luna {
                         luna::program_list_header(ui);
                     } else if self.theme == Theme::MacOS {
                         mac::list_header(ui);
                     } else {
                         ui.separator();
                     }
-                    let row_height = if self.theme == Theme::Luna {
+                    let row_height = if self.simple_ui {
+                        if matches!(self.theme, Theme::Windows98 | Theme::Luna) {
+                            37.0
+                        } else {
+                            46.0
+                        }
+                    } else if self.theme == Theme::Luna {
                         28.0
                     } else if self.theme == Theme::MacOS {
                         40.0
@@ -2744,7 +2758,33 @@ impl RiceWineApp {
                                 } else {
                                     "Ready"
                                 };
-                                if win10_mode {
+                                if self.simple_ui {
+                                    let palette = self.theme.palette();
+                                    ui.horizontal(|ui| {
+                                        let name = egui::Button::new(
+                                            RichText::new(&display_name)
+                                                .strong()
+                                                .color(if selected { Color32::WHITE } else { palette.text }),
+                                        )
+                                        .fill(if selected { palette.accent } else { palette.button })
+                                        .stroke(egui::Stroke::new(1.0, palette.border))
+                                        .corner_radius(egui::CornerRadius::same(palette.corner_radius));
+                                        if ui
+                                            .add_sized(
+                                                [(width - 116.0).max(80.0), row_height - 5.0],
+                                                name,
+                                            )
+                                            .clicked()
+                                        {
+                                            next_selected = Some(app.id.clone());
+                                        }
+                                        ui.label(
+                                            RichText::new(status)
+                                                .size(11.5)
+                                                .color(palette.muted),
+                                        );
+                                    });
+                                } else if win10_mode {
                                     if win10::app_row(ui, &display_name, runtime, status, selected)
                                         .clicked()
                                     {
@@ -2795,7 +2835,14 @@ impl RiceWineApp {
                     })
                     .cloned();
                 if let Some(app) = selected {
-                    if luna_mode {
+                    if self.simple_ui {
+                        ui.label(
+                            RichText::new(&app.name)
+                                .strong()
+                                .size(18.0)
+                                .color(self.theme.palette().text),
+                        );
+                    } else if luna_mode {
                         ui.label(RichText::new(&app.name).strong().size(13.0));
                     } else if win10_mode {
                         ui.label(RichText::new(&app.name).size(17.0).color(win10::TEXT));
@@ -2835,7 +2882,18 @@ impl RiceWineApp {
                         && selected_profile.as_ref().is_ok_and(|p| {
                             self.wine.is_some() || !matches!(p.runner, Runner::SystemWine)
                         });
-                    let start = if win10_mode {
+                    let start = if self.simple_ui {
+                        let palette = self.theme.palette();
+                        let button = egui::Button::new(
+                            RichText::new("▶ Run program")
+                                .strong()
+                                .color(Color32::WHITE),
+                        )
+                        .fill(palette.accent)
+                        .stroke(egui::Stroke::new(1.0, palette.accent))
+                        .corner_radius(egui::CornerRadius::same(palette.corner_radius));
+                        ui.add_enabled(can_play, button)
+                    } else if win10_mode {
                         win10::primary_action(ui, "Run program", can_play)
                     } else {
                         luna::action(
@@ -3035,7 +3093,15 @@ impl RiceWineApp {
                     ui.label("Select a program to view details.");
                 }
             };
-            if luna_mode {
+            if self.simple_ui {
+                let palette = self.theme.palette();
+                egui::Frame::new()
+                    .fill(palette.button)
+                    .stroke(egui::Stroke::new(1.0, palette.border))
+                    .corner_radius(egui::CornerRadius::same(palette.corner_radius))
+                    .inner_margin(egui::Margin::same(12))
+                    .show(ui, details);
+            } else if luna_mode {
                 luna::option_group(ui, "Program details", luna::XpIcon::Programs, details);
             } else if win10_mode {
                 win10::section_heading(ui, "Selected app");

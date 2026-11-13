@@ -94,7 +94,11 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) {
                 ui.label(RichText::new(emblem).size(22.0).color(rice.accent()));
                 ui.label(
                     RichText::new("RiceWine")
-                        .size(if rice == Flavor::Classic98 { 16.0 } else { 21.0 })
+                        .size(if rice == Flavor::Classic98 {
+                            16.0
+                        } else {
+                            21.0
+                        })
                         .strong()
                         .color(rice.foreground()),
                 );
@@ -149,7 +153,11 @@ pub fn navigation(
         })
         .corner_radius(egui::CornerRadius::same(rice.radius()));
     ui.add_sized(
-        if horizontal { [120.0, 33.0] } else { [180.0, 36.0] },
+        if horizontal {
+            [120.0, 33.0]
+        } else {
+            [180.0, 36.0]
+        },
         button,
     )
 }

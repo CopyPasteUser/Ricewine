@@ -5,6 +5,7 @@ use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum XpIcon {
+    Wine,
     Programs,
     Install,
     Import,
@@ -59,6 +60,16 @@ pub fn paint_icon(p: &Painter, at: Pos2, icon: XpIcon, size: f32) {
     let shadow = rgb(80, 91, 102);
     let white = Color32::WHITE;
     match icon {
+        XpIcon::Wine => {
+            // Original shaded RiceWine goblet, pixel-aligned for XP Luna.
+            block(p, at, k, [2.0, 1.0, 12.0, 2.0], rgb(33, 80, 158));
+            block(p, at, k, [3.0, 3.0, 10.0, 5.0], rgb(68, 154, 224));
+            block(p, at, k, [4.0, 4.0, 8.0, 2.0], rgb(175, 226, 255));
+            block(p, at, k, [5.0, 8.0, 6.0, 2.0], rgb(38, 112, 191));
+            block(p, at, k, [7.0, 10.0, 2.0, 4.0], rgb(46, 93, 171));
+            block(p, at, k, [4.0, 14.0, 8.0, 2.0], rgb(28, 76, 156));
+            block(p, at, k, [4.0, 14.0, 8.0, 1.0], rgb(180, 220, 255));
+        }
         XpIcon::Programs => {
             block(p, at, k, [1.0, 1.0, 14.0, 11.0], navy);
             block(p, at, k, [2.0, 2.0, 12.0, 9.0], rgb(139, 200, 240));

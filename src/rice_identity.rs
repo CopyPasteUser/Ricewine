@@ -39,9 +39,7 @@ fn family(rice: Theme) -> Family {
 fn xp_glyph(glyph: Glyph) -> XpIcon {
     match glyph {
         Glyph::Brand => XpIcon::Wine,
-        Glyph::Programs | Glyph::Play | Glyph::Search | Glyph::Favorite => {
-            XpIcon::Programs
-        }
+        Glyph::Programs | Glyph::Play | Glyph::Search | Glyph::Favorite => XpIcon::Programs,
         Glyph::Tools | Glyph::Settings => XpIcon::Settings,
         Glyph::Install => XpIcon::Install,
         Glyph::Import => XpIcon::Import,

@@ -2301,6 +2301,77 @@ impl RiceWineApp {
     fn library(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
+        if self.simple_ui {
+            ui.horizontal_wrapped(|ui| {
+                ui.heading("My programs");
+                let count = self
+                    .store
+                    .as_ref()
+                    .map_or(0, |store| store.applications().len());
+                ui.small(format!("{count} installed"));
+            });
+            if self.busy {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spinner();
+                    ui.label("Installing…");
+                    if ui.button("Cancel installation…").clicked() {
+                        self.cancel_install_confirmation = true;
+                    }
+                });
+            }
+            ui.add_space(8.0);
+            let mut changed = false;
+            ui.horizontal_wrapped(|ui| {
+                let search_response = ui.add(
+                    egui::TextEdit::singleline(&mut self.search)
+                        .hint_text("Search your programs")
+                        .desired_width(260.0),
+                );
+                if self.search_focus_requested {
+                    search_response.request_focus();
+                    self.search_focus_requested = false;
+                }
+                if !self.search.is_empty() && ui.small_button("Clear").clicked() {
+                    self.search.clear();
+                }
+                let view_label = if self.workspace.filter == LibraryFilter::Favorites {
+                    "Favorites ▾"
+                } else {
+                    "View ▾"
+                };
+                ui.menu_button(view_label, |ui| {
+                    ui.label("Show");
+                    ui.add_enabled_ui(self.workspace_writable, |ui| {
+                        for filter in LibraryFilter::ALL {
+                            changed |= ui
+                                .selectable_value(
+                                    &mut self.workspace.filter,
+                                    filter,
+                                    filter.label(),
+                                )
+                                .changed();
+                        }
+                    });
+                    ui.separator();
+                    ui.label("Sort");
+                    ui.add_enabled_ui(self.workspace_writable, |ui| {
+                        for order in LibraryOrder::ALL {
+                            changed |= ui
+                                .selectable_value(
+                                    &mut self.workspace.order,
+                                    order,
+                                    order.label(),
+                                )
+                                .changed();
+                        }
+                    });
+                });
+            });
+            if changed && let Err(error) = self.persist_workspace() {
+                self.notice = Some((true, format!("Could not save Library view: {error}")));
+            }
+            ui.add_space(8.0);
+        } else {
         if luna_mode {
             luna::section_heading(ui, "Installed Windows programs", luna::XpIcon::Programs);
         } else if win10_mode {
@@ -2382,6 +2453,7 @@ impl RiceWineApp {
         if workspace_changed && let Err(error) = self.persist_workspace() {
             self.notice = Some((true, format!("Could not save Library view: {error}")));
         }
+        }
         if self.store.is_none() {
             ui.add_space(28.0);
             ui.heading("Library unavailable");
@@ -2393,7 +2465,32 @@ impl RiceWineApp {
             .as_ref()
             .is_none_or(|s| s.applications().is_empty())
         {
-            if self.theme == Theme::Luna {
+            if self.simple_ui {
+                ui.add_space(30.0);
+                ui.vertical_centered(|ui| {
+                    ui.heading("No programs yet");
+                    ui.label("Choose an EXE or MSI to add a Windows program.");
+                    ui.add_space(10.0);
+                    if ui
+                        .add_enabled(
+                            !self.busy && self.store.is_some(),
+                            egui::Button::new("＋ Install your first program"),
+                        )
+                        .clicked()
+                    {
+                        self.install = Some(InstallDraft::default());
+                    }
+                    if ui
+                        .add_enabled(
+                            !self.busy && self.store.is_some(),
+                            egui::Button::new("Import existing Wine prefix"),
+                        )
+                        .clicked()
+                    {
+                        self.import = Some(ImportDraft::default());
+                    }
+                });
+            } else if self.theme == Theme::Luna {
                 ui.add_space(7.0);
                 luna::empty_library(ui);
             } else if self.theme == Theme::MacOS {
@@ -2550,6 +2647,7 @@ impl RiceWineApp {
                     } else {
                         ui.heading(&app.name);
                     }
+                    if !self.simple_ui {
                     if ui
                         .add_enabled(
                             self.workspace_writable,
@@ -2568,6 +2666,7 @@ impl RiceWineApp {
                     }
                     if ui.button("Diagnose & recover…").clicked() {
                         self.open_troubleshooter(&app);
+                    }
                     }
                     let selected_profile =
                         self.profile_cache.get(&app.id).cloned().unwrap_or_else(|| {
@@ -2639,7 +2738,30 @@ impl RiceWineApp {
                         self.show_exe_candidates(ui, &app);
                     }
                     ui.add_space(14.0);
-                    ui.collapsing("More options · rename, runner, files, remove", |ui| {
+                    ui.collapsing(
+                        if self.simple_ui { "More options" } else { "More options · rename, runner, files, remove" },
+                        |ui| {
+                            if self.simple_ui {
+                        if ui
+                            .add_enabled(
+                                self.workspace_writable,
+                                egui::Button::new(if self.workspace.is_favorite(&app.id) {
+                                    "★ Remove favorite"
+                                } else {
+                                    "☆ Add to favorites"
+                                }),
+                            )
+                            .clicked()
+                        {
+                            self.workspace.toggle_favorite(&app.id);
+                            if let Err(error) = self.persist_workspace() {
+                                self.notice = Some((true, format!("Could not save favorite: {error}")));
+                            }
+                        }
+                        if ui.button("Diagnose & recover…").clicked() {
+                            self.open_troubleshooter(&app);
+                        }
+                            }
                         ui.label("Display name");
                         ui.text_edit_singleline(&mut self.name_edit);
                         if luna::action(

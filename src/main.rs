@@ -5,6 +5,7 @@ mod luna;
 mod luna_icons;
 mod mac;
 mod rice_identity;
+mod ui_layout;
 mod win10;
 
 use eframe::egui::{self, Color32, RichText};
@@ -652,9 +653,9 @@ impl RiceWineApp {
         // Screenshot-only opt-in for real dialog captures. No fixture programs.
         let capture_dialog = std::env::var("RICEWINE_CAPTURE_DIALOG").ok();
         let mut app = Self {
-            // Default to one consistent, streamlined navigation. The old shells
-            // remain available for diagnostic/regression comparison only.
-            simple_ui: std::env::var("RICEWINE_CLASSIC_UI").as_deref() != Ok("1"),
+            // OS-native shells are the product default. The legacy unified shell
+            // remains an explicit diagnostic fallback, never silently selected.
+            simple_ui: std::env::var("RICEWINE_UNIFIED_UI").as_deref() == Ok("1"),
             store: store.ok(),
             profile_cache,
             wine: wine.ok(),
@@ -2757,12 +2758,15 @@ impl RiceWineApp {
                         } else {
                             46.0
                         }
-                    } else if self.theme == Theme::Luna {
-                        28.0
-                    } else if self.theme == Theme::MacOS {
-                        40.0
                     } else {
-                        63.0
+                        match self.theme {
+                            Theme::Windows98 | Theme::Luna => 28.0,
+                            Theme::Windows7 => 33.0,
+                            Theme::MacOS => 40.0,
+                            Theme::ChromeOS => 48.0,
+                            Theme::FrutigerAero => 44.0,
+                            Theme::Windows10 => 63.0,
+                        }
                     };
                     egui::ScrollArea::vertical().show_rows(
                         ui,
@@ -4014,7 +4018,7 @@ impl RiceWineApp {
                 ])
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
-                    ui.set_min_width((ctx.content_rect().width() - 64.0).clamp(260.0, 460.0));
+                    ui.set_min_width(ui_layout::dialog_width(ctx.content_rect().width(), 460.0));
                     if luna_mode {
                         luna::dialog_intro(
                             ui,
@@ -4037,7 +4041,7 @@ impl RiceWineApp {
                         let file_input = ui.add(
                             egui::TextEdit::singleline(&mut draft.file)
                                 .hint_text("Choose an EXE or MSI file…")
-                                .desired_width(340.0),
+                                .desired_width(ui_layout::field_width(ui.available_width(), 112.0, 340.0)),
                         );
                         if file_input.changed() {
                             draft.error = None;
@@ -4164,7 +4168,7 @@ impl RiceWineApp {
                 ])
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
-                    ui.set_min_width((ctx.content_rect().width() - 64.0).clamp(260.0, 450.0));
+                    ui.set_min_width(ui_layout::dialog_width(ctx.content_rect().width(), 450.0));
                     if luna_mode {
                         luna::dialog_intro(
                             ui,
@@ -4186,7 +4190,8 @@ impl RiceWineApp {
                     }
                     ui.label("Existing Wine prefix directory");
                     ui.horizontal_wrapped(|ui| {
-                        ui.text_edit_singleline(&mut draft.prefix);
+                        ui.add(egui::TextEdit::singleline(&mut draft.prefix)
+                            .desired_width(ui_layout::field_width(ui.available_width(), 108.0, 330.0)));
                         if luna::action(ui, "Browse…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new().pick_folder()
                         {
@@ -4196,7 +4201,8 @@ impl RiceWineApp {
                     });
                     ui.label("Existing launch EXE");
                     ui.horizontal_wrapped(|ui| {
-                        ui.text_edit_singleline(&mut draft.executable);
+                        ui.add(egui::TextEdit::singleline(&mut draft.executable)
+                            .desired_width(ui_layout::field_width(ui.available_width(), 108.0, 330.0)));
                         if luna::action(ui, "Browse…", true, luna_mode).clicked()
                             && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
                         {

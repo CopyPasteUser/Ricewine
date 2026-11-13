@@ -2295,7 +2295,9 @@ impl RiceWineApp {
                 ui,
                 self.theme,
                 "My programs",
-                &if count == 0 { String::new() } else {
+                &if count == 0 {
+                    String::new()
+                } else {
                     format!("{count} installed Windows applications")
                 },
                 rice_icons::Glyph::Programs,

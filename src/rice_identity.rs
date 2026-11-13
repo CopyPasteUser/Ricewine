@@ -341,8 +341,16 @@ mod tests {
     #[test]
     fn each_family_defines_independent_identity_and_semantic_icons() {
         let icons = [
-            Icon::Brand, Icon::Programs, Icon::Tools, Icon::Settings, Icon::Install,
-            Icon::Import, Icon::Prefix, Icon::Runner, Icon::Backup, Icon::Play,
+            Icon::Brand,
+            Icon::Programs,
+            Icon::Tools,
+            Icon::Settings,
+            Icon::Install,
+            Icon::Import,
+            Icon::Prefix,
+            Icon::Runner,
+            Icon::Backup,
+            Icon::Play,
         ];
         assert_eq!(Family::ALL.len(), 7);
         assert_eq!(icons.len(), 10);

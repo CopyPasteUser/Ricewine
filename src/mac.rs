@@ -45,7 +45,8 @@ pub fn navigation(ui: &mut egui::Ui, symbol: &str, label: &str, selected: bool) 
             selected,
             RichText::new(format!("{symbol}   {label}"))
                 .size(13.0)
-                .strong(),
+                .strong()
+                .color(if selected { Color32::WHITE } else { TEXT }),
         ),
     )
 }

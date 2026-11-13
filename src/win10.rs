@@ -85,7 +85,7 @@ pub fn app_row(
     status: &str,
     selected: bool,
 ) -> Response {
-    let width = ui.available_width().max(260.0);
+    let width = ui.available_width().max(0.0);
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 63.0), Sense::click());
     let painter = ui.painter_at(rect);
     painter.rect_filled(

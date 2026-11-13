@@ -54,7 +54,7 @@ pub fn desktop_entry(app: &Application, ricewine_exe: &Path) -> Result<String, S
     }
     let safe_name = app.name.replace('\\', "\\\\");
     Ok(format!(
-        "[Desktop Entry]\nType=Application\nVersion=1.0\nName={safe_name}\nComment=Run with RiceWine\nExec={} --launch {}\nTerminal=false\nStartupNotify=true\nCategories=Utility;\nIcon=wine\nX-RiceWine-ID={}\n",
+        "[Desktop Entry]\nType=Application\nVersion=1.0\nName={safe_name}\nComment=Run with RiceWine\nExec={} --launch {}\nTerminal=false\nStartupNotify=true\nCategories=Utility;\nIcon=ricewine\nX-RiceWine-ID={}\n",
         escape_exec(ricewine_exe),
         app.id,
         app.id
@@ -99,7 +99,7 @@ pub fn open_with_entry(ricewine_exe: &Path) -> Result<String, String> {
         return Err("RiceWine executable must have an absolute path".into());
     }
     Ok(format!(
-        "[Desktop Entry]\nType=Application\nVersion=1.0\nName=RiceWine — Install Windows application\nComment=Choose how to install this Windows program\nExec={} --install-file %f\nTerminal=false\nStartupNotify=true\nCategories=Utility;\nIcon=wine\nMimeType=application/x-ms-dos-executable;application/x-msi;application/x-msdownload;\nX-RiceWine-Handler=true\n",
+        "[Desktop Entry]\nType=Application\nVersion=1.0\nName=RiceWine — Install Windows application\nComment=Choose how to install this Windows program\nExec={} --install-file %f\nTerminal=false\nStartupNotify=true\nCategories=Utility;\nIcon=ricewine\nMimeType=application/x-ms-dos-executable;application/x-msi;application/x-msdownload;\nX-RiceWine-Handler=true\n",
         escape_exec(ricewine_exe)
     ))
 }
@@ -122,7 +122,7 @@ pub fn main_menu_entry(ricewine_exe: &Path) -> Result<String, String> {
         return Err("RiceWine executable must have an absolute path".into());
     }
     Ok(format!(
-        "[Desktop Entry]\nType=Application\nVersion=1.0\nName=RiceWine\nComment=Manage Windows applications on Linux\nExec={}\nTerminal=false\nStartupNotify=true\nCategories=Utility;Game;\nIcon=wine\nX-RiceWine-Launcher=true\n",
+        "[Desktop Entry]\nType=Application\nVersion=1.0\nName=RiceWine\nComment=Manage Windows applications on Linux\nExec={}\nTerminal=false\nStartupNotify=true\nCategories=Utility;Game;\nIcon=ricewine\nX-RiceWine-Launcher=true\n",
         escape_exec(ricewine_exe)
     ))
 }

@@ -55,6 +55,18 @@ struct RicePalette {
 }
 
 impl Theme {
+    /// The additional period shells intentionally have independent widgets.
+    fn extra_flavor(self) -> Option<extra_rices::Flavor> {
+        use extra_rices::Flavor;
+        match self {
+            Self::Windows98 => Some(Flavor::Classic98),
+            Self::Windows7 => Some(Flavor::Aero7),
+            Self::ChromeOS => Some(Flavor::ChromeOS),
+            Self::FrutigerAero => Some(Flavor::FrutigerAero),
+            Self::Luna | Self::MacOS | Self::Windows10 => None,
+        }
+    }
+
     fn identity(self) -> rice_identity::Family {
         use rice_identity::Family;
         match self {
@@ -2222,13 +2234,7 @@ impl RiceWineApp {
     /// Four RiceBowl-inspired shells share Wine workflows, but not their navigation chrome.
     fn ricebowl_shell(&mut self, ui: &mut egui::Ui) {
         use extra_rices::Flavor;
-        let flavor = match self.theme {
-            Theme::Windows98 => Flavor::Classic98,
-            Theme::Windows7 => Flavor::Aero7,
-            Theme::ChromeOS => Flavor::ChromeOS,
-            Theme::FrutigerAero => Flavor::FrutigerAero,
-            _ => return,
-        };
+        let Some(flavor) = self.theme.extra_flavor() else { return };
 
         // Classic desktop menus use real program actions, not decorative text.
         if flavor == Flavor::Classic98 {
@@ -2272,7 +2278,9 @@ impl RiceWineApp {
         extra_rices::masthead(ui, flavor, self.page.label());
         ui.add_space(8.0);
         let can_add = !self.busy && self.store.is_some();
-        if flavor == Flavor::ChromeOS {
+        // Windows 98 uses a compact property-sheet tab strip; Frutiger has
+        // a 2007-era segmented command bar; ChromeOS uses its app navigation.
+        if matches!(flavor, Flavor::ChromeOS | Flavor::Classic98 | Flavor::FrutigerAero) {
             ui.horizontal_wrapped(|ui| {
                 for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
                     if extra_rices::navigation(ui, flavor, page.label(), self.page == page, true)
@@ -2299,12 +2307,13 @@ impl RiceWineApp {
         });
         ui.add_space(7.0);
 
-        let compact = flavor != Flavor::ChromeOS && ui.available_width() < 740.0;
-        if compact {
+        let full_width = matches!(flavor, Flavor::ChromeOS | Flavor::Classic98 | Flavor::FrutigerAero);
+        let compact = ui.available_width() < 740.0;
+        if compact && !full_width {
             self.compact_navigation(ui);
         }
         let available_height = (ui.available_height() - 29.0).max(0.0);
-        if flavor == Flavor::ChromeOS || compact {
+        if full_width || compact {
             ui.allocate_ui_with_layout(
                 egui::vec2(ui.available_width().max(0.0), available_height),
                 egui::Layout::top_down(egui::Align::Min),
@@ -2692,7 +2701,13 @@ impl RiceWineApp {
                 if mac::empty_library(ui, !self.busy && self.store.is_some()) {
                     self.install = Some(InstallDraft::default());
                 }
-            } else if win10::empty_library(ui, !self.busy && self.store.is_some()) {
+            } else if win10_mode {
+                if win10::empty_library(ui, !self.busy && self.store.is_some()) {
+                    self.install = Some(InstallDraft::default());
+                }
+            } else if let Some(flavor) = self.theme.extra_flavor()
+                && extra_rices::empty_library(ui, flavor, !self.busy && self.store.is_some())
+            {
                 self.install = Some(InstallDraft::default());
             }
             return;
@@ -2718,7 +2733,7 @@ impl RiceWineApp {
             return;
         }
         // Split only when the list and details genuinely fit side by side.
-        let stacked = win10_mode || ui.available_width() < 610.0;
+        let stacked = win10_mode || !ui_layout::split_panes(ui.available_width(), 355.0, 235.0);
         let width = if stacked {
             ui.available_width().max(0.0)
         } else {
@@ -2843,20 +2858,17 @@ impl RiceWineApp {
                                     }
                                 } else {
                                     ui.horizontal(|ui| {
+                                        let row_width = (ui.available_width() - 122.0).max(0.0);
                                         let response = if luna_mode {
-                                            luna::program_row(
-                                                ui,
-                                                &display_name,
-                                                selected,
-                                                (width - 112.0).max(80.0),
+                                            luna::program_row(ui, &display_name, selected, row_width)
+                                        } else if self.theme == Theme::MacOS {
+                                            mac::program_row(ui, &display_name, selected, row_width)
+                                        } else if let Some(flavor) = self.theme.extra_flavor() {
+                                            extra_rices::program_row(
+                                                ui, flavor, &display_name, status, selected, row_width,
                                             )
                                         } else {
-                                            mac::program_row(
-                                                ui,
-                                                &display_name,
-                                                selected,
-                                                (width - 112.0).max(80.0),
-                                            )
+                                            ui.button(&display_name)
                                         };
                                         if response.clicked() {
                                             next_selected = Some(app.id.clone());
@@ -4006,6 +4018,7 @@ impl RiceWineApp {
         let mut cancel_dialog = false;
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
+        let flavor = self.theme.extra_flavor();
         if let Some(draft) = &mut self.install {
             egui::Window::new("Install Windows program")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -4029,6 +4042,9 @@ impl RiceWineApp {
                     }
                     if luna_mode {
                         luna::section_heading(ui, "Program information", luna::XpIcon::Programs);
+                    } else if let Some(flavor) = flavor {
+                        extra_rices::dialog_intro(ui, flavor, "Install a Windows program",
+                            "Choose a setup file and review its compatibility settings.");
                     } else if win10_mode {
                         ui.label(RichText::new("Install a Windows app").size(20.0).color(win10::TEXT));
                         ui.small("Select an EXE or MSI; Wine handles the installation.");
@@ -4156,6 +4172,7 @@ impl RiceWineApp {
         let mut imported = None;
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
+        let flavor = self.theme.extra_flavor();
         if let Some(draft) = &mut self.import {
             egui::Window::new("Import existing Wine prefix")
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
@@ -4176,6 +4193,9 @@ impl RiceWineApp {
                             "Import an existing prefix",
                             "Register a program without moving any of its files.",
                         );
+                    } else if let Some(flavor) = flavor {
+                        extra_rices::dialog_intro(ui, flavor, "Import existing program",
+                            "Register a Wine environment without moving or deleting its files.");
                     } else if win10_mode {
                         ui.label(RichText::new("Import a Wine environment").size(20.0).color(win10::TEXT));
                         ui.small("Register an existing program without moving its files.");

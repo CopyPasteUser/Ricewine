@@ -24,9 +24,9 @@
 | :---: | :---: |
 | ![RiceWine — ChromeOS library](docs/screenshots/chromeos-library.webp) | ![RiceWine — Frutiger Aero library](docs/screenshots/frutiger-library.webp) |
 
-[View all 42 screenshots →](docs/SCREENSHOTS.md)
+[View all 49 screenshots →](docs/SCREENSHOTS.md)
 
-The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures Library, Install, Import, Prefixes, Runners and Settings for all seven Rices. Linux controls the real window decoration.
+The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures empty and populated Library, Install, Import, Prefixes, Runners and Settings for all seven Rices. PR validation also checks three window sizes (560×400, 640×480 and 800×600). Linux controls the real window decoration.
 
 ## Everyday interface
 

@@ -90,13 +90,7 @@ pub fn paint(p: &Painter, bounds: Rect, family: Family, glyph: Glyph, color: Col
         ));
     };
     let box_line = |x: f32, y: f32, w: f32, h: f32| {
-        path(&[
-            (x, y),
-            (x + w, y),
-            (x + w, y + h),
-            (x, y + h),
-            (x, y),
-        ]);
+        path(&[(x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)]);
     };
     let dot = |x: f32, y: f32, radius: f32| {
         p.circle_filled(xy(x, y), radius * scale, color);
@@ -106,8 +100,15 @@ pub fn paint(p: &Painter, bounds: Rect, family: Family, glyph: Glyph, color: Col
         Glyph::Brand => {
             // The RiceWine goblet: recognisable at 16px without an image
             // decoding dependency. Each Rice supplies its own surface style.
-            path(&[(4.0, 2.0), (16.0, 2.0), (14.5, 8.0),
-                   (12.0, 11.0), (8.0, 11.0), (5.5, 8.0), (4.0, 2.0)]);
+            path(&[
+                (4.0, 2.0),
+                (16.0, 2.0),
+                (14.5, 8.0),
+                (12.0, 11.0),
+                (8.0, 11.0),
+                (5.5, 8.0),
+                (4.0, 2.0),
+            ]);
             line((10.0, 11.0), (10.0, 17.0));
             line((5.0, 18.0), (15.0, 18.0));
             path(&[(5.5, 5.5), (14.5, 5.5), (13.0, 8.0), (7.0, 8.0)]);
@@ -131,8 +132,10 @@ pub fn paint(p: &Painter, bounds: Rect, family: Family, glyph: Glyph, color: Col
             for i in 0..8 {
                 let angle = i as f32 * std::f32::consts::TAU / 8.0;
                 let (sn, cs) = angle.sin_cos();
-                line((10.0 + cs * 6.0, 10.0 + sn * 6.0),
-                     (10.0 + cs * 8.0, 10.0 + sn * 8.0));
+                line(
+                    (10.0 + cs * 6.0, 10.0 + sn * 6.0),
+                    (10.0 + cs * 8.0, 10.0 + sn * 8.0),
+                );
             }
             p.circle_stroke(xy(10.0, 10.0), 6.0 * scale, stroke);
             p.circle_stroke(xy(10.0, 10.0), 2.4 * scale, stroke);
@@ -143,14 +146,28 @@ pub fn paint(p: &Painter, bounds: Rect, family: Family, glyph: Glyph, color: Col
             path(&[(5.5, 9.0), (10.0, 13.5), (14.5, 9.0)]);
         }
         Glyph::Import => {
-            path(&[(2.0, 6.0), (2.0, 17.0), (18.0, 17.0), (18.0, 8.0),
-                   (9.0, 8.0), (7.0, 6.0), (2.0, 6.0)]);
+            path(&[
+                (2.0, 6.0),
+                (2.0, 17.0),
+                (18.0, 17.0),
+                (18.0, 8.0),
+                (9.0, 8.0),
+                (7.0, 6.0),
+                (2.0, 6.0),
+            ]);
             line((10.0, 3.0), (10.0, 12.0));
             path(&[(7.0, 9.0), (10.0, 12.0), (13.0, 9.0)]);
         }
         Glyph::Prefix => {
-            path(&[(2.0, 6.0), (2.0, 17.0), (18.0, 17.0), (18.0, 8.0),
-                   (9.0, 8.0), (7.0, 6.0), (2.0, 6.0)]);
+            path(&[
+                (2.0, 6.0),
+                (2.0, 17.0),
+                (18.0, 17.0),
+                (18.0, 8.0),
+                (9.0, 8.0),
+                (7.0, 6.0),
+                (2.0, 6.0),
+            ]);
             box_line(10.0, 10.0, 6.0, 5.0);
         }
         Glyph::Runner => {
@@ -193,8 +210,8 @@ pub fn paint(p: &Painter, bounds: Rect, family: Family, glyph: Glyph, color: Col
         Glyph::Favorite => {
             let mut pts = Vec::with_capacity(10);
             for index in 0..10 {
-                let angle = -std::f32::consts::FRAC_PI_2
-                    + index as f32 * std::f32::consts::PI / 5.0;
+                let angle =
+                    -std::f32::consts::FRAC_PI_2 + index as f32 * std::f32::consts::PI / 5.0;
                 let radius = if index % 2 == 0 { 8.0 } else { 3.5 };
                 pts.push(xy(10.0 + radius * angle.cos(), 10.0 + radius * angle.sin()));
             }
@@ -224,19 +241,29 @@ mod tests {
     #[test]
     fn every_family_and_glyph_render_without_panic() {
         let glyphs = [
-            Glyph::Programs, Glyph::Tools, Glyph::Settings, Glyph::Install,
-            Glyph::Import, Glyph::Prefix, Glyph::Runner, Glyph::Backup,
-            Glyph::Play, Glyph::Search, Glyph::Info, Glyph::Warning,
-            Glyph::Refresh, Glyph::Favorite, Glyph::Brand,
+            Glyph::Programs,
+            Glyph::Tools,
+            Glyph::Settings,
+            Glyph::Install,
+            Glyph::Import,
+            Glyph::Prefix,
+            Glyph::Runner,
+            Glyph::Backup,
+            Glyph::Play,
+            Glyph::Search,
+            Glyph::Info,
+            Glyph::Warning,
+            Glyph::Refresh,
+            Glyph::Favorite,
+            Glyph::Brand,
         ];
         let ctx = egui::Context::default();
         for family in Family::ALL {
             for &glyph in &glyphs {
                 let output = ctx.run(Default::default(), |ctx| {
                     egui::CentralPanel::default().show(ctx, |ui| {
-                        let (rect, _) = ui.allocate_exact_size(
-                            egui::vec2(20.0, 20.0), egui::Sense::hover()
-                        );
+                        let (rect, _) =
+                            ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
                         paint(ui.painter(), rect, family, glyph, Color32::WHITE);
                     });
                 });

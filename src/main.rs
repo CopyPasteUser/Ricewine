@@ -2465,6 +2465,7 @@ impl RiceWineApp {
             .map_or(0, |store| store.applications().len());
         if self.simple_ui {
             ui.horizontal_wrapped(|ui| {
+                rice_identity::symbol(ui, self.theme.identity(), rice_identity::Icon::Programs, self.theme.accent(), 20.0);
                 ui.label(
                     RichText::new("My programs")
                         .strong()
@@ -3176,7 +3177,8 @@ impl RiceWineApp {
     fn prefixes(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         if self.simple_ui {
-            ui.heading("Wine environments");
+            rice_identity::title(ui, self.theme.identity(), rice_identity::Icon::Prefix,
+                "Wine environments", self.theme.accent(), self.theme.palette().text);
             ui.label("Back up, restore and manage your program environments.");
         } else if luna_mode {
             luna::section_heading(ui, "Wine prefix maintenance", luna::XpIcon::Prefix);
@@ -3307,7 +3309,8 @@ impl RiceWineApp {
     fn runners(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         if self.simple_ui {
-            ui.heading("Wine & Proton");
+            rice_identity::title(ui, self.theme.identity(), rice_identity::Icon::Runner,
+                "Wine & Proton", self.theme.accent(), self.theme.palette().text);
         } else if luna_mode {
             luna::section_heading(ui, "Installed runtime tools", luna::XpIcon::Runner);
         }
@@ -3806,7 +3809,8 @@ impl RiceWineApp {
 
     fn settings(&mut self, ui: &mut egui::Ui) {
         if self.simple_ui {
-            ui.heading("Settings");
+            rice_identity::title(ui, self.theme.identity(), rice_identity::Icon::Settings,
+                "Settings", self.theme.accent(), self.theme.palette().text);
             ui.add_space(10.0);
         }
         if self.theme == Theme::Luna && !self.simple_ui {

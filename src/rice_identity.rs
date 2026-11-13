@@ -109,10 +109,7 @@ pub fn empty_copy(family: Family) -> (&'static str, &'static str) {
             "No apps installed",
             "Install a Windows app to add it to your library.",
         ),
-        Family::Win98 => (
-            "No programs found",
-            "Use Install to add a Windows program.",
-        ),
+        Family::Win98 => ("No programs found", "Use Install to add a Windows program."),
         Family::Aero7 => (
             "Get started with programs",
             "Install a program or bring in an existing Wine prefix.",
@@ -138,41 +135,78 @@ pub fn header_finish(p: &Painter, r: Rect, family: Family, accent: Color32) {
     let bottom = r.bottom() - 2.0;
     match family {
         Family::Luna => {
-            p.line_segment([Pos2::new(l,bottom-1.0),Pos2::new(right,bottom-1.0)],
-                           Stroke::new(2.0,Color32::from_rgb(52,111,216)));
-            p.line_segment([Pos2::new(l+3.0,top+1.0),Pos2::new(right-3.0,top+1.0)],
-                           Stroke::new(1.0,Color32::from_rgb(240,249,255)));
+            p.line_segment(
+                [Pos2::new(l, bottom - 1.0), Pos2::new(right, bottom - 1.0)],
+                Stroke::new(2.0, Color32::from_rgb(52, 111, 216)),
+            );
+            p.line_segment(
+                [
+                    Pos2::new(l + 3.0, top + 1.0),
+                    Pos2::new(right - 3.0, top + 1.0),
+                ],
+                Stroke::new(1.0, Color32::from_rgb(240, 249, 255)),
+            );
         }
         Family::Mac => {
-            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
-                           Stroke::new(1.0,Color32::from_rgb(180,187,199)));
+            p.line_segment(
+                [Pos2::new(l, bottom), Pos2::new(right, bottom)],
+                Stroke::new(1.0, Color32::from_rgb(180, 187, 199)),
+            );
         }
         Family::Win10 => {
-            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
-                           Stroke::new(1.0,Color32::from_rgb(208,208,208)));
+            p.line_segment(
+                [Pos2::new(l, bottom), Pos2::new(right, bottom)],
+                Stroke::new(1.0, Color32::from_rgb(208, 208, 208)),
+            );
         }
         Family::Win98 => {
-            let white=Color32::WHITE;
-            let dark=Color32::from_rgb(100,100,100);
-            p.line_segment([Pos2::new(l,top),Pos2::new(right,top)],Stroke::new(1.0,white));
-            p.line_segment([Pos2::new(l,top),Pos2::new(l,bottom)],Stroke::new(1.0,white));
-            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],Stroke::new(1.0,dark));
-            p.line_segment([Pos2::new(right,top),Pos2::new(right,bottom)],Stroke::new(1.0,dark));
+            let white = Color32::WHITE;
+            let dark = Color32::from_rgb(100, 100, 100);
+            p.line_segment(
+                [Pos2::new(l, top), Pos2::new(right, top)],
+                Stroke::new(1.0, white),
+            );
+            p.line_segment(
+                [Pos2::new(l, top), Pos2::new(l, bottom)],
+                Stroke::new(1.0, white),
+            );
+            p.line_segment(
+                [Pos2::new(l, bottom), Pos2::new(right, bottom)],
+                Stroke::new(1.0, dark),
+            );
+            p.line_segment(
+                [Pos2::new(right, top), Pos2::new(right, bottom)],
+                Stroke::new(1.0, dark),
+            );
         }
         Family::Aero7 => {
-            p.line_segment([Pos2::new(l+5.0,top+1.0),Pos2::new(right-5.0,top+1.0)],
-                           Stroke::new(1.0,Color32::from_rgb(255,255,255)));
-            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
-                           Stroke::new(2.0,Color32::from_rgb(131,184,221)));
+            p.line_segment(
+                [
+                    Pos2::new(l + 5.0, top + 1.0),
+                    Pos2::new(right - 5.0, top + 1.0),
+                ],
+                Stroke::new(1.0, Color32::from_rgb(255, 255, 255)),
+            );
+            p.line_segment(
+                [Pos2::new(l, bottom), Pos2::new(right, bottom)],
+                Stroke::new(2.0, Color32::from_rgb(131, 184, 221)),
+            );
         }
         Family::Chrome => {
-            p.circle_filled(Pos2::new(right-7.0,top+8.0),2.0,accent);
+            p.circle_filled(Pos2::new(right - 7.0, top + 8.0), 2.0, accent);
         }
         Family::Frutiger => {
-            p.line_segment([Pos2::new(l+7.0,top+1.0),Pos2::new(right-7.0,top+1.0)],
-                           Stroke::new(1.5,Color32::from_rgb(236,255,251)));
-            p.line_segment([Pos2::new(l,bottom),Pos2::new(right,bottom)],
-                           Stroke::new(2.0,Color32::from_rgb(66,187,171)));
+            p.line_segment(
+                [
+                    Pos2::new(l + 7.0, top + 1.0),
+                    Pos2::new(right - 7.0, top + 1.0),
+                ],
+                Stroke::new(1.5, Color32::from_rgb(236, 255, 251)),
+            );
+            p.line_segment(
+                [Pos2::new(l, bottom), Pos2::new(right, bottom)],
+                Stroke::new(2.0, Color32::from_rgb(66, 187, 171)),
+            );
         }
     }
 }
@@ -200,34 +234,52 @@ pub fn empty_library(
     let (heading, description) = empty_copy(family);
     let primary = |ui: &mut Ui, actions: &mut EmptyActions| {
         actions.install |= button(
-            ui, family, Icon::Install, "Install Windows program",
-            Color32::WHITE, Color32::WHITE, accent, accent, enabled, 235.0
-        ).clicked();
+            ui,
+            family,
+            Icon::Install,
+            "Install Windows program",
+            Color32::WHITE,
+            Color32::WHITE,
+            accent,
+            accent,
+            enabled,
+            235.0,
+        )
+        .clicked();
     };
     let secondary = |ui: &mut Ui, actions: &mut EmptyActions| {
         actions.import |= button(
-            ui, family, Icon::Import, "Import existing prefix",
-            accent, text, surface, border, enabled, 235.0
-        ).clicked();
+            ui,
+            family,
+            Icon::Import,
+            "Import existing prefix",
+            accent,
+            text,
+            surface,
+            border,
+            enabled,
+            235.0,
+        )
+        .clicked();
     };
     match family {
         Family::Luna => {
             // The cheerful XP task pane: blue header, warm task area.
             egui::Frame::new()
-                .fill(Color32::from_rgb(246,248,254))
+                .fill(Color32::from_rgb(246, 248, 254))
                 .stroke(Stroke::new(1.0, border))
                 .corner_radius(egui::CornerRadius::same(7))
                 .inner_margin(egui::Margin::same(11))
                 .show(ui, |ui| {
-                    let w=ui.available_width();
+                    let w = ui.available_width();
                     egui::Frame::new()
-                        .fill(Color32::from_rgb(53,104,199))
+                        .fill(Color32::from_rgb(53, 104, 199))
                         .corner_radius(egui::CornerRadius::same(5))
-                        .inner_margin(egui::Margin::symmetric(11,7))
+                        .inner_margin(egui::Margin::symmetric(11, 7))
                         .show(ui, |ui| {
-                            ui.set_min_width((w-46.0).max(0.0));
+                            ui.set_min_width((w - 46.0).max(0.0));
                             ui.horizontal(|ui| {
-                                symbol(ui,family,Icon::Programs,Color32::WHITE,22.0);
+                                symbol(ui, family, Icon::Programs, Color32::WHITE, 22.0);
                                 ui.label(RichText::new(heading).strong().color(Color32::WHITE));
                             });
                         });
@@ -236,20 +288,20 @@ pub fn empty_library(
                     ui.add_space(7.0);
                     ui.label(RichText::new("Program tasks").strong().color(accent));
                     ui.horizontal_wrapped(|ui| {
-                        primary(ui,&mut actions);
-                        secondary(ui,&mut actions);
+                        primary(ui, &mut actions);
+                        secondary(ui, &mut actions);
                     });
                 });
         }
         Family::Win98 => {
             // Sunken gray dialog and simple commands instead of a big hero.
             egui::Frame::new()
-                .fill(Color32::from_rgb(192,192,192))
-                .stroke(Stroke::new(2.0,Color32::from_rgb(105,105,105)))
+                .fill(Color32::from_rgb(192, 192, 192))
+                .stroke(Stroke::new(2.0, Color32::from_rgb(105, 105, 105)))
                 .inner_margin(egui::Margin::same(9))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        symbol(ui,family,Icon::Programs,accent,28.0);
+                        symbol(ui, family, Icon::Programs, accent, 28.0);
                         ui.vertical(|ui| {
                             ui.label(RichText::new(heading).strong().color(text));
                             ui.small(description);
@@ -257,21 +309,21 @@ pub fn empty_library(
                     });
                     ui.separator();
                     ui.horizontal_wrapped(|ui| {
-                        primary(ui,&mut actions);
-                        secondary(ui,&mut actions);
+                        primary(ui, &mut actions);
+                        secondary(ui, &mut actions);
                     });
                 });
         }
         Family::Aero7 => {
             // Explorer/Control Panel: a pale blue pane with a small heading.
             egui::Frame::new()
-                .fill(Color32::from_rgb(237,247,254))
-                .stroke(Stroke::new(1.0,Color32::from_rgb(142,186,219)))
+                .fill(Color32::from_rgb(237, 247, 254))
+                .stroke(Stroke::new(1.0, Color32::from_rgb(142, 186, 219)))
                 .corner_radius(egui::CornerRadius::same(7))
                 .inner_margin(egui::Margin::same(13))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        symbol(ui,family,Icon::Programs,accent,34.0);
+                        symbol(ui, family, Icon::Programs, accent, 34.0);
                         ui.vertical(|ui| {
                             ui.label(RichText::new(heading).size(18.0).strong().color(text));
                             ui.label(RichText::new(description).color(muted));
@@ -279,8 +331,8 @@ pub fn empty_library(
                     });
                     ui.add_space(11.0);
                     ui.horizontal_wrapped(|ui| {
-                        primary(ui,&mut actions);
-                        secondary(ui,&mut actions);
+                        primary(ui, &mut actions);
+                        secondary(ui, &mut actions);
                     });
                 });
         }
@@ -288,21 +340,21 @@ pub fn empty_library(
             // Quiet centered Finder-like utility state, no decorative card.
             ui.vertical_centered(|ui| {
                 ui.add_space(7.0);
-                symbol(ui,family,Icon::Brand,accent,45.0);
+                symbol(ui, family, Icon::Brand, accent, 45.0);
                 ui.add_space(5.0);
                 ui.label(RichText::new(heading).size(20.0).strong().color(text));
                 ui.label(RichText::new(description).color(muted));
                 ui.add_space(9.0);
-                primary(ui,&mut actions);
+                primary(ui, &mut actions);
                 ui.add_space(3.0);
-                secondary(ui,&mut actions);
+                secondary(ui, &mut actions);
             });
         }
         Family::Win10 => {
             // Flat settings-style command surface aligned with the page edge.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    symbol(ui,family,Icon::Programs,accent,36.0);
+                    symbol(ui, family, Icon::Programs, accent, 36.0);
                     ui.vertical(|ui| {
                         ui.label(RichText::new(heading).size(20.0).color(text));
                         ui.label(RichText::new(description).color(muted));
@@ -310,8 +362,8 @@ pub fn empty_library(
                 });
                 ui.add_space(12.0);
                 ui.horizontal_wrapped(|ui| {
-                    primary(ui,&mut actions);
-                    secondary(ui,&mut actions);
+                    primary(ui, &mut actions);
+                    secondary(ui, &mut actions);
                 });
             });
         }
@@ -320,28 +372,28 @@ pub fn empty_library(
             ui.vertical_centered(|ui| {
                 ui.add_space(4.0);
                 egui::Frame::new()
-                    .fill(Color32::from_rgb(231,240,254))
+                    .fill(Color32::from_rgb(231, 240, 254))
                     .corner_radius(egui::CornerRadius::same(22))
                     .inner_margin(egui::Margin::same(12))
-                    .show(ui, |ui| symbol(ui,family,Icon::Programs,accent,32.0));
+                    .show(ui, |ui| symbol(ui, family, Icon::Programs, accent, 32.0));
                 ui.add_space(7.0);
                 ui.label(RichText::new(heading).size(21.0).strong().color(text));
                 ui.label(RichText::new(description).color(muted));
                 ui.add_space(9.0);
-                primary(ui,&mut actions);
-                secondary(ui,&mut actions);
+                primary(ui, &mut actions);
+                secondary(ui, &mut actions);
             });
         }
         Family::Frutiger => {
             // Organic aqua panel and translucent-feeling mint surface.
             egui::Frame::new()
-                .fill(Color32::from_rgb(222,249,242))
-                .stroke(Stroke::new(1.0,Color32::from_rgb(106,188,177)))
+                .fill(Color32::from_rgb(222, 249, 242))
+                .stroke(Stroke::new(1.0, Color32::from_rgb(106, 188, 177)))
                 .corner_radius(egui::CornerRadius::same(14))
                 .inner_margin(egui::Margin::same(14))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        symbol(ui,family,Icon::Brand,accent,48.0);
+                        symbol(ui, family, Icon::Brand, accent, 48.0);
                         ui.vertical(|ui| {
                             ui.label(RichText::new(heading).size(21.0).strong().color(text));
                             ui.label(RichText::new(description).color(muted));
@@ -349,8 +401,8 @@ pub fn empty_library(
                     });
                     ui.add_space(11.0);
                     ui.horizontal_wrapped(|ui| {
-                        primary(ui,&mut actions);
-                        secondary(ui,&mut actions);
+                        primary(ui, &mut actions);
+                        secondary(ui, &mut actions);
                     });
                 });
         }

@@ -2,15 +2,15 @@
 
 **Goal:** Make launching and maintaining Windows applications on Linux simple enough for everyday use without hiding Wine/Proton diagnostics or sacrificing safety.
 
-**Release policy:** Version 3.0 is a separate development line, not stable until interactive Wine/Proton acceptance is complete. Approved XP Luna Blue, macOS and Windows 10 Rices stay intact. Existing catalog, prefixes, backups and runner profiles remain readable and untouched by UI migrations.
+**Release policy:** Version 3.0 is a separate development line, not stable until interactive Wine/Proton acceptance is complete. XP Luna Blue, macOS and Windows 10 remain intact; Windows 98, Windows 7 Aero, ChromeOS and Frutiger Aero have also been added as RiceWine styles, pending real-device visual acceptance. Existing catalog, prefixes, backups and runner profiles remain readable and untouched by UI migrations.
 
 ## Milestone 1 · Personal library — 3.0 alpha
 
 - [x] Persist favorites, recent successful launches, and library ordering/filtering without changing applications.json.
-- [x] Expose Favorites and Recent sorting across all three Rices.
+- [x] Expose Favorites and Recent sorting across all seven Rices.
 - [x] Favorite/unfavorite selected apps; atomic persistence with bounded, validated data.
 - [x] Migration-free defaults and unit tests for sorting, persistence and malformed workspace files.
-- [x] Ctrl+F navigates to Library and focuses search across all three Rices.
+- [x] Ctrl+F navigates to Library and focuses search across all seven Rices.
 - [ ] Verify keyboard navigation/context actions interactively on real X11 and Wayland.
 
 **Acceptance:** Old 2.x data opens unchanged; favorites survive restart, only successful launches appear in Recent, and removing an app never deletes its prefix.
@@ -50,7 +50,7 @@
 - UI workspace separate from Wine catalog and prefixes; no catalog schema bump for UI metadata.
 - Atomic persistence, bounded file reads and visible errors. Never silently reset corrupt data.
 - No mandatory cloud, telemetry, background daemon or invented automatic repairs.
-- Shared workflows across XP Luna Blue, macOS and Windows 10; native Linux decorations remain native.
+- Shared workflows across all seven RiceBowl-inspired Rices; native Linux decorations remain native.
 
 ## Progress
 

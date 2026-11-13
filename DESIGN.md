@@ -22,7 +22,7 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 ## Visual documentation
 
-`scripts/capture-luna.sh luna`, `scripts/capture-luna.sh macos` and `scripts/capture-luna.sh windows10` capture the **real running application**, on Xvfb with isolated test preferences. Each style captures Library, Prefixes, Runners, Settings, Install and Import. CI rejects duplicate frames and, on `main`, publishes all three series to `docs/screenshots/` for the README gallery. Visual screenshots are evidence of rendering, not Wine/Proton runtime acceptance.
+`scripts/capture-luna.sh` captures Luna, macOS, Windows 10, Windows 98, Windows 7, ChromeOS and Frutiger Aero from **the real running application**, on Xvfb with isolated test preferences. Each style captures Library, Prefixes, Runners, Settings, Install and Import. CI rejects duplicate frames and, on `main`, publishes all seven series to `docs/screenshots/` for the README gallery. Visual screenshots are evidence of rendering, not Wine/Proton runtime acceptance.
 
 ## Interaction contracts
 

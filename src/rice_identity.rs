@@ -1164,7 +1164,7 @@ mod tests {
             Theme::ChromeOS,
             Theme::FrutigerAero,
         ] {
-            let out = ctx.run(Default::default(), |ctx| {
+            let out = ctx.run_ui(Default::default(), |ctx| {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     inline_icon(ui, rice, Glyph::Brand, 28.0, rice.palette().accent);
                     let _ = empty_library(ui, rice, false);

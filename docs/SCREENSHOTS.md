@@ -8,6 +8,8 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 
 ![XP Luna Blue — library](screenshots/luna-library.webp)
 
+![XP Luna Blue — populated program library (isolated screenshot fixtures)](screenshots/luna-library-populated.webp)
+
 | Install program | Import a prefix |
 | :---: | :---: |
 | ![XP Luna install dialog](screenshots/luna-install.webp) | ![XP Luna import dialog](screenshots/luna-import.webp) |
@@ -19,6 +21,8 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 ## macOS
 
 ![macOS — library](screenshots/macos-library.webp)
+
+![macOS — populated program library (isolated screenshot fixtures)](screenshots/macos-library-populated.webp)
 
 | Install program | Import a prefix |
 | :---: | :---: |
@@ -32,6 +36,8 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 
 ![Windows 10 — library](screenshots/win10-library.webp)
 
+![Windows 10 — populated program library (isolated screenshot fixtures)](screenshots/win10-library-populated.webp)
+
 | Install program | Import a prefix |
 | :---: | :---: |
 | ![Windows 10 install dialog](screenshots/win10-install.webp) | ![Windows 10 import dialog](screenshots/win10-import.webp) |
@@ -43,6 +49,8 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 ## Windows 98
 
 ![Windows 98 — library](screenshots/win98-library.webp)
+
+![Windows 98 — populated program library (isolated screenshot fixtures)](screenshots/win98-library-populated.webp)
 
 | Install program | Import a prefix |
 | :---: | :---: |
@@ -56,6 +64,8 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 
 ![Windows 7 Aero — library](screenshots/win7-library.webp)
 
+![Windows 7 Aero — populated program library (isolated screenshot fixtures)](screenshots/win7-library-populated.webp)
+
 | Install program | Import a prefix |
 | :---: | :---: |
 | ![Windows 7 Aero install dialog](screenshots/win7-install.webp) | ![Windows 7 Aero import dialog](screenshots/win7-import.webp) |
@@ -67,6 +77,8 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 ## ChromeOS
 
 ![ChromeOS — library](screenshots/chromeos-library.webp)
+
+![ChromeOS — populated program library (isolated screenshot fixtures)](screenshots/chromeos-library-populated.webp)
 
 | Install program | Import a prefix |
 | :---: | :---: |
@@ -80,6 +92,8 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 
 ![Frutiger Aero — library](screenshots/frutiger-library.webp)
 
+![Frutiger Aero — populated program library (isolated screenshot fixtures)](screenshots/frutiger-library-populated.webp)
+
 | Install program | Import a prefix |
 | :---: | :---: |
 | ![Frutiger Aero install dialog](screenshots/frutiger-install.webp) | ![Frutiger Aero import dialog](screenshots/frutiger-import.webp) |
@@ -90,6 +104,6 @@ Screenshots of the **real Rust/egui Linux application**, captured automatically 
 
 ### Reproducible capture
 
-The maintained workflow [Capture maintained Rice screenshots](../.github/workflows/capture-luna.yml) builds the application from source and executes `scripts/capture-luna.sh` for each Rice in isolated Xvfb environments. It uses a temporary XDG data directory, never your actual Wine prefixes, and rejects duplicate page frames.
+The maintained workflow [Capture maintained Rice screenshots](../.github/workflows/capture-luna.yml) builds the application from source and executes `scripts/capture-luna.sh` for each Rice in isolated Xvfb environments. It uses a temporary XDG data directory, never your actual Wine prefixes, and rejects duplicate page frames, including a separate populated-library state with synthetic entries and long names.
 
 To reproduce locally, build `cargo build --release --locked` and run the script through `xvfb-run` with X11, software OpenGL, `xdotool` and ImageMagick installed. The resulting images are saved to `docs/screenshots/`.

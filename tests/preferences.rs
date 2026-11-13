@@ -64,12 +64,34 @@ fn ricebowl_theme_detection_is_explicit_and_does_not_guess() {
         preferences::appearance_for_theme("Windows10-Fluent"),
         Some(Appearance::Windows10)
     );
+    for (desktop, expected) in [
+        ("RiceHub-Classic", Appearance::Windows98),
+        ("RiceHub-Aero", Appearance::Windows7),
+        ("RiceHub-Chrome", Appearance::ChromeOS),
+        ("RiceHub-Frutiger", Appearance::FrutigerAero),
+        ("RiceHub-Ten-Dark", Appearance::Windows10),
+        ("RiceHub-Ten-Light", Appearance::Windows10),
+    ] {
+        assert_eq!(
+            preferences::appearance_for_theme(desktop),
+            Some(expected),
+            "{desktop}"
+        );
+    }
     assert_eq!(preferences::appearance_for_theme("Adwaita"), None);
 }
 
 #[test]
 fn maintained_rices_round_trip_and_legacy_values_remain_readable() {
-    for appearance in [Appearance::Luna, Appearance::MacOS, Appearance::Windows10] {
+    for appearance in [
+        Appearance::Luna,
+        Appearance::MacOS,
+        Appearance::Windows10,
+        Appearance::Windows98,
+        Appearance::Windows7,
+        Appearance::ChromeOS,
+        Appearance::FrutigerAero,
+    ] {
         let preferences = Preferences {
             appearance,
             follow_desktop: false,

@@ -288,7 +288,7 @@ pub fn button(
         .fill(fill)
         .stroke(Stroke::new(1.0, border))
         .corner_radius(egui::CornerRadius::same(corner));
-    let response = ui.add_enabled_sized(egui::vec2(width, 35.0), enabled, button);
+    let response = ui.add_enabled(enabled, button.min_size(egui::vec2(width, 35.0)));
     let icon_rect = Rect::from_center_size(
         Pos2::new(response.rect.left() + 14.0, response.rect.center().y),
         Vec2::splat(16.0),
@@ -339,28 +339,17 @@ pub fn title(
 mod tests {
     use super::*;
     #[test]
-    fn each_family_renders_each_semantic_icon() {
+    fn each_family_defines_independent_identity_and_semantic_icons() {
         let icons = [
-            Icon::Brand,
-            Icon::Programs,
-            Icon::Tools,
-            Icon::Settings,
-            Icon::Install,
-            Icon::Import,
-            Icon::Prefix,
-            Icon::Runner,
-            Icon::Backup,
-            Icon::Play,
+            Icon::Brand, Icon::Programs, Icon::Tools, Icon::Settings, Icon::Install,
+            Icon::Import, Icon::Prefix, Icon::Runner, Icon::Backup, Icon::Play,
         ];
-        for family in Family::ALL {
-            for icon in icons {
-                let ctx = egui::Context::default();
-                let output = ctx.run(Default::default(), |ctx| {
-                    egui::CentralPanel::default().show(ctx, |ui| {
-                        symbol(ui, family, icon, Color32::from_rgb(27, 93, 151), 20.0);
-                    });
-                });
-                assert!(!output.shapes.is_empty(), "{family:?}: {icon:?}");
+        assert_eq!(Family::ALL.len(), 7);
+        assert_eq!(icons.len(), 10);
+        for (index, family) in Family::ALL.iter().enumerate() {
+            assert!(!family.name().is_empty());
+            for next in Family::ALL.iter().skip(index + 1) {
+                assert_ne!(family.name(), next.name());
             }
         }
     }

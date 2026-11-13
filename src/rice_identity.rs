@@ -33,6 +33,7 @@ pub enum Icon {
 }
 
 impl Family {
+    #[cfg(test)]
     pub const ALL: [Self; 7] = [
         Self::Luna,
         Self::Mac,
@@ -43,6 +44,7 @@ impl Family {
         Self::Frutiger,
     ];
 
+    #[cfg(test)]
     pub fn name(self) -> &'static str {
         match self {
             Self::Luna => "Luna",

@@ -186,36 +186,6 @@ impl Theme {
         }
     }
 
-    /// Navigation stays at the same position in every Rice, but active states,
-    /// density and borders follow the desktop style rather than a generic skin.
-    fn simple_nav(self, ui: &mut egui::Ui, title: &str, selected: bool) -> egui::Response {
-        let palette = self.palette();
-        let is_classic = matches!(self, Self::Luna | Self::Windows98);
-        let label = RichText::new(title)
-            .color(if selected {
-                Color32::WHITE
-            } else {
-                palette.text
-            })
-            .size(if is_classic { 12.5 } else { 13.0 })
-            .strong();
-        let button = egui::Button::new(label)
-            .fill(if selected {
-                palette.accent
-            } else {
-                palette.sidebar
-            })
-            .stroke(if selected {
-                egui::Stroke::new(1.0, palette.accent)
-            } else if self == Self::Windows98 {
-                egui::Stroke::new(1.0, palette.border)
-            } else {
-                egui::Stroke::NONE
-            })
-            .corner_radius(egui::CornerRadius::same(palette.corner_radius));
-        ui.add_sized([if is_classic { 92.0 } else { 98.0 }, 32.0], button)
-    }
-
     fn accent(self) -> Color32 {
         self.palette().accent
     }
@@ -1946,6 +1916,10 @@ impl RiceWineApp {
                     {
                         self.page = Page::Library;
                     }
+                    rice_identity::symbol(
+                        ui, self.theme.identity(), rice_identity::Icon::Tools,
+                        palette.accent, 18.0,
+                    );
                     ui.menu_button(
                         if matches!(self.page, Page::Prefixes | Page::Runners) {
                             "Tools •".to_owned()
@@ -3298,7 +3272,12 @@ impl RiceWineApp {
                 }
             }
 
-            if luna_mode {
+            if self.simple_ui {
+                rice_identity::title(
+                    ui, self.theme.identity(), rice_identity::Icon::Backup,
+                    "Backups", self.theme.accent(), self.theme.palette().text,
+                );
+            } else if luna_mode {
                 luna::section_heading(ui, "Backup archives", luna::XpIcon::Disk);
             } else {
                 ui.add_space(12.0);

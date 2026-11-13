@@ -1580,12 +1580,26 @@ impl RiceWineApp {
                 mac::brand(ui);
                 ui.add_space(25.0);
                 mac::section_label(ui, "YOUR APPS");
-                if mac::navigation(ui, rice_identity::Icon::Programs, "My programs", self.page == Page::Library).clicked() {
+                if mac::navigation(
+                    ui,
+                    rice_identity::Icon::Programs,
+                    "My programs",
+                    self.page == Page::Library,
+                )
+                .clicked()
+                {
                     self.page = Page::Library;
                 }
                 ui.add_space(12.0);
                 mac::section_label(ui, "PREFERENCES");
-                if mac::navigation(ui, rice_identity::Icon::Settings, "Settings", self.page == Page::Settings).clicked() {
+                if mac::navigation(
+                    ui,
+                    rice_identity::Icon::Settings,
+                    "Settings",
+                    self.page == Page::Settings,
+                )
+                .clicked()
+                {
                     self.page = Page::Settings;
                 }
                 ui.add_space(14.0);
@@ -2237,7 +2251,9 @@ impl RiceWineApp {
     /// Four RiceBowl-inspired shells share Wine workflows, but not their navigation chrome.
     fn ricebowl_shell(&mut self, ui: &mut egui::Ui) {
         use extra_rices::Flavor;
-        let Some(flavor) = self.theme.extra_flavor() else { return };
+        let Some(flavor) = self.theme.extra_flavor() else {
+            return;
+        };
 
         // Classic desktop menus use real program actions, not decorative text.
         if flavor == Flavor::Classic98 {
@@ -2283,7 +2299,10 @@ impl RiceWineApp {
         let can_add = !self.busy && self.store.is_some();
         // Windows 98 uses a compact property-sheet tab strip; Frutiger has
         // a 2007-era segmented command bar; ChromeOS uses its app navigation.
-        if matches!(flavor, Flavor::ChromeOS | Flavor::Classic98 | Flavor::FrutigerAero) {
+        if matches!(
+            flavor,
+            Flavor::ChromeOS | Flavor::Classic98 | Flavor::FrutigerAero
+        ) {
             ui.horizontal_wrapped(|ui| {
                 for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
                     if extra_rices::navigation(ui, flavor, page.label(), self.page == page, true)
@@ -2304,13 +2323,17 @@ impl RiceWineApp {
             if extra_rices::toolbar_action(ui, flavor, install_label, can_add, true).clicked() {
                 self.install = Some(InstallDraft::default());
             }
-            if extra_rices::toolbar_action(ui, flavor, "Import existing…", can_add, false).clicked() {
+            if extra_rices::toolbar_action(ui, flavor, "Import existing…", can_add, false).clicked()
+            {
                 self.import = Some(ImportDraft::default());
             }
         });
         ui.add_space(7.0);
 
-        let full_width = matches!(flavor, Flavor::ChromeOS | Flavor::Classic98 | Flavor::FrutigerAero);
+        let full_width = matches!(
+            flavor,
+            Flavor::ChromeOS | Flavor::Classic98 | Flavor::FrutigerAero
+        );
         let compact = ui.available_width() < 740.0;
         if compact && !full_width {
             self.compact_navigation(ui);
@@ -2863,12 +2886,22 @@ impl RiceWineApp {
                                     ui.horizontal(|ui| {
                                         let row_width = (ui.available_width() - 122.0).max(0.0);
                                         let response = if luna_mode {
-                                            luna::program_row(ui, &display_name, selected, row_width)
+                                            luna::program_row(
+                                                ui,
+                                                &display_name,
+                                                selected,
+                                                row_width,
+                                            )
                                         } else if self.theme == Theme::MacOS {
                                             mac::program_row(ui, &display_name, selected, row_width)
                                         } else if let Some(flavor) = self.theme.extra_flavor() {
                                             extra_rices::program_row(
-                                                ui, flavor, &display_name, status, selected, row_width,
+                                                ui,
+                                                flavor,
+                                                &display_name,
+                                                status,
+                                                selected,
+                                                row_width,
                                             )
                                         } else {
                                             ui.button(&display_name)

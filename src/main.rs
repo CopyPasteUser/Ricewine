@@ -3024,6 +3024,8 @@ impl RiceWineApp {
             }
             for app in apps {
                 let app_name = app.name.clone();
+                let simplified_group = self.simple_ui;
+                let group_theme = self.theme;
                 let render = |ui: &mut egui::Ui| {
                     if !luna_mode {
                         ui.label(
@@ -3067,10 +3069,10 @@ impl RiceWineApp {
                         }
                     });
                 };
-                if self.simple_ui {
+                if simplified_group {
                     rice_identity::group_box(
                         ui,
-                        self.theme,
+                        group_theme,
                         &app_name,
                         rice_icons::Glyph::Prefix,
                         render,

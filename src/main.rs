@@ -2866,6 +2866,8 @@ impl RiceWineApp {
             if !win10_mode {
                 ui.separator();
             }
+            let simplified_details = self.simple_ui;
+            let details_palette = self.theme.palette();
             let details = |ui: &mut egui::Ui| {
                 if !stacked {
                     ui.set_min_width(235.0);
@@ -3138,8 +3140,8 @@ impl RiceWineApp {
                     ui.label("Select a program to view details.");
                 }
             };
-            if self.simple_ui {
-                let palette = self.theme.palette();
+            if simplified_details {
+                let palette = details_palette;
                 egui::Frame::new()
                     .fill(palette.button)
                     .stroke(egui::Stroke::new(1.0, palette.border))

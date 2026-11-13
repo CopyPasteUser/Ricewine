@@ -1738,7 +1738,10 @@ impl RiceWineApp {
         ui.horizontal_wrapped(|ui| {
             ui.menu_button(format!("☰  {}", self.page.label()), |ui| {
                 for page in [Page::Library, Page::Prefixes, Page::Runners, Page::Settings] {
-                    if ui.selectable_label(self.page == page, page.label()).clicked() {
+                    if ui
+                        .selectable_label(self.page == page, page.label())
+                        .clicked()
+                    {
                         self.page = page;
                         ui.close();
                     }

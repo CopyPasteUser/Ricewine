@@ -695,7 +695,9 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                         inline_icon(ui, rice, glyph, 28.0, p.accent);
                         ui.vertical(|ui| {
                             ui.label(RichText::new(title).strong().size(18.0).color(p.accent));
-                            if !description.is_empty() { ui.small(description); }
+                            if !description.is_empty() {
+                                ui.small(description);
+                            }
                         });
                     });
                 });
@@ -711,7 +713,9 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                         ui.label(RichText::new(title).strong().size(17.0));
                     });
                 });
-            if !description.is_empty() { ui.small(description); }
+            if !description.is_empty() {
+                ui.small(description);
+            }
         }
         Theme::Windows7 => {
             Frame::new()
@@ -723,8 +727,15 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                     ui.horizontal(|ui| {
                         inline_icon(ui, rice, glyph, if compact { 23.0 } else { 30.0 }, p.accent);
                         ui.vertical(|ui| {
-                            ui.label(RichText::new(title).size(if compact { 19.0 } else { 22.0 }).strong().color(p.text));
-                            if !description.is_empty() { ui.label(RichText::new(description).size(11.5).color(p.muted)); }
+                            ui.label(
+                                RichText::new(title)
+                                    .size(if compact { 19.0 } else { 22.0 })
+                                    .strong()
+                                    .color(p.text),
+                            );
+                            if !description.is_empty() {
+                                ui.label(RichText::new(description).size(11.5).color(p.muted));
+                            }
                         });
                     });
                 });
@@ -732,17 +743,32 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
         Theme::MacOS => {
             ui.horizontal(|ui| {
                 inline_icon(ui, rice, glyph, if compact { 20.0 } else { 23.0 }, p.muted);
-                ui.label(RichText::new(title).size(if compact { 19.0 } else { 21.0 }).strong().color(p.text));
+                ui.label(
+                    RichText::new(title)
+                        .size(if compact { 19.0 } else { 21.0 })
+                        .strong()
+                        .color(p.text),
+                );
             });
-            if !description.is_empty() { ui.small(description); }
+            if !description.is_empty() {
+                ui.small(description);
+            }
             ui.separator();
         }
         Theme::Windows10 => {
             ui.horizontal(|ui| {
                 inline_icon(ui, rice, glyph, if compact { 20.0 } else { 23.0 }, p.accent);
-                ui.label(RichText::new(title).size(if compact { 21.0 } else { 25.0 }).color(p.text));
+                ui.label(
+                    RichText::new(title)
+                        .size(if compact { 21.0 } else { 25.0 })
+                        .color(p.text),
+                );
             });
-            if !description.is_empty() { if !description.is_empty() { ui.label(RichText::new(description).color(p.muted)); } }
+            if !description.is_empty() {
+                if !description.is_empty() {
+                    ui.label(RichText::new(description).color(p.muted));
+                }
+            }
             ui.add_space(3.0);
         }
         Theme::ChromeOS => {
@@ -764,8 +790,15 @@ pub fn page_title(ui: &mut Ui, rice: Theme, title: &str, description: &str, glyp
                     ui.horizontal(|ui| {
                         inline_icon(ui, rice, glyph, if compact { 24.0 } else { 34.0 }, p.accent);
                         ui.vertical(|ui| {
-                            ui.label(RichText::new(title).size(if compact { 20.0 } else { 23.0 }).strong().color(p.text));
-                            if !description.is_empty() { ui.label(RichText::new(description).size(12.0).color(p.muted)); }
+                            ui.label(
+                                RichText::new(title)
+                                    .size(if compact { 20.0 } else { 23.0 })
+                                    .strong()
+                                    .color(p.text),
+                            );
+                            if !description.is_empty() {
+                                ui.label(RichText::new(description).size(12.0).color(p.muted));
+                            }
                         });
                     });
                 });
@@ -797,7 +830,13 @@ fn empty_panel(
         Theme::FrutigerAero => Color32::from_rgb(224, 251, 243),
     };
     let border = Stroke::new(if rice == Theme::Windows98 { 2.0 } else { 1.0 }, p.border);
-    let indent = if rice == Theme::Windows98 { 8 } else if compact { 7 } else { 14 };
+    let indent = if rice == Theme::Windows98 {
+        8
+    } else if compact {
+        7
+    } else {
+        14
+    };
     let mut body = |ui: &mut Ui| {
         let mut body = |ui: &mut Ui| {
             inline_icon(
@@ -810,12 +849,16 @@ fn empty_panel(
             ui.add_space(if compact { 1.0 } else { 3.0 });
             ui.label(
                 RichText::new(title)
-                    .size(if compact { 18.0 } else { match rice {
-                        Theme::Windows98 => 17.0,
-                        Theme::Luna => 19.0,
-                        Theme::ChromeOS | Theme::FrutigerAero => 22.0,
-                        _ => 20.0,
-                    } })
+                    .size(if compact {
+                        18.0
+                    } else {
+                        match rice {
+                            Theme::Windows98 => 17.0,
+                            Theme::Luna => 19.0,
+                            Theme::ChromeOS | Theme::FrutigerAero => 22.0,
+                            _ => 20.0,
+                        }
+                    })
                     .strong()
                     .color(p.text),
             );
@@ -1125,19 +1168,19 @@ pub fn setting_preview(ui: &mut Ui, rice: Theme) {
                 inline_icon(ui, rice, Glyph::Brand, 24.0, p.accent);
                 ui.label(RichText::new(rice.label()).strong().color(p.text));
                 if !compact {
-                ui.label(
-                    RichText::new(match rice {
-                        Theme::Luna => "Task panes • bright XP controls",
-                        Theme::Windows98 => "Square buttons • compact Win9x",
-                        Theme::Windows7 => "Aero glass • blue explorer details",
-                        Theme::MacOS => "Quiet utility toolbar • precise lines",
-                        Theme::Windows10 => "Flat Fluent • crisp geometry",
-                        Theme::ChromeOS => "Material shapes • open spacing",
-                        Theme::FrutigerAero => "Aqua glass • organic highlights",
-                    })
-                    .size(11.0)
-                    .color(p.muted),
-                );
+                    ui.label(
+                        RichText::new(match rice {
+                            Theme::Luna => "Task panes • bright XP controls",
+                            Theme::Windows98 => "Square buttons • compact Win9x",
+                            Theme::Windows7 => "Aero glass • blue explorer details",
+                            Theme::MacOS => "Quiet utility toolbar • precise lines",
+                            Theme::Windows10 => "Flat Fluent • crisp geometry",
+                            Theme::ChromeOS => "Material shapes • open spacing",
+                            Theme::FrutigerAero => "Aqua glass • organic highlights",
+                        })
+                        .size(11.0)
+                        .color(p.muted),
+                    );
                 }
             });
         });

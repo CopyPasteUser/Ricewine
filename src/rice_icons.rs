@@ -20,6 +20,7 @@ pub enum Glyph {
     Warning,
     Refresh,
     Favorite,
+    Brand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -101,6 +102,15 @@ pub fn paint(p: &Painter, bounds: Rect, family: Family, glyph: Glyph, color: Col
     };
     let rounded = family.round(scale);
     match glyph {
+        Glyph::Brand => {
+            // The RiceWine goblet: recognisable at 16px without an image
+            // decoding dependency. Each Rice supplies its own surface style.
+            path(&[(4.0, 2.0), (16.0, 2.0), (14.5, 8.0),
+                   (12.0, 11.0), (8.0, 11.0), (5.5, 8.0), (4.0, 2.0)]);
+            line((10.0, 11.0), (10.0, 17.0));
+            line((5.0, 18.0), (15.0, 18.0));
+            path(&[(5.5, 5.5), (14.5, 5.5), (13.0, 8.0), (7.0, 8.0)]);
+        }
         Glyph::Programs => {
             box_line(2.0, 3.0, 16.0, 11.0);
             line((2.0, 6.0), (18.0, 6.0));
@@ -281,7 +291,7 @@ mod tests {
             Glyph::Programs, Glyph::Tools, Glyph::Settings, Glyph::Install,
             Glyph::Import, Glyph::Prefix, Glyph::Runner, Glyph::Backup,
             Glyph::Play, Glyph::Search, Glyph::Info, Glyph::Warning,
-            Glyph::Refresh, Glyph::Favorite,
+            Glyph::Refresh, Glyph::Favorite, Glyph::Brand,
         ];
         let ctx = egui::Context::default();
         for family in Family::ALL {

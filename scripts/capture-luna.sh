@@ -59,8 +59,7 @@ capture_page() {
         echo "Unexpected screenshot dimensions for $output: $captured_size" >&2
         exit 1
     fi
-    identify -format '%f %wx%h %b\
-' "$output"
+    identify "$output"
 
     kill "$ricewine_pid" 2>/dev/null || true
     wait "$ricewine_pid" 2>/dev/null || true

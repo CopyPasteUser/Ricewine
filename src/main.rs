@@ -5054,10 +5054,22 @@ mod rice_tests {
         assert!(Theme::Luna.extra_flavor().is_none());
         assert!(Theme::MacOS.extra_flavor().is_none());
         assert!(Theme::Windows10.extra_flavor().is_none());
-        assert_eq!(Theme::Windows98.extra_flavor(), Some(extra_rices::Flavor::Classic98));
-        assert_eq!(Theme::Windows7.extra_flavor(), Some(extra_rices::Flavor::Aero7));
-        assert_eq!(Theme::ChromeOS.extra_flavor(), Some(extra_rices::Flavor::ChromeOS));
-        assert_eq!(Theme::FrutigerAero.extra_flavor(), Some(extra_rices::Flavor::FrutigerAero));
+        assert_eq!(
+            Theme::Windows98.extra_flavor(),
+            Some(extra_rices::Flavor::Classic98)
+        );
+        assert_eq!(
+            Theme::Windows7.extra_flavor(),
+            Some(extra_rices::Flavor::Aero7)
+        );
+        assert_eq!(
+            Theme::ChromeOS.extra_flavor(),
+            Some(extra_rices::Flavor::ChromeOS)
+        );
+        assert_eq!(
+            Theme::FrutigerAero.extra_flavor(),
+            Some(extra_rices::Flavor::FrutigerAero)
+        );
     }
 
     #[test]

@@ -45,14 +45,22 @@ capture_page() {
     done
     [[ -n "$window_id" ]] || { echo "RiceWine window did not appear" >&2; exit 1; }
     xdotool windowmove "$window_id" 0 0
-    xdotool windowsize "$window_id" 1080 700
+    xdotool windowsize "$window_id" 1120 700
     sleep 2
 
     local prefix="$theme"
     [[ "$prefix" != "windows10" ]] || prefix="win10"
     local output="docs/screenshots/${prefix}-$output_name.webp"
-    import -window "$window_id" -quality 88 "$output"
-    identify -format '%f %wx%h %b\n' "$output"
+    import -window "$window_id" -quality 92 "$output"
+    # Validate that each new capture is a full-sized, readable desktop frame.
+    local captured_size
+    captured_size="$(identify -format '%wx%h' "$output")"
+    if [[ "$captured_size" != "1120x700" ]]; then
+        echo "Unexpected screenshot dimensions for $output: $captured_size" >&2
+        exit 1
+    fi
+    identify -format '%f %wx%h %b\
+' "$output"
 
     kill "$ricewine_pid" 2>/dev/null || true
     wait "$ricewine_pid" 2>/dev/null || true

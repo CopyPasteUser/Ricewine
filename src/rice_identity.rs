@@ -3,14 +3,14 @@
 //! Do not emulate compositor-owned window decorations.
 
 use eframe::egui::{
-    self, Align2, Color32, FontId, Frame, Painter, Rect, Response, RichText, Sense, Stroke, Ui,
+    self, Color32, Frame, Painter, Rect, Response, RichText, Sense, Stroke, Ui,
     Vec2,
 };
-use crate::{Page, RicePalette, Theme};
+use crate::{Page, Theme};
 use crate::rice_icons::{self, Family, Glyph};
 use crate::luna_icons::{self, XpIcon};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Intent {
     Page(Page),
     Install,
@@ -156,7 +156,7 @@ pub fn icon_button(
         .fill(bg)
         .stroke(stroke)
         .corner_radius(egui::CornerRadius::same(p.corner_radius));
-    let response = ui.add_enabled_sized([width, height], enabled, button);
+    let response = ui.add_enabled_ui(enabled, |ui| ui.add_sized([width, height], button)).inner;
     let center = egui::pos2(response.rect.left() + 17.0, response.rect.center().y);
     let rect = Rect::from_center_size(center, Vec2::splat(19.0));
     icon(ui.painter(), rice, glyph, rect, if emphasis { Color32::WHITE } else { p.accent });
@@ -520,8 +520,8 @@ fn empty_panel(ui: &mut Ui, rice: Theme, enabled: bool, subtitle: &str, title: &
     };
     let border = Stroke::new(if rice == Theme::Windows98 { 2.0 } else { 1.0 }, p.border);
     let indent = if rice == Theme::Windows98 { 8 } else { 14 };
-    let body = |ui: &mut Ui| {
-        let body = |ui: &mut Ui| {
+    let mut body = |ui: &mut Ui| {
+        let mut body = |ui: &mut Ui| {
             inline_icon(ui, rice, icon_glyph, if compact { 30.0 } else { 40.0 }, p.accent);
             ui.add_space(3.0);
             ui.label(RichText::new(title)
@@ -616,6 +616,7 @@ pub fn program_row(ui: &mut Ui, rice: Theme, name: &str, status: &str, selected:
     );
     let symbol = if status == "Running" { Glyph::Play }
         else if status == "Check runner" { Glyph::Warning }
+        else if name.starts_with('★') { Glyph::Favorite }
         else { Glyph::Programs };
     let rect = Rect::from_center_size(
         egui::pos2(response.rect.left() + 19.0, response.rect.center().y), Vec2::splat(19.0));

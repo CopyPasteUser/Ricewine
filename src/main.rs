@@ -2225,14 +2225,18 @@ impl RiceWineApp {
                                             ui,
                                             "＋ Install",
                                             !self.busy && self.store.is_some(),
-                                        ).clicked() {
+                                        )
+                                        .clicked()
+                                        {
                                             self.install = Some(InstallDraft::default());
                                         }
                                         if win10::link_action(
                                             ui,
                                             "Import…",
                                             !self.busy && self.store.is_some(),
-                                        ).clicked() {
+                                        )
+                                        .clicked()
+                                        {
                                             self.import = Some(ImportDraft::default());
                                         }
                                     }
@@ -2246,14 +2250,18 @@ impl RiceWineApp {
                                             ui,
                                             "＋  Install a Windows program",
                                             !self.busy && self.store.is_some(),
-                                        ).clicked() {
+                                        )
+                                        .clicked()
+                                        {
                                             self.install = Some(InstallDraft::default());
                                         }
                                         if win10::link_action(
                                             ui,
                                             "Import existing prefix",
                                             !self.busy && self.store.is_some(),
-                                        ).clicked() {
+                                        )
+                                        .clicked()
+                                        {
                                             self.import = Some(ImportDraft::default());
                                         }
                                     });
@@ -2317,12 +2325,14 @@ impl RiceWineApp {
 
         // The classic property sheet already has a File/View menu and tabs.
         // A second masthead wastes enough vertical space to hide the program list.
-        if flavor != Flavor::Classic98
-            && extra_rices::masthead(ui, flavor, self.page.label())
-        {
+        if flavor != Flavor::Classic98 && extra_rices::masthead(ui, flavor, self.page.label()) {
             self.page = Page::Library;
         }
-        ui.add_space(if ui.available_width() < 740.0 { 3.0 } else { 8.0 });
+        ui.add_space(if ui.available_width() < 740.0 {
+            3.0
+        } else {
+            8.0
+        });
         let can_add = !self.busy && self.store.is_some();
         // Windows 98 uses a compact property-sheet tab strip; Frutiger has
         // a 2007-era segmented command bar; ChromeOS uses its app navigation.
@@ -2650,7 +2660,13 @@ impl RiceWineApp {
                     }
                 }
             });
-            ui.add_space(if tight_library { 2.0 } else if luna_mode { 5.0 } else { 10.0 });
+            ui.add_space(if tight_library {
+                2.0
+            } else if luna_mode {
+                5.0
+            } else {
+                10.0
+            });
             if self.store.is_some() && !tight_library {
                 ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
             }

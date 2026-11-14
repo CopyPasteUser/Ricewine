@@ -24,20 +24,20 @@
 | :---: | :---: |
 | ![RiceWine — ChromeOS library](docs/screenshots/chromeos-library.webp) | ![RiceWine — Frutiger Aero library](docs/screenshots/frutiger-library.webp) |
 
-[View all 42 screenshots →](docs/SCREENSHOTS.md)
+[View all 49 screenshots →](docs/SCREENSHOTS.md)
 
-The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures Library, Install, Import, Prefixes, Runners and Settings for all seven Rices. Linux controls the real window decoration.
+The screenshots show the **real Linux application** rendered in an isolated Xvfb session, not design mockups. The screenshot workflow builds the current source and captures empty and populated Library, Install, Import, Prefixes, Runners and Settings for all seven Rices. PR validation also checks three window sizes (560×400, 640×480 and 800×600). Linux controls the real window decoration.
 
 ## Everyday interface
 
-RiceWine opens with a consistent, reduced layout in **all seven Rices**:
+RiceWine now opens with **seven independent, OS-native application layouts** built on the same tested Wine/Proton workflows. The window frame stays native to Linux:
 
 - **Programs:** search your library, select a program and launch it. Filters, favorites and per-program maintenance are available under *View* and *More options*.
 - **Install program:** the main action opens a reviewable EXE/MSI setup dialog. No file runs just by dropping it.
 - **Tools:** Wine prefixes/backups, Wine/Proton runners, importing existing prefixes and refreshing runner profiles.
 - **Settings:** choose your Rice and optionally follow the desktop's recognized theme. Recovery and diagnostic controls remain under *Advanced settings & diagnostics*.
 
-The seven appearances remain visual themes, not seven different navigation systems. For troubleshooting older appearance-specific layouts, start with `RICEWINE_CLASSIC_UI=1 ricewine`. This compatibility escape hatch does not affect Wine configuration or your application data.
+Each Rice uses the navigation, controls and dialogs of its reference OS generation: **Windows 98 property sheets**, **XP task panes**, **Windows 7 Control Panel**, **Windows 10 Settings**, **macOS Finder/System Preferences**, **ChromeOS Files/Settings** and **a Vista-era Frutiger Aero utility**. Actions and data remain shared, including safety confirmations. A deliberately generic legacy interface remains available for debugging with `RICEWINE_UNIFIED_UI=1 ricewine` and does not change any Wine configuration. OS-native interfaces are the normal default.
 
 The installer registers the bundled **RiceWine goblet icon** in the current user's XDG icon theme; the app-menu launcher and Open With entry use the matching `ricewine` icon name. Shortcuts for individual Windows programs retain their generic Wine icon until application-specific icons are available.
 
@@ -58,12 +58,12 @@ The installer registers the bundled **RiceWine goblet icon** in the current user
 | **XP Luna Blue** | Classic Explorer menus, task panes and XP-inspired icons |
 | **macOS** | Finder-inspired navigation and compact application lists |
 | **Windows 10** | Settings / Apps & features layout |
-| **Windows 98** | Gray classic shell, square beveled controls and desktop-style menus |
-| **Windows 7 Aero** | Pale blue shell with Control Panel navigation |
-| **ChromeOS** | Compact top-level navigation with rounded controls |
-| **Frutiger Aero** | Aqua-inspired navigation and bright translucent-looking surfaces |
+| **Windows 98** | 1998-style property tabs, dense sunken program list, beveled controls and classic dialogs |
+| **Windows 7 Aero** | Programs and Features, breadcrumbs, pale Explorer command bar and navigation links |
+| **ChromeOS** | 2019-era Files-like toolbar, straightforward navigation and contextual app actions |
+| **Frutiger Aero** | Vista-era companion utility with aquatic restrained glossy navigation and custom icons |
 
-Choose a Rice in **Settings**, or enable **Follow desktop** to recognize matching RiceBowl GTK theme families. All seven share the same working Wine management workflows; changing the Rice never alters the Linux desktop, installed applications or Wine prefixes. The Linux window decorations remain native. Former XP Olive/Silver and Windows 10 Light/Dark preferences migrate to their maintained equivalents.
+Choose a Rice in **Settings**, or enable **Follow desktop** to recognize matching RiceBowl GTK theme families. All seven share the same Wine management workflows; changing the Rice never alters the Linux desktop, installed applications or Wine prefixes. See the [seven-Rice OS-native design and acceptance plan](docs/OS-NATIVE-REDESIGN-PLAN.md). The Linux window decorations remain native. Former XP Olive/Silver and Windows 10 Light/Dark preferences migrate to their maintained equivalents.
 
 ## Install
 

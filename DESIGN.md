@@ -22,7 +22,7 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 ## Visual documentation
 
-`scripts/capture-luna.sh` captures Luna, macOS, Windows 10, Windows 98, Windows 7, ChromeOS and Frutiger Aero from **the real running application**, on Xvfb with isolated test preferences. Each style captures Library, Prefixes, Runners, Settings, Install and Import. CI rejects duplicate frames and, on `main`, publishes all seven series to `docs/screenshots/` for the README gallery. Visual screenshots are evidence of rendering, not Wine/Proton runtime acceptance.
+`scripts/capture-luna.sh` captures Luna, macOS, Windows 10, Windows 98, Windows 7, ChromeOS and Frutiger Aero from **the real running application**, on Xvfb with isolated test preferences. Each style captures empty Library, populated Library (with isolated synthetic catalog entries), Prefixes, Runners, Settings, Install and Import. CI rejects duplicate frames and, on `main`, publishes all seven series to `docs/screenshots/` for the README gallery. Visual screenshots are evidence of rendering, not Wine/Proton runtime acceptance.
 
 ## Interaction contracts
 
@@ -51,10 +51,10 @@ Native Linux tool for people who want to install and launch Windows software wit
 
 ## Screenshot validation
 
-The screenshot workflow starts all four Luna pages and two additional modal
-dialog views in isolated processes using RICEWINE_CAPTURE_PAGE and
+The screenshot workflow starts all four Luna pages, two modal dialogs and a
+separate populated Library preview in isolated processes using RICEWINE_CAPTURE_PAGE and
 RICEWINE_CAPTURE_DIALOG. These settings change only test-window presentation,
-not the actual catalog. All six captures must be distinct or the job fails.
+not the actual catalog. All seven captures must be distinct or the job fails. Pull requests additionally render the seven Rices at 560×400, 640×480 and 800×600.
 
 ## Luna Blue visual fidelity sprint
 
@@ -79,5 +79,9 @@ not the actual catalog. All six captures must be distinct or the job fails.
 - Explorer navigation and original vector/pixel-inspired program, Wine, compatibility and maintenance symbols.
 - Grouped library details, prefix management, runner diagnostics, GE-Proton tasks, appearance and metadata settings.
 - Install/import and safety confirmations use consistent controls and centered app-modal windows. Destructive actions retain their original guards.
-- Visual acceptance uses six actual xvfb-rendered screenshots; still requires interactive X11/Wayland and real Wine/Proton manual acceptance.
+- Visual acceptance uses seven actual xvfb-rendered screenshots per Rice; still requires interactive X11/Wayland and real Wine/Proton manual acceptance.
 - No change to OS/compositor window decorations. No Windows proprietary icons or fonts are bundled.
+
+## OS-native interaction design (November 2026)
+
+The OS-specific shells are now the default; the older generic toolbar is available only through `RICEWINE_UNIFIED_UI=1`. Each Rice owns its navigation grammar, library row treatment, empty state and install/import header, while Wine operations and safety checks remain shared. The [OS-native redesign plan](docs/OS-NATIVE-REDESIGN-PLAN.md) provides per-Rice reference targets and the remaining manual screenshot/Wayland acceptance criteria. Xvfb screenshots do not replace a human visual review or real Wine/Proton testing.

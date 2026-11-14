@@ -59,22 +59,27 @@ jobs:
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh windows7
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh chromeos
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh frutiger
-      - name: Smoke-test all pages at 640x480 (all seven Rices)
+      - name: Smoke-test six pages in each of seven Rices at minimum and common laptop sizes
         if: github.event_name == 'pull_request'
-        env:
-          RICEWINE_CAPTURE_WIDTH: '640'
-          RICEWINE_CAPTURE_HEIGHT: '480'
-          RICEWINE_CAPTURE_SUFFIX: '-compact'
         run: |
-          for rice in luna macos windows10 windows98 windows7 chromeos frutiger; do
-            xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh "$rice"
+          for dimensions in '560 400 minimum' '640 480 compact' '800 600 medium'; do
+            read -r width height suffix <<< "$dimensions"
+            export RICEWINE_CAPTURE_WIDTH="$width"
+            export RICEWINE_CAPTURE_HEIGHT="$height"
+            export RICEWINE_CAPTURE_SUFFIX="-$suffix"
+            for rice in luna macos windows10 windows98 windows7 chromeos frutiger; do
+              xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh "$rice"
+            done
           done
-      - name: Upload compact UI captures for review
+      - name: Upload responsive UI captures for visual review
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ricewine-compact-ui
-          path: docs/screenshots/*-compact.webp
+          name: ricewine-responsive-ui
+          path: |
+            docs/screenshots/*-minimum.webp
+            docs/screenshots/*-compact.webp
+            docs/screenshots/*-medium.webp
           retention-days: 7
       - name: Publish screenshots
         if: github.event_name == 'push'

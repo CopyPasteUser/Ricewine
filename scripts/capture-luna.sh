@@ -59,6 +59,10 @@ capture_page() {
     [[ -n "$window_id" ]] || { echo "RiceWine window did not appear" >&2; exit 1; }
     xdotool windowmove "$window_id" 0 0
     xdotool windowsize "$window_id" "$capture_width" "$capture_height"
+    # Move the pointer outside the capture area, preventing transient hover
+    # tooltips from obscuring rows and controls in the published screenshots.
+    read -r display_width display_height < <(xdotool getdisplaygeometry)
+    xdotool mousemove --sync "$((display_width - 1))" "$((display_height - 1))"
     sleep 2
 
     local prefix="$theme"

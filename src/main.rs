@@ -2713,35 +2713,39 @@ impl RiceWineApp {
             if self.store.is_some() && !tight_library {
                 ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
             }
-            ui.horizontal_wrapped(|ui| {
-                if !win10_mode {
-                    ui.label(if luna_mode { "Search for:" } else { "Search" });
-                }
-                let search_response = ui.add(
-                    egui::TextEdit::singleline(&mut self.search)
-                        .hint_text(if win10_mode {
-                            "Search this list"
-                        } else {
-                            "Filter installed programs…"
-                        })
-                        .desired_width(if win10_mode { 280.0 } else { 210.0 }),
-                );
-                if self.search_focus_requested {
-                    search_response.request_focus();
-                    self.search_focus_requested = false;
-                }
-                if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
-                    self.search.clear();
-                }
-                if !win10_mode && ui.small_button("↻ Refresh profiles").clicked() {
-                    self.refresh_profile_cache();
-                    self.sync_runner_draft();
-                }
-                if win10_mode && win10::link_action(ui, "Refresh", true).clicked() {
-                    self.refresh_profile_cache();
-                    self.sync_runner_draft();
-                }
-            });
+            // Finder has one functional search field in its toolbar.
+            // The other Rices keep their existing in-content search and refresh.
+            if self.theme != Theme::MacOS {
+                ui.horizontal_wrapped(|ui| {
+                    if !win10_mode {
+                        ui.label(if luna_mode { "Search for:" } else { "Search" });
+                    }
+                    let search_response = ui.add(
+                        egui::TextEdit::singleline(&mut self.search)
+                            .hint_text(if win10_mode {
+                                "Search this list"
+                            } else {
+                                "Filter installed programs…"
+                            })
+                            .desired_width(if win10_mode { 280.0 } else { 210.0 }),
+                    );
+                    if self.search_focus_requested {
+                        search_response.request_focus();
+                        self.search_focus_requested = false;
+                    }
+                    if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
+                        self.search.clear();
+                    }
+                    if !win10_mode && ui.small_button("↻ Refresh profiles").clicked() {
+                        self.refresh_profile_cache();
+                        self.sync_runner_draft();
+                    }
+                    if win10_mode && win10::link_action(ui, "Refresh", true).clicked() {
+                        self.refresh_profile_cache();
+                        self.sync_runner_draft();
+                    }
+                });
+            }
             let mut workspace_changed = false;
             ui.horizontal_wrapped(|ui| {
                 ui.label("Show:");
@@ -2851,8 +2855,10 @@ impl RiceWineApp {
         // Split only when the list and details genuinely fit side by side.
         // XP's applet shows one full-width programs list; program details follow it.
         // No generic library/inspector columns in the Luna presentation.
-        let stacked =
-            luna_mode || win10_mode || !ui_layout::split_panes(ui.available_width(), 355.0, 235.0);
+        let stacked = luna_mode
+            || win10_mode
+            || (self.theme == Theme::MacOS && !self.mac_inspector_open)
+            || !ui_layout::split_panes(ui.available_width(), 355.0, 235.0);
         let width = if stacked {
             ui.available_width().max(0.0)
         } else {
@@ -3023,7 +3029,7 @@ impl RiceWineApp {
                                                 row_width,
                                             )
                                         } else if self.theme == Theme::MacOS {
-                                            mac::program_row(ui, &display_name, selected, row_width)
+                                            mac::program_row(ui, &display_name, selected, row_width, index)
                                         } else if let Some(flavor) = self.theme.extra_flavor() {
                                             extra_rices::program_row(
                                                 ui,
@@ -3077,6 +3083,12 @@ impl RiceWineApp {
                         ui.label(RichText::new(&app.name).strong().size(13.0));
                     } else if win10_mode {
                         ui.label(RichText::new(&app.name).size(17.0).color(win10::TEXT));
+                    } else if self.theme == Theme::MacOS {
+                        let runner = self.profile_cache.get(&app.id)
+                            .and_then(|entry| entry.as_ref().ok())
+                            .map(|entry| entry.runner.label())
+                            .unwrap_or("Runner unavailable");
+                        mac::inspector_intro(ui, &app.name, runner);
                     } else {
                         ui.heading(&app.name);
                     }
@@ -3342,6 +3354,16 @@ impl RiceWineApp {
                 egui::Frame::new()
                     .fill(Color32::from_rgb(247, 247, 247))
                     .inner_margin(egui::Margin::same(16))
+                    .show(ui, details);
+            } else if self.theme == Theme::MacOS && !self.mac_inspector_open {
+                ui.collapsing("Application actions", details);
+            } else if self.theme == Theme::MacOS {
+                egui::Frame::new()
+                    .fill(mac::INSPECTOR)
+                    .stroke(egui::Stroke::new(
+                        1.0, Color32::from_rgb(213, 212, 211)
+                    ))
+                    .inner_margin(egui::Margin::same(13))
                     .show(ui, details);
             } else {
                 ui.vertical(details);
@@ -4015,6 +4037,10 @@ impl RiceWineApp {
     }
 
     fn settings(&mut self, ui: &mut egui::Ui) {
+        if self.theme == Theme::MacOS && !use_shared_shell(self.theme, self.simple_ui) {
+            mac::section_label(ui, "GENERAL");
+            ui.add_space(5.0);
+        }
         if use_shared_shell(self.theme, self.simple_ui) {
             rice_identity::title(
                 ui,

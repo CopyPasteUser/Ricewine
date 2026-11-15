@@ -1583,20 +1583,48 @@ impl RiceWineApp {
                 mac::brand(ui);
                 ui.add_space(21.0);
                 mac::section_label(ui, "FAVORITES");
-                if mac::navigation(ui, mac::Icon::Applications, "Applications", self.page == Page::Library).clicked() {
+                if mac::navigation(
+                    ui,
+                    mac::Icon::Applications,
+                    "Applications",
+                    self.page == Page::Library,
+                )
+                .clicked()
+                {
                     self.page = Page::Library;
                 }
                 ui.add_space(11.0);
                 mac::section_label(ui, "LOCATIONS");
-                if mac::navigation(ui, mac::Icon::Environments, "Wine Environments", self.page == Page::Prefixes).clicked() {
+                if mac::navigation(
+                    ui,
+                    mac::Icon::Environments,
+                    "Wine Environments",
+                    self.page == Page::Prefixes,
+                )
+                .clicked()
+                {
                     self.page = Page::Prefixes;
                 }
-                if mac::navigation(ui, mac::Icon::Runners, "Compatibility", self.page == Page::Runners).clicked() {
+                if mac::navigation(
+                    ui,
+                    mac::Icon::Runners,
+                    "Compatibility",
+                    self.page == Page::Runners,
+                )
+                .clicked()
+                {
                     self.page = Page::Runners;
                 }
                 ui.add_space(11.0);
                 mac::section_label(ui, "UTILITIES");
-                if mac::navigation(ui, mac::Icon::Preferences, "Preferences", self.page == Page::Settings).clicked() {
+                if mac::navigation(
+                    ui,
+                    mac::Icon::Preferences,
+                    "Preferences",
+                    self.page == Page::Settings,
+                )
+                .clicked()
+                {
                     self.page = Page::Settings;
                 }
                 ui.add_space(19.0);
@@ -2129,10 +2157,17 @@ impl RiceWineApp {
                     ui.separator();
                     if self.page == Page::Library {
                         if mac::toolbar_button(
-                            ui, mac::Icon::Preview,
-                            if self.mac_inspector_open { "Hide Preview" } else { "Show Preview" },
+                            ui,
+                            mac::Icon::Preview,
+                            if self.mac_inspector_open {
+                                "Hide Preview"
+                            } else {
+                                "Show Preview"
+                            },
                             true,
-                        ).clicked() {
+                        )
+                        .clicked()
+                        {
                             self.mac_inspector_open = !self.mac_inspector_open;
                         }
                         let search_width = if compact { 155.0 } else { 191.0 };
@@ -2146,11 +2181,15 @@ impl RiceWineApp {
                             self.search_focus_requested = false;
                         }
                     }
-                    if mac::toolbar_button(ui, mac::Icon::Install, "Add…", can_install).clicked() {
+                    if mac::toolbar_button(ui, mac::Icon::Install, "Add…", can_install).clicked()
+                    {
                         self.install = Some(InstallDraft::default());
                     }
                     ui.menu_button("Action ▾", |ui| {
-                        if ui.add_enabled(can_install, egui::Button::new("Import existing prefix…")).clicked() {
+                        if ui
+                            .add_enabled(can_install, egui::Button::new("Import existing prefix…"))
+                            .clicked()
+                        {
                             self.import = Some(ImportDraft::default());
                             ui.close();
                         }
@@ -2178,7 +2217,8 @@ impl RiceWineApp {
                     egui::vec2(199.0, available_height),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
-                        egui::ScrollArea::vertical().auto_shrink([false, false])
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
                             .show(ui, |ui| self.mac_sidebar(ui));
                     },
                 );
@@ -2193,20 +2233,27 @@ impl RiceWineApp {
                         .fill(mac::CANVAS)
                         .inner_margin(egui::Margin::symmetric(if compact { 9 } else { 14 }, 11))
                         .show(ui, |ui| {
-                            egui::ScrollArea::vertical().auto_shrink([false, false])
+                            egui::ScrollArea::vertical()
+                                .auto_shrink([false, false])
                                 .show(ui, |ui| {
                                     match self.page {
                                         Page::Prefixes => mac::page_heading(
-                                            ui, mac::Icon::Environments,
-                                            "Wine Environments", "Prefixes, backups and restore",
+                                            ui,
+                                            mac::Icon::Environments,
+                                            "Wine Environments",
+                                            "Prefixes, backups and restore",
                                         ),
                                         Page::Runners => mac::page_heading(
-                                            ui, mac::Icon::Runners,
-                                            "Compatibility", "Choose Wine and Proton versions",
+                                            ui,
+                                            mac::Icon::Runners,
+                                            "Compatibility",
+                                            "Choose Wine and Proton versions",
                                         ),
                                         Page::Settings => mac::page_heading(
-                                            ui, mac::Icon::Preferences,
-                                            "Preferences", "Appearance and integration",
+                                            ui,
+                                            mac::Icon::Preferences,
+                                            "Preferences",
+                                            "Appearance and integration",
                                         ),
                                         Page::Library => {}
                                     }
@@ -2219,7 +2266,9 @@ impl RiceWineApp {
         let status = match self.page {
             Page::Library => format!(
                 "{} applications",
-                self.store.as_ref().map_or(0, |store| store.applications().len())
+                self.store
+                    .as_ref()
+                    .map_or(0, |store| store.applications().len())
             ),
             Page::Prefixes => "Wine environments".to_owned(),
             Page::Runners => "Available compatibility tools".to_owned(),
@@ -2739,7 +2788,9 @@ impl RiceWineApp {
                         search_response.request_focus();
                         self.search_focus_requested = false;
                     }
-                    if !self.search.is_empty() && luna::action(ui, "Clear", true, luna_mode).clicked() {
+                    if !self.search.is_empty()
+                        && luna::action(ui, "Clear", true, luna_mode).clicked()
+                    {
                         self.search.clear();
                     }
                     if !win10_mode && ui.small_button("↻ Refresh profiles").clicked() {
@@ -3035,7 +3086,13 @@ impl RiceWineApp {
                                                 row_width,
                                             )
                                         } else if self.theme == Theme::MacOS {
-                                            mac::program_row(ui, &display_name, selected, row_width, index)
+                                            mac::program_row(
+                                                ui,
+                                                &display_name,
+                                                selected,
+                                                row_width,
+                                                index,
+                                            )
                                         } else if let Some(flavor) = self.theme.extra_flavor() {
                                             extra_rices::program_row(
                                                 ui,
@@ -3090,7 +3147,9 @@ impl RiceWineApp {
                     } else if win10_mode {
                         ui.label(RichText::new(&app.name).size(17.0).color(win10::TEXT));
                     } else if self.theme == Theme::MacOS {
-                        let runner = self.profile_cache.get(&app.id)
+                        let runner = self
+                            .profile_cache
+                            .get(&app.id)
                             .and_then(|entry| entry.as_ref().ok())
                             .map(|entry| entry.runner.label())
                             .unwrap_or("Runner unavailable");
@@ -3366,9 +3425,7 @@ impl RiceWineApp {
             } else if self.theme == Theme::MacOS {
                 egui::Frame::new()
                     .fill(mac::INSPECTOR)
-                    .stroke(egui::Stroke::new(
-                        1.0, Color32::from_rgb(213, 212, 211)
-                    ))
+                    .stroke(egui::Stroke::new(1.0, Color32::from_rgb(213, 212, 211)))
                     .inner_margin(egui::Margin::same(13))
                     .show(ui, details);
             } else {

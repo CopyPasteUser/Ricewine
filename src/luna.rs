@@ -648,10 +648,7 @@ pub fn program_row(ui: &mut egui::Ui, name: &str, selected: bool, width: f32) ->
     // The invisible text remains in egui's accessibility tree.
     let response = ui.add_sized(
         [width, 28.0],
-        egui::Button::selectable(
-            selected,
-            RichText::new(name).color(Color32::TRANSPARENT),
-        ),
+        egui::Button::selectable(selected, RichText::new(name).color(Color32::TRANSPARENT)),
     );
     let painter = ui.painter().with_clip_rect(response.rect.shrink(1.0));
     paint_icon(

@@ -227,10 +227,16 @@ pub fn toolbar_button(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool)
 }
 
 pub fn toolbar_title(ui: &mut egui::Ui, title: &str, description: &str) {
-    ui.vertical_centered(|ui| {
-        ui.label(RichText::new(title).size(13.5).strong().color(TEXT));
-        ui.label(RichText::new(description).size(10.5).color(SECONDARY));
-    });
+    // vertical_centered() alone claims the full parent row in egui and
+    // caused the rest of the Finder toolbar to wrap on 1120px windows.
+    ui.allocate_ui_with_layout(
+        egui::vec2(150.0, 36.0),
+        egui::Layout::top_down(egui::Align::Center),
+        |ui| {
+            ui.label(RichText::new(title).size(13.5).strong().color(TEXT));
+            ui.label(RichText::new(description).size(10.5).color(SECONDARY));
+        },
+    );
 }
 
 pub fn list_header(ui: &mut egui::Ui) {
@@ -346,16 +352,26 @@ pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
 /// Shown in the optional Finder preview column; program actions below are
 /// still the existing guarded Wine operations and confirmations.
 pub fn inspector_intro(ui: &mut egui::Ui, title: &str, runtime: &str) {
-    ui.vertical_centered(|ui| {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(64.0, 64.0), Sense::hover());
-        paint_icon(ui.painter(), rect.min, Icon::Wine, 62.0, ACCENT);
-        ui.add_space(8.0);
-        ui.label(RichText::new(title).size(15.0).strong().color(TEXT));
-        ui.label(RichText::new(runtime).size(11.0).color(SECONDARY));
-    });
-    ui.add_space(11.0);
+    // Explicitly bound the preview illustration. The original unbounded
+    // vertical_centered() consumed the remaining panel height and pushed
+    // Run, Diagnose and other actions below the viewport.
+    let width = ui.available_width().max(0.0);
+    ui.allocate_ui_with_layout(
+        egui::vec2(width, 116.0),
+        egui::Layout::top_down(egui::Align::Center),
+        |ui| {
+            let (rect, _) = ui.allocate_exact_size(
+                egui::vec2(54.0, 54.0), Sense::hover()
+            );
+            paint_icon(ui.painter(), rect.min, Icon::Wine, 52.0, ACCENT);
+            ui.add_space(5.0);
+            ui.label(RichText::new(title).size(14.0).strong().color(TEXT));
+            ui.label(RichText::new(runtime).size(11.0).color(SECONDARY));
+        },
+    );
+    ui.add_space(6.0);
     ui.separator();
-    ui.add_space(8.0);
+    ui.add_space(4.0);
 }
 
 pub fn page_heading(ui: &mut egui::Ui, icon: Icon, title: &str, subtitle: &str) {

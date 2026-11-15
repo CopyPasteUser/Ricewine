@@ -356,15 +356,15 @@ pub fn inspector_intro(ui: &mut egui::Ui, title: &str, runtime: &str) {
     // expand to all available vertical space inside the preview column,
     // which previously hid the program actions despite a nominal min-size.
     let width = ui.available_width().max(0.0);
-    let (rect, _) = ui.allocate_exact_size(
-        egui::vec2(width, 106.0), Sense::hover()
-    );
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 106.0), Sense::hover());
     let painter = ui.painter_at(rect);
     let icon_x = rect.center().x - 26.0;
     paint_icon(
         &painter,
         egui::pos2(icon_x, rect.top() + 2.0),
-        Icon::Wine, 52.0, ACCENT,
+        Icon::Wine,
+        52.0,
+        ACCENT,
     );
     painter.text(
         egui::pos2(rect.center().x, rect.top() + 64.0),

@@ -119,17 +119,17 @@ impl Theme {
                 corner_radius: 3,
             },
             Self::MacOS => RicePalette {
-                accent: rgb(0, 96, 198),
-                sidebar: rgb(233, 236, 242),
-                panel: rgb(250, 251, 253),
-                button: rgb(244, 246, 249),
-                hover: rgb(218, 231, 249),
+                accent: mac::ACCENT,
+                sidebar: mac::SIDEBAR,
+                panel: mac::CANVAS,
+                button: rgb(238, 238, 237),
+                hover: rgb(224, 232, 243),
                 input: rgb(255, 255, 255),
-                text: rgb(30, 36, 44),
-                muted: rgb(88, 97, 110),
-                border: rgb(211, 216, 224),
+                text: rgb(45, 45, 47),
+                muted: rgb(111, 110, 112),
+                border: rgb(194, 193, 191),
                 dark: false,
-                corner_radius: 9,
+                corner_radius: 5,
             },
             Self::Windows10 => RicePalette {
                 accent: rgb(0, 103, 184),
@@ -532,6 +532,7 @@ struct RiceWineApp {
     page: Page,
     about_open: bool,
     advanced_open: bool,
+    mac_inspector_open: bool,
     selected: Option<String>,
     search: String,
     search_focus_requested: bool,
@@ -684,6 +685,7 @@ impl RiceWineApp {
             page: Page::capture_override(),
             about_open: false,
             advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
+            mac_inspector_open: true,
             selected,
             search: String::new(),
             search_focus_requested: false,
@@ -1569,61 +1571,35 @@ impl RiceWineApp {
         });
     }
 
+    /// Finder-inspired navigation, with all Wine tools visible under Locations.
     fn mac_sidebar(&mut self, ui: &mut egui::Ui) {
         let height = ui.available_height();
         egui::Frame::new()
             .fill(mac::SIDEBAR)
-            .inner_margin(egui::Margin::symmetric(14, 17))
+            .inner_margin(egui::Margin::symmetric(9, 14))
             .show(ui, |ui| {
-                ui.set_min_width(174.0);
-                ui.set_min_height((height - 34.0).max(0.0));
+                ui.set_min_width(178.0);
+                ui.set_min_height((height - 28.0).max(0.0));
                 mac::brand(ui);
-                ui.add_space(25.0);
-                mac::section_label(ui, "YOUR APPS");
-                if mac::navigation(
-                    ui,
-                    rice_identity::Icon::Programs,
-                    "My programs",
-                    self.page == Page::Library,
-                )
-                .clicked()
-                {
+                ui.add_space(21.0);
+                mac::section_label(ui, "FAVORITES");
+                if mac::navigation(ui, mac::Icon::Applications, "Applications", self.page == Page::Library).clicked() {
                     self.page = Page::Library;
                 }
-                ui.add_space(12.0);
-                mac::section_label(ui, "PREFERENCES");
-                if mac::navigation(
-                    ui,
-                    rice_identity::Icon::Settings,
-                    "Settings",
-                    self.page == Page::Settings,
-                )
-                .clicked()
-                {
+                ui.add_space(11.0);
+                mac::section_label(ui, "LOCATIONS");
+                if mac::navigation(ui, mac::Icon::Environments, "Wine Environments", self.page == Page::Prefixes).clicked() {
+                    self.page = Page::Prefixes;
+                }
+                if mac::navigation(ui, mac::Icon::Runners, "Compatibility", self.page == Page::Runners).clicked() {
+                    self.page = Page::Runners;
+                }
+                ui.add_space(11.0);
+                mac::section_label(ui, "UTILITIES");
+                if mac::navigation(ui, mac::Icon::Preferences, "Preferences", self.page == Page::Settings).clicked() {
                     self.page = Page::Settings;
                 }
-                ui.add_space(14.0);
-                if ui
-                    .small_button(if self.advanced_open {
-                        "⌄ Hide advanced tools"
-                    } else {
-                        "› Show advanced tools"
-                    })
-                    .clicked()
-                {
-                    self.advanced_open = !self.advanced_open;
-                }
-                if self.advanced_open {
-                    for (page, icon) in [
-                        (Page::Prefixes, rice_identity::Icon::Tools),
-                        (Page::Runners, rice_identity::Icon::Runner),
-                    ] {
-                        if mac::navigation(ui, icon, page.label(), self.page == page).clicked() {
-                            self.page = page;
-                        }
-                    }
-                }
-                ui.add_space(16.0);
+                ui.add_space(19.0);
                 ui.separator();
                 if ui.link("About RiceWine").clicked() {
                     self.about_open = true;
@@ -2102,65 +2078,105 @@ impl RiceWineApp {
         );
     }
 
+    /// Finder-like toolbar + locations rail + optional preview inspector.
+    /// The compositor, not RiceWine, renders window controls and titlebar.
     fn mac_shell(&mut self, ui: &mut egui::Ui) {
+        let compact = ui.available_width() < 760.0;
+        let can_install = !self.busy && self.store.is_some();
         let description = match self.page {
-            Page::Library => "Your Windows applications",
-            Page::Prefixes => "Manage isolated environments",
-            Page::Runners => "Wine & Proton compatibility",
-            Page::Settings => "Appearance & integration",
+            Page::Library => "Local applications",
+            Page::Prefixes => "Managed Wine environments",
+            Page::Runners => "Compatibility tools",
+            Page::Settings => "RiceWine preferences",
         };
+        let toolbar_width = ui.available_width();
         egui::Frame::new()
             .fill(mac::TOOLBAR)
-            .stroke(egui::Stroke::new(1.0, self.theme.palette().border))
-            .inner_margin(egui::Margin::symmetric(19, 12))
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(190, 188, 186)))
+            .inner_margin(egui::Margin::symmetric(11, 10))
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    mac::toolbar_title(ui, self.page.label(), description);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .add_enabled(
-                                !self.busy && self.store.is_some(),
-                                egui::Button::new("＋ Install program"),
-                            )
-                            .clicked()
-                        {
-                            self.install = Some(InstallDraft::default());
-                        }
-                        ui.menu_button("More ▾", |ui| {
-                            if ui
-                                .add_enabled(
-                                    !self.busy && self.store.is_some(),
-                                    egui::Button::new("Import existing prefix…"),
-                                )
-                                .clicked()
-                            {
-                                self.import = Some(ImportDraft::default());
-                                ui.close();
-                            }
-                            if ui.button("Settings").clicked() {
-                                self.page = Page::Settings;
-                                ui.close();
+                ui.set_min_width((toolbar_width - 24.0).max(0.0));
+                ui.horizontal_wrapped(|ui| {
+                    if mac::toolbar_button(ui, mac::Icon::Back, "", self.page != Page::Library)
+                        .on_hover_text("Back to Applications")
+                        .clicked()
+                    {
+                        self.page = Page::Library;
+                    }
+                    if compact {
+                        ui.menu_button("Locations ▾", |ui| {
+                            for (page, label) in [
+                                (Page::Library, "Applications"),
+                                (Page::Prefixes, "Wine Environments"),
+                                (Page::Runners, "Compatibility"),
+                                (Page::Settings, "Preferences"),
+                            ] {
+                                if ui.selectable_label(self.page == page, label).clicked() {
+                                    self.page = page;
+                                    ui.close();
+                                }
                             }
                         });
+                    } else {
+                        mac::toolbar_title(ui, self.page.label(), description);
+                    }
+                    ui.separator();
+                    if self.page == Page::Library {
+                        if mac::toolbar_button(
+                            ui, mac::Icon::Preview,
+                            if self.mac_inspector_open { "Hide Preview" } else { "Show Preview" },
+                            true,
+                        ).clicked() {
+                            self.mac_inspector_open = !self.mac_inspector_open;
+                        }
+                        let search_width = if compact { 155.0 } else { 191.0 };
+                        let search_response = ui.add(
+                            egui::TextEdit::singleline(&mut self.search)
+                                .hint_text("Search")
+                                .desired_width(search_width),
+                        );
+                        if self.search_focus_requested {
+                            search_response.request_focus();
+                            self.search_focus_requested = false;
+                        }
+                    }
+                    if mac::toolbar_button(ui, mac::Icon::Install, "Add…", can_install).clicked() {
+                        self.install = Some(InstallDraft::default());
+                    }
+                    ui.menu_button("Action ▾", |ui| {
+                        if ui.add_enabled(can_install, egui::Button::new("Import existing prefix…")).clicked() {
+                            self.import = Some(ImportDraft::default());
+                            ui.close();
+                        }
+                        if ui.button("Refresh runner profiles").clicked() {
+                            self.refresh_profile_cache();
+                            self.sync_runner_draft();
+                            ui.close();
+                        }
+                        ui.separator();
+                        if ui.button("Preferences…").clicked() {
+                            self.page = Page::Settings;
+                            ui.close();
+                        }
+                        if ui.button("About RiceWine…").clicked() {
+                            self.about_open = true;
+                            ui.close();
+                        }
                     });
                 });
             });
-        let compact = ui.available_width() < 760.0;
-        if compact {
-            self.compact_navigation(ui);
-        }
-        let available_height = (ui.available_height() - 31.0).max(0.0);
+        let available_height = (ui.available_height() - 30.0).max(0.0);
         ui.horizontal_top(|ui| {
             if !compact {
                 ui.allocate_ui_with_layout(
-                    egui::vec2(204.0, available_height),
+                    egui::vec2(199.0, available_height),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
-                        egui::ScrollArea::vertical()
-                            .auto_shrink([false, false])
+                        egui::ScrollArea::vertical().auto_shrink([false, false])
                             .show(ui, |ui| self.mac_sidebar(ui));
                     },
                 );
+                ui.separator();
             }
             let content_width = ui.available_width().max(0.0);
             ui.allocate_ui_with_layout(
@@ -2169,11 +2185,27 @@ impl RiceWineApp {
                 |ui| {
                     egui::Frame::new()
                         .fill(mac::CANVAS)
-                        .inner_margin(egui::Margin::same(18))
+                        .inner_margin(egui::Margin::symmetric(if compact { 9 } else { 14 }, 11))
                         .show(ui, |ui| {
-                            egui::ScrollArea::vertical()
-                                .auto_shrink([false, false])
-                                .show(ui, |ui| self.page_body(ui));
+                            egui::ScrollArea::vertical().auto_shrink([false, false])
+                                .show(ui, |ui| {
+                                    match self.page {
+                                        Page::Prefixes => mac::page_heading(
+                                            ui, mac::Icon::Environments,
+                                            "Wine Environments", "Prefixes, backups and restore",
+                                        ),
+                                        Page::Runners => mac::page_heading(
+                                            ui, mac::Icon::Runners,
+                                            "Compatibility", "Choose Wine and Proton versions",
+                                        ),
+                                        Page::Settings => mac::page_heading(
+                                            ui, mac::Icon::Preferences,
+                                            "Preferences", "Appearance and integration",
+                                        ),
+                                        Page::Library => {}
+                                    }
+                                    self.page_body(ui);
+                                });
                         });
                 },
             );
@@ -2181,12 +2213,10 @@ impl RiceWineApp {
         let status = match self.page {
             Page::Library => format!(
                 "{} applications",
-                self.store
-                    .as_ref()
-                    .map_or(0, |store| store.applications().len())
+                self.store.as_ref().map_or(0, |store| store.applications().len())
             ),
-            Page::Prefixes => "Wine prefixes".to_owned(),
-            Page::Runners => "Installed runtime tools".to_owned(),
+            Page::Prefixes => "Wine environments".to_owned(),
+            Page::Runners => "Available compatibility tools".to_owned(),
             Page::Settings => "Local preferences".to_owned(),
         };
         mac::status_bar(ui, &status);
@@ -4851,10 +4881,10 @@ impl RiceWineApp {
     }
 }
 
-/// Luna always uses its dedicated applet, independently of the saved
-/// lightweight-toolbar preference. Other Rices keep their existing setting.
+/// XP Luna and macOS always use their own native-era shells, independently
+/// of the diagnostic unified-toolbar preference. Other Rices are unchanged.
 fn use_shared_shell(theme: Theme, simple_ui: bool) -> bool {
-    simple_ui && theme != Theme::Luna
+    simple_ui && !matches!(theme, Theme::Luna | Theme::MacOS)
 }
 
 impl eframe::App for RiceWineApp {
@@ -5225,7 +5255,7 @@ mod luna_layout_tests {
     fn luna_never_falls_back_to_a_generic_toolbar() {
         assert!(!use_shared_shell(Theme::Luna, true));
         assert!(!use_shared_shell(Theme::Luna, false));
-        assert!(use_shared_shell(Theme::MacOS, true));
+        assert!(!use_shared_shell(Theme::MacOS, true));
         assert!(!use_shared_shell(Theme::MacOS, false));
         assert!(use_shared_shell(Theme::Windows10, true));
     }

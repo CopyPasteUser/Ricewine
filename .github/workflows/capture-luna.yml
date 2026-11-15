@@ -19,6 +19,7 @@ on:
       - scripts/capture-luna.sh
       - src/main.rs
       - src/luna.rs
+      - src/luna_icons.rs
       - src/mac.rs
       - src/win10.rs
       - src/extra_rices.rs
@@ -59,6 +60,10 @@ jobs:
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh windows7
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh chromeos
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh frutiger
+      - name: Capture full-size XP Luna applet for visual review
+        if: github.event_name == 'pull_request'
+        run: |
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh luna
       - name: Smoke-test six pages in each of seven Rices at minimum and common laptop sizes
         if: github.event_name == 'pull_request'
         run: |
@@ -81,6 +86,13 @@ jobs:
             docs/screenshots/*-compact.webp
             docs/screenshots/*-medium.webp
           retention-days: 7
+      - name: Upload full-size XP Luna screenshots
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: xp-luna-native-applet
+          path: docs/screenshots/luna-{library,library-populated,prefixes,runners,settings,install,import}.webp
+          retention-days: 14
       - name: Publish screenshots
         if: github.event_name == 'push'
         run: |

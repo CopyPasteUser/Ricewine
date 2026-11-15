@@ -2838,9 +2838,7 @@ impl RiceWineApp {
                     .map(|app| app.name.as_str());
                 luna::programs_bar(ui, matching_indices.len(), selected_name);
             }
-            let list_height = if luna_mode {
-                254.0
-            } else if win10_mode {
+            let list_height = if luna_mode || win10_mode {
                 254.0
             } else if stacked {
                 260.0

@@ -2647,6 +2647,9 @@ impl RiceWineApp {
     fn library(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
+        // Copy layout flags before the details closure mutably borrows app state.
+        let mac_mode = self.theme == Theme::MacOS;
+        let mac_inspector_open = self.mac_inspector_open;
         let tight_library = ui.available_width() < 720.0;
         let count = self
             .store
@@ -3420,9 +3423,9 @@ impl RiceWineApp {
                     .fill(Color32::from_rgb(247, 247, 247))
                     .inner_margin(egui::Margin::same(16))
                     .show(ui, details);
-            } else if self.theme == Theme::MacOS && !self.mac_inspector_open {
+            } else if mac_mode && !mac_inspector_open {
                 ui.collapsing("Application actions", details);
-            } else if self.theme == Theme::MacOS {
+            } else if mac_mode {
                 egui::Frame::new()
                     .fill(mac::INSPECTOR)
                     .stroke(egui::Stroke::new(1.0, Color32::from_rgb(213, 212, 211)))

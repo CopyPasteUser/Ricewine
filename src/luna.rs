@@ -97,22 +97,23 @@ pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
             ui.horizontal_wrapped(|ui| {
                 let back = ui.add_enabled(
                     section != "Library",
-                    egui::Button::new("      Back")
-                        .min_size(egui::vec2(85.0, 26.0)),
+                    egui::Button::new("      Back").min_size(egui::vec2(85.0, 26.0)),
                 );
                 paint_icon(
-                    ui.painter(), back.rect.left_center() + egui::vec2(8.0, -9.0),
-                    XpIcon::Back, 18.0
+                    ui.painter(),
+                    back.rect.left_center() + egui::vec2(8.0, -9.0),
+                    XpIcon::Back,
+                    18.0,
                 );
                 if back.clicked() {
                     action = MenuAction::Library;
                 }
-                let home = ui.add(
-                    egui::Button::new("      Home").min_size(egui::vec2(88.0, 26.0)),
-                );
+                let home = ui.add(egui::Button::new("      Home").min_size(egui::vec2(88.0, 26.0)));
                 paint_icon(
-                    ui.painter(), home.rect.left_center() + egui::vec2(8.0, -9.0),
-                    XpIcon::Home, 18.0
+                    ui.painter(),
+                    home.rect.left_center() + egui::vec2(8.0, -9.0),
+                    XpIcon::Home,
+                    18.0,
                 );
                 if home.clicked() {
                     action = MenuAction::Library;
@@ -133,16 +134,18 @@ pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
                 });
             });
             ui.horizontal_wrapped(|ui| {
-                ui.label(RichText::new("Address").size(11.5)
-                    .color(Color32::from_rgb(66, 64, 58)));
+                ui.label(
+                    RichText::new("Address")
+                        .size(11.5)
+                        .color(Color32::from_rgb(66, 64, 58)),
+                );
                 egui::Frame::new()
                     .fill(Color32::WHITE)
                     .stroke(Stroke::new(1.0, Color32::from_rgb(136, 150, 169)))
                     .inner_margin(egui::Margin::symmetric(7, 3))
                     .show(ui, |ui| {
-                        let (rect, _) = ui.allocate_exact_size(
-                            egui::vec2(16.0, 16.0), Sense::hover()
-                        );
+                        let (rect, _) =
+                            ui.allocate_exact_size(egui::vec2(16.0, 16.0), Sense::hover());
                         paint_icon(ui.painter(), rect.min, XpIcon::Programs, 16.0);
                         ui.label(
                             RichText::new(format!("Control Panel  ›  RiceWine  ›  {section}"))
@@ -281,10 +284,18 @@ pub fn brand(ui: &mut egui::Ui) {
         Color32::from_rgb(21, 69, 163),
     );
     painter.line_segment(
-        [rect.left_top() + egui::vec2(1.0, 1.0), rect.right_top() + egui::vec2(-1.0, 1.0)],
+        [
+            rect.left_top() + egui::vec2(1.0, 1.0),
+            rect.right_top() + egui::vec2(-1.0, 1.0),
+        ],
         Stroke::new(1.0, Color32::from_rgb(170, 211, 255)),
     );
-    paint_icon(&painter, rect.left_top() + egui::vec2(10.0, 12.0), XpIcon::Wine, 34.0);
+    paint_icon(
+        &painter,
+        rect.left_top() + egui::vec2(10.0, 12.0),
+        XpIcon::Wine,
+        34.0,
+    );
     painter.text(
         rect.left_top() + egui::vec2(52.0, 10.0),
         Align2::LEFT_TOP,
@@ -303,26 +314,31 @@ pub fn brand(ui: &mut egui::Ui) {
 
 /// An XP Control Panel-style rail. Navigation buttons keep focus and keyboard
 /// activation; the artwork itself does not intercept pointer input.
-pub fn applet_nav(
-    ui: &mut egui::Ui,
-    label: &str,
-    icon: XpIcon,
-    selected: bool,
-) -> egui::Response {
+pub fn applet_nav(ui: &mut egui::Ui, label: &str, icon: XpIcon, selected: bool) -> egui::Response {
     let response = ui.add_sized(
         [ui.available_width().max(0.0), 46.0],
         egui::Button::new(
             RichText::new(format!("       {label}"))
                 .size(12.0)
-                .color(if selected { Color32::from_rgb(16, 56, 137) }
-                       else { Color32::from_rgb(48, 56, 68) })
+                .color(if selected {
+                    Color32::from_rgb(16, 56, 137)
+                } else {
+                    Color32::from_rgb(48, 56, 68)
+                })
                 .strong(),
         )
-        .fill(if selected { Color32::WHITE } else { Color32::from_rgb(238, 236, 223) })
+        .fill(if selected {
+            Color32::WHITE
+        } else {
+            Color32::from_rgb(238, 236, 223)
+        })
         .stroke(Stroke::new(
             1.0,
-            if selected { Color32::from_rgb(115, 153, 218) }
-            else { Color32::from_rgb(207, 204, 187) },
+            if selected {
+                Color32::from_rgb(115, 153, 218)
+            } else {
+                Color32::from_rgb(207, 204, 187)
+            },
         ))
         .corner_radius(egui::CornerRadius::same(2)),
     );
@@ -335,8 +351,10 @@ pub fn applet_nav(
     if selected {
         let r = response.rect;
         ui.painter().line_segment(
-            [r.right_top() + egui::vec2(-2.0, 2.0),
-             r.right_bottom() + egui::vec2(-2.0, -2.0)],
+            [
+                r.right_top() + egui::vec2(-2.0, 2.0),
+                r.right_bottom() + egui::vec2(-2.0, -2.0),
+            ],
             Stroke::new(3.0, Color32::from_rgb(44, 102, 203)),
         );
     }
@@ -344,12 +362,15 @@ pub fn applet_nav(
 }
 
 pub fn rail_heading(ui: &mut egui::Ui, title: &str) {
-    ui.label(RichText::new(title)
-        .size(10.0)
-        .strong()
-        .color(Color32::from_rgb(85, 83, 73)));
+    ui.label(
+        RichText::new(title)
+            .size(10.0)
+            .strong()
+            .color(Color32::from_rgb(85, 83, 73)),
+    );
     let (rect, _) = ui.allocate_exact_size(
-        egui::vec2(ui.available_width().max(0.0), 2.0), Sense::hover()
+        egui::vec2(ui.available_width().max(0.0), 2.0),
+        Sense::hover(),
     );
     ui.painter().line_segment(
         [rect.left_top(), rect.right_top()],
@@ -369,25 +390,36 @@ pub fn programs_bar(ui: &mut egui::Ui, count: usize, selected_name: Option<&str>
         } else {
             Color32::from_rgb(246, 244, 232)
         })
-        .stroke(Stroke::new(1.0, if selected {
-            Color32::from_rgb(25, 76, 160)
-        } else {
-            Color32::from_rgb(174, 180, 185)
-        }))
+        .stroke(Stroke::new(
+            1.0,
+            if selected {
+                Color32::from_rgb(25, 76, 160)
+            } else {
+                Color32::from_rgb(174, 180, 185)
+            },
+        ))
         .inner_margin(egui::Margin::symmetric(12, 8))
         .show(ui, |ui| {
             ui.set_min_width((full_width - 26.0).max(0.0));
             if let Some(name) = selected_name {
-                ui.label(RichText::new(name).size(14.0).strong().color(Color32::WHITE));
+                ui.label(
+                    RichText::new(name)
+                        .size(14.0)
+                        .strong()
+                        .color(Color32::WHITE),
+                );
                 ui.label(
                     RichText::new("Selected program · Review actions and compatibility below")
                         .size(11.0)
                         .color(Color32::from_rgb(233, 241, 255)),
                 );
             } else {
-                ui.label(RichText::new(format!("Currently installed programs: {count}"))
-                    .size(12.0).strong()
-                    .color(Color32::from_rgb(49, 58, 75)));
+                ui.label(
+                    RichText::new(format!("Currently installed programs: {count}"))
+                        .size(12.0)
+                        .strong()
+                        .color(Color32::from_rgb(49, 58, 75)),
+                );
                 ui.small("Select a program to see available actions.");
             }
         });
@@ -564,7 +596,8 @@ pub fn empty_library(ui: &mut egui::Ui) {
                 ui.vertical(|ui| {
                     ui.label(
                         RichText::new("No Windows programs are installed.")
-                            .size(13.0).strong()
+                            .size(13.0)
+                            .strong()
                             .color(Color32::from_rgb(42, 65, 109)),
                     );
                     ui.add_space(4.0);

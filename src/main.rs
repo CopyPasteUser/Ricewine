@@ -2831,14 +2831,18 @@ impl RiceWineApp {
         let mut next_selected: Option<String> = None;
         let display = |ui: &mut egui::Ui| {
             if luna_mode {
-                let selected_app = self.selected.as_ref()
+                let selected_app = self
+                    .selected
+                    .as_ref()
                     .and_then(|id| self.store.as_ref()?.get(id))
                     .cloned();
                 let can_run = selected_app.as_ref().is_some_and(|app| {
                     !self.busy
                         && !self.compatibility_busy.contains(&app.id)
                         && app.executable.is_some()
-                        && self.profile_cache.get(&app.id)
+                        && self
+                            .profile_cache
+                            .get(&app.id)
                             .and_then(|profile| profile.as_ref().ok())
                             .is_some_and(|profile| {
                                 self.wine.is_some() || !matches!(profile.runner, Runner::SystemWine)

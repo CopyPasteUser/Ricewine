@@ -531,7 +531,6 @@ struct RiceWineApp {
     compatibility_confirmation: Option<(String, String)>,
     page: Page,
     about_open: bool,
-    advanced_open: bool,
     mac_inspector_open: bool,
     selected: Option<String>,
     search: String,
@@ -684,7 +683,6 @@ impl RiceWineApp {
             compatibility_confirmation: None,
             page: Page::capture_override(),
             about_open: false,
-            advanced_open: matches!(Page::capture_override(), Page::Prefixes | Page::Runners),
             mac_inspector_open: true,
             selected,
             search: String::new(),
@@ -2170,6 +2168,16 @@ impl RiceWineApp {
                         {
                             self.mac_inspector_open = !self.mac_inspector_open;
                         }
+                        let (search_icon, _) = ui.allocate_exact_size(
+                            egui::vec2(17.0, 17.0), egui::Sense::hover(),
+                        );
+                        mac::paint_icon(
+                            ui.painter(),
+                            search_icon.min,
+                            mac::Icon::Search,
+                            16.0,
+                            Color32::from_rgb(113, 113, 113),
+                        );
                         let search_width = if compact { 155.0 } else { 191.0 };
                         let search_response = ui.add(
                             egui::TextEdit::singleline(&mut self.search)
@@ -2186,13 +2194,22 @@ impl RiceWineApp {
                         self.install = Some(InstallDraft::default());
                     }
                     ui.menu_button("Action ▾", |ui| {
-                        if ui
-                            .add_enabled(can_install, egui::Button::new("Import existing prefix…"))
-                            .clicked()
-                        {
-                            self.import = Some(ImportDraft::default());
-                            ui.close();
-                        }
+                        ui.horizontal(|ui| {
+                            let (icon_rect, _) = ui.allocate_exact_size(
+                                egui::vec2(19.0, 19.0), egui::Sense::hover(),
+                            );
+                            mac::paint_icon(
+                                ui.painter(), icon_rect.min, mac::Icon::Import,
+                                18.0, Color32::from_rgb(88, 96, 108),
+                            );
+                            if ui.add_enabled(
+                                can_install,
+                                egui::Button::new("Import existing prefix…"),
+                            ).clicked() {
+                                self.import = Some(ImportDraft::default());
+                                ui.close();
+                            }
+                        });
                         if ui.button("Refresh runner profiles").clicked() {
                             self.refresh_profile_cache();
                             self.sync_runner_draft();

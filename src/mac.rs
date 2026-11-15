@@ -360,9 +360,7 @@ pub fn inspector_intro(ui: &mut egui::Ui, title: &str, runtime: &str) {
         egui::vec2(width, 116.0),
         egui::Layout::top_down(egui::Align::Center),
         |ui| {
-            let (rect, _) = ui.allocate_exact_size(
-                egui::vec2(54.0, 54.0), Sense::hover()
-            );
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(54.0, 54.0), Sense::hover());
             paint_icon(ui.painter(), rect.min, Icon::Wine, 52.0, ACCENT);
             ui.add_space(5.0);
             ui.label(RichText::new(title).size(14.0).strong().color(TEXT));

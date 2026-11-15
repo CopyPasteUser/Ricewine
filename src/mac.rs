@@ -352,22 +352,34 @@ pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
 /// Shown in the optional Finder preview column; program actions below are
 /// still the existing guarded Wine operations and confirmations.
 pub fn inspector_intro(ui: &mut egui::Ui, title: &str, runtime: &str) {
-    // Explicitly bound the preview illustration. The original unbounded
-    // vertical_centered() consumed the remaining panel height and pushed
-    // Run, Diagnose and other actions below the viewport.
+    // Reserve exactly 106 points. A child Ui with top_down layout can
+    // expand to all available vertical space inside the preview column,
+    // which previously hid the program actions despite a nominal min-size.
     let width = ui.available_width().max(0.0);
-    ui.allocate_ui_with_layout(
-        egui::vec2(width, 116.0),
-        egui::Layout::top_down(egui::Align::Center),
-        |ui| {
-            let (rect, _) = ui.allocate_exact_size(egui::vec2(54.0, 54.0), Sense::hover());
-            paint_icon(ui.painter(), rect.min, Icon::Wine, 52.0, ACCENT);
-            ui.add_space(5.0);
-            ui.label(RichText::new(title).size(14.0).strong().color(TEXT));
-            ui.label(RichText::new(runtime).size(11.0).color(SECONDARY));
-        },
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 106.0), Sense::hover());
+    let painter = ui.painter_at(rect);
+    let icon_x = rect.center().x - 26.0;
+    paint_icon(
+        &painter,
+        egui::pos2(icon_x, rect.top() + 2.0),
+        Icon::Wine,
+        52.0,
+        ACCENT,
     );
-    ui.add_space(6.0);
+    painter.text(
+        egui::pos2(rect.center().x, rect.top() + 64.0),
+        Align2::CENTER_TOP,
+        title,
+        FontId::proportional(14.0),
+        TEXT,
+    );
+    painter.text(
+        egui::pos2(rect.center().x, rect.top() + 86.0),
+        Align2::CENTER_TOP,
+        runtime,
+        FontId::proportional(11.0),
+        SECONDARY,
+    );
     ui.separator();
     ui.add_space(4.0);
 }

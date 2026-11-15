@@ -4830,20 +4830,6 @@ fn use_shared_shell(theme: Theme, simple_ui: bool) -> bool {
     simple_ui && theme != Theme::Luna
 }
 
-#[cfg(test)]
-mod luna_layout_tests {
-    use super::*;
-
-    #[test]
-    fn luna_never_falls_back_to_a_generic_toolbar() {
-        assert!(!use_shared_shell(Theme::Luna, true));
-        assert!(!use_shared_shell(Theme::Luna, false));
-        assert!(use_shared_shell(Theme::MacOS, true));
-        assert!(!use_shared_shell(Theme::MacOS, false));
-        assert!(use_shared_shell(Theme::Windows10, true));
-    }
-}
-
 impl eframe::App for RiceWineApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.poll(ui.ctx());
@@ -5201,5 +5187,19 @@ mod rice_tests {
             );
             assert_eq!(Theme::from(Appearance::from(theme)), theme);
         }
+    }
+}
+
+#[cfg(test)]
+mod luna_layout_tests {
+    use super::*;
+
+    #[test]
+    fn luna_never_falls_back_to_a_generic_toolbar() {
+        assert!(!use_shared_shell(Theme::Luna, true));
+        assert!(!use_shared_shell(Theme::Luna, false));
+        assert!(use_shared_shell(Theme::MacOS, true));
+        assert!(!use_shared_shell(Theme::MacOS, false));
+        assert!(use_shared_shell(Theme::Windows10, true));
     }
 }

@@ -279,7 +279,7 @@ pub fn program_row(
 ) -> Response {
     let fill = if selected {
         ACCENT
-    } else if index % 2 == 0 {
+    } else if index.is_multiple_of(2) {
         Color32::WHITE
     } else {
         Color32::from_rgb(245, 247, 249)

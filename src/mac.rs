@@ -35,10 +35,17 @@ pub fn paint_icon(p: &Painter, top_left: Pos2, icon: Icon, size: f32, tint: Colo
     let k = size / 20.0;
     let point = |x: f32, y: f32| top_left + egui::vec2(x * k, y * k);
     let block = |x: f32, y: f32, w: f32, h: f32, radius: f32, color: Color32| {
-        p.rect_filled(Rect::from_min_size(point(x, y), egui::vec2(w * k, h * k)), radius * k, color);
+        p.rect_filled(
+            Rect::from_min_size(point(x, y), egui::vec2(w * k, h * k)),
+            radius * k,
+            color,
+        );
     };
     let line = |a: (f32, f32), b: (f32, f32), color: Color32, width: f32| {
-        p.line_segment([point(a.0, a.1), point(b.0, b.1)], Stroke::new(width * k, color));
+        p.line_segment(
+            [point(a.0, a.1), point(b.0, b.1)],
+            Stroke::new(width * k, color),
+        );
     };
     match icon {
         Icon::Wine => {
@@ -79,8 +86,12 @@ pub fn paint_icon(p: &Painter, top_left: Pos2, icon: Icon, size: f32, tint: Colo
             for i in 0..8 {
                 let angle = i as f32 * std::f32::consts::TAU / 8.0;
                 let (dx, dy) = (angle.cos(), angle.sin());
-                line((10.0 + dx * 5.0, 10.0 + dy * 5.0),
-                     (10.0 + dx * 8.0, 10.0 + dy * 8.0), tint, 2.6);
+                line(
+                    (10.0 + dx * 5.0, 10.0 + dy * 5.0),
+                    (10.0 + dx * 8.0, 10.0 + dy * 8.0),
+                    tint,
+                    2.6,
+                );
             }
             p.circle_filled(point(10.0, 10.0), 5.4 * k, tint);
             p.circle_filled(point(10.0, 10.0), 2.4 * k, Color32::from_rgb(244, 244, 243));
@@ -121,14 +132,23 @@ pub fn brand(ui: &mut egui::Ui) {
         paint_icon(ui.painter(), rect.min, Icon::Wine, 36.0, ACCENT);
         ui.vertical(|ui| {
             ui.label(RichText::new("RiceWine").size(15.0).strong().color(TEXT));
-            ui.label(RichText::new("Windows on Linux").size(10.5).color(SECONDARY));
+            ui.label(
+                RichText::new("Windows on Linux")
+                    .size(10.5)
+                    .color(SECONDARY),
+            );
         });
     });
 }
 
 pub fn section_label(ui: &mut egui::Ui, label: &str) {
     ui.add_space(9.0);
-    ui.label(RichText::new(label).size(10.5).strong().color(Color32::from_rgb(119, 117, 115)));
+    ui.label(
+        RichText::new(label)
+            .size(10.5)
+            .strong()
+            .color(Color32::from_rgb(119, 117, 115)),
+    );
     ui.add_space(3.0);
 }
 
@@ -136,12 +156,20 @@ pub fn navigation(ui: &mut egui::Ui, icon: Icon, label: &str, selected: bool) ->
     let response = ui.add_sized(
         [ui.available_width().max(0.0), 30.0],
         egui::Button::selectable(selected, RichText::new(label).color(Color32::TRANSPARENT))
-            .fill(if selected { ACCENT } else { Color32::TRANSPARENT })
+            .fill(if selected {
+                ACCENT
+            } else {
+                Color32::TRANSPARENT
+            })
             .stroke(Stroke::NONE)
             .corner_radius(egui::CornerRadius::same(5)),
     );
     let painter = ui.painter().with_clip_rect(response.rect);
-    let color = if selected { Color32::WHITE } else { Color32::from_rgb(119, 117, 118) };
+    let color = if selected {
+        Color32::WHITE
+    } else {
+        Color32::from_rgb(119, 117, 118)
+    };
     paint_icon(
         &painter,
         response.rect.left_center() + egui::vec2(9.0, -9.0),
@@ -161,7 +189,11 @@ pub fn navigation(ui: &mut egui::Ui, icon: Icon, label: &str, selected: bool) ->
 
 /// A compact Finder utility button with its own pictogram and readable label.
 pub fn toolbar_button(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool) -> Response {
-    let width = if label.is_empty() { 32.0 } else { 30.0 + label.chars().count() as f32 * 6.5 };
+    let width = if label.is_empty() {
+        32.0
+    } else {
+        30.0 + label.chars().count() as f32 * 6.5
+    };
     let response = ui.add_enabled(
         enabled,
         egui::Button::new(RichText::new(label).color(Color32::TRANSPARENT))
@@ -170,7 +202,11 @@ pub fn toolbar_button(ui: &mut egui::Ui, icon: Icon, label: &str, enabled: bool)
             .stroke(Stroke::new(1.0, Color32::from_rgb(174, 172, 169)))
             .corner_radius(egui::CornerRadius::same(4)),
     );
-    let color = if enabled { Color32::from_rgb(86, 87, 88) } else { Color32::from_rgb(173, 174, 176) };
+    let color = if enabled {
+        Color32::from_rgb(86, 87, 88)
+    } else {
+        Color32::from_rgb(173, 174, 176)
+    };
     paint_icon(
         ui.painter(),
         response.rect.left_center() + egui::vec2(6.0, -8.0),
@@ -201,19 +237,33 @@ pub fn list_header(ui: &mut egui::Ui) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 28.0), Sense::hover());
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 0.0, Color32::from_rgb(237, 237, 236));
-    painter.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0, Color32::WHITE));
-    painter.line_segment([rect.left_bottom(), rect.right_bottom()], Stroke::new(1.0, HAIRLINE));
+    painter.line_segment(
+        [rect.left_top(), rect.right_top()],
+        Stroke::new(1.0, Color32::WHITE),
+    );
+    painter.line_segment(
+        [rect.left_bottom(), rect.right_bottom()],
+        Stroke::new(1.0, HAIRLINE),
+    );
     painter.text(
         rect.left_center() + egui::vec2(37.0, 0.0),
-        Align2::LEFT_CENTER, "Name", FontId::proportional(11.5), TEXT,
+        Align2::LEFT_CENTER,
+        "Name",
+        FontId::proportional(11.5),
+        TEXT,
     );
     painter.text(
         rect.right_center() - egui::vec2(103.0, 0.0),
-        Align2::LEFT_CENTER, "Status", FontId::proportional(11.5), TEXT,
+        Align2::LEFT_CENTER,
+        "Status",
+        FontId::proportional(11.5),
+        TEXT,
     );
     painter.line_segment(
-        [rect.right_top() - egui::vec2(121.0, -2.0),
-         rect.right_bottom() - egui::vec2(121.0, 2.0)],
+        [
+            rect.right_top() - egui::vec2(121.0, -2.0),
+            rect.right_bottom() - egui::vec2(121.0, 2.0),
+        ],
         Stroke::new(1.0, Color32::from_rgb(209, 209, 208)),
     );
 }
@@ -221,22 +271,25 @@ pub fn list_header(ui: &mut egui::Ui) {
 /// Full-width Finder rows are left-aligned and subtly striped, never
 /// center-justified pill buttons. The selected button still owns keyboard focus.
 pub fn program_row(
-    ui: &mut egui::Ui, name: &str, selected: bool, width: f32, index: usize,
+    ui: &mut egui::Ui,
+    name: &str,
+    selected: bool,
+    width: f32,
+    index: usize,
 ) -> Response {
-    let fill = if selected { ACCENT } else if index % 2 == 0 {
+    let fill = if selected {
+        ACCENT
+    } else if index % 2 == 0 {
         Color32::WHITE
     } else {
         Color32::from_rgb(245, 247, 249)
     };
     let response = ui.add_sized(
         [width.max(0.0), 31.0],
-        egui::Button::selectable(
-            selected,
-            RichText::new(name).color(Color32::TRANSPARENT),
-        )
-        .fill(fill)
-        .stroke(Stroke::NONE)
-        .corner_radius(egui::CornerRadius::ZERO),
+        egui::Button::selectable(selected, RichText::new(name).color(Color32::TRANSPARENT))
+            .fill(fill)
+            .stroke(Stroke::NONE)
+            .corner_radius(egui::CornerRadius::ZERO),
     );
     let painter = ui.painter().with_clip_rect(response.rect.shrink(1.0));
     paint_icon(
@@ -248,7 +301,9 @@ pub fn program_row(
     );
     painter.text(
         response.rect.left_center() + egui::vec2(36.0, 0.0),
-        Align2::LEFT_CENTER, name, FontId::proportional(12.5),
+        Align2::LEFT_CENTER,
+        name,
+        FontId::proportional(12.5),
         if selected { Color32::WHITE } else { TEXT },
     );
     response.on_hover_text(name)
@@ -267,11 +322,17 @@ pub fn empty_library(ui: &mut egui::Ui, can_install: bool) -> bool {
                 let (rect, _) = ui.allocate_exact_size(egui::vec2(56.0, 56.0), Sense::hover());
                 paint_icon(ui.painter(), rect.min, Icon::Wine, 56.0, ACCENT);
                 ui.add_space(9.0);
-                ui.label(RichText::new("No Applications").size(17.0).strong().color(TEXT));
+                ui.label(
+                    RichText::new("No Applications")
+                        .size(17.0)
+                        .strong()
+                        .color(TEXT),
+                );
                 ui.add_space(5.0);
                 ui.label(
                     RichText::new("This library is empty. Add a Windows application to begin.")
-                        .size(12.0).color(SECONDARY),
+                        .size(12.0)
+                        .color(SECONDARY),
                 );
                 ui.add_space(11.0);
                 if toolbar_button(ui, Icon::Install, "Add Application…", can_install).clicked() {
@@ -300,7 +361,13 @@ pub fn inspector_intro(ui: &mut egui::Ui, title: &str, runtime: &str) {
 pub fn page_heading(ui: &mut egui::Ui, icon: Icon, title: &str, subtitle: &str) {
     ui.horizontal(|ui| {
         let (rect, _) = ui.allocate_exact_size(egui::vec2(42.0, 42.0), Sense::hover());
-        paint_icon(ui.painter(), rect.min, icon, 38.0, Color32::from_rgb(112, 120, 131));
+        paint_icon(
+            ui.painter(),
+            rect.min,
+            icon,
+            38.0,
+            Color32::from_rgb(112, 120, 131),
+        );
         ui.vertical(|ui| {
             ui.label(RichText::new(title).size(17.0).strong().color(TEXT));
             ui.label(RichText::new(subtitle).size(11.5).color(SECONDARY));
@@ -322,7 +389,11 @@ pub fn status_bar(ui: &mut egui::Ui, status: &str) {
             ui.horizontal(|ui| {
                 ui.label(RichText::new(status).size(11.0).color(SECONDARY));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(RichText::new("RiceWine • local library").size(10.5).color(SECONDARY));
+                    ui.label(
+                        RichText::new("RiceWine • local library")
+                            .size(10.5)
+                            .color(SECONDARY),
+                    );
                 });
             });
         });

@@ -83,53 +83,47 @@ pub fn application_menu(ui: &mut egui::Ui) -> MenuAction {
     action
 }
 
-/// Functional Explorer controls inside the app; the OS/RiceBowl owns the
-/// window frame and titlebar. Back/Home always return to Library.
+/// Explorer-era menu and location strip, below the real Linux window titlebar.
+/// On compact windows the breadcrumb wraps instead of forcing horizontal scroll.
 pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
     let mut action = MenuAction::None;
     let full_width = ui.available_width();
     egui::Frame::new()
-        .fill(Color32::from_rgb(236, 235, 229))
-        .stroke(Stroke::new(1.0, Color32::from_rgb(171, 179, 189)))
+        .fill(Color32::from_rgb(238, 237, 230))
+        .stroke(Stroke::new(1.0, Color32::from_rgb(178, 177, 160)))
         .inner_margin(egui::Margin::symmetric(8, 5))
         .show(ui, |ui| {
             ui.set_min_width((full_width - 18.0).max(0.0));
-            ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(
-                        section != "Library",
-                        egui::Button::new("◀ Back").min_size(egui::vec2(65.0, 24.0)),
-                    )
-                    .clicked()
-                {
+            ui.horizontal_wrapped(|ui| {
+                let back = ui.add_enabled(
+                    section != "Library",
+                    egui::Button::new("      Back")
+                        .min_size(egui::vec2(85.0, 26.0)),
+                );
+                paint_icon(
+                    ui.painter(), back.rect.left_center() + egui::vec2(8.0, -9.0),
+                    XpIcon::Back, 18.0
+                );
+                if back.clicked() {
                     action = MenuAction::Library;
                 }
-                if ui.button("Home").clicked() {
+                let home = ui.add(
+                    egui::Button::new("      Home").min_size(egui::vec2(88.0, 26.0)),
+                );
+                paint_icon(
+                    ui.painter(), home.rect.left_center() + egui::vec2(8.0, -9.0),
+                    XpIcon::Home, 18.0
+                );
+                if home.clicked() {
                     action = MenuAction::Library;
                 }
                 ui.separator();
-                let (icon, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), Sense::hover());
-                paint_icon(ui.painter(), icon.min, XpIcon::Programs, 16.0);
-                ui.label(RichText::new("Address").size(12.0));
-                let address_width = (ui.available_width() - 48.0).max(130.0);
-                egui::Frame::new()
-                    .fill(Color32::WHITE)
-                    .stroke(Stroke::new(1.0, Color32::from_rgb(133, 150, 178)))
-                    .inner_margin(egui::Margin::symmetric(7, 4))
-                    .show(ui, |ui| {
-                        ui.set_min_width((address_width - 14.0).max(110.0));
-                        ui.label(
-                            RichText::new(format!("RiceWine  ›  {section}"))
-                                .size(12.0)
-                                .color(Color32::from_rgb(36, 60, 116)),
-                        );
-                    });
-                ui.menu_button("▾", |ui| {
+                ui.menu_button("Go to ▾", |ui| {
                     for (label, destination) in [
-                        ("Library", MenuAction::Library),
-                        ("Prefixes", MenuAction::Prefixes),
-                        ("Runners", MenuAction::Runners),
-                        ("Settings", MenuAction::Settings),
+                        ("Installed programs", MenuAction::Library),
+                        ("Wine prefixes", MenuAction::Prefixes),
+                        ("Wine & Proton", MenuAction::Runners),
+                        ("Preferences", MenuAction::Settings),
                     ] {
                         if ui.button(label).clicked() {
                             action = destination;
@@ -137,6 +131,25 @@ pub fn application_toolbar(ui: &mut egui::Ui, section: &str) -> MenuAction {
                         }
                     }
                 });
+            });
+            ui.horizontal_wrapped(|ui| {
+                ui.label(RichText::new("Address").size(11.5)
+                    .color(Color32::from_rgb(66, 64, 58)));
+                egui::Frame::new()
+                    .fill(Color32::WHITE)
+                    .stroke(Stroke::new(1.0, Color32::from_rgb(136, 150, 169)))
+                    .inner_margin(egui::Margin::symmetric(7, 3))
+                    .show(ui, |ui| {
+                        let (rect, _) = ui.allocate_exact_size(
+                            egui::vec2(16.0, 16.0), Sense::hover()
+                        );
+                        paint_icon(ui.painter(), rect.min, XpIcon::Programs, 16.0);
+                        ui.label(
+                            RichText::new(format!("Control Panel  ›  RiceWine  ›  {section}"))
+                                .size(11.5)
+                                .color(Color32::from_rgb(43, 75, 138)),
+                        );
+                    });
             });
         });
     action
@@ -254,10 +267,131 @@ pub fn task_panel(ui: &mut egui::Ui, add_contents: impl FnOnce(&mut egui::Ui)) {
         });
 }
 
+/// XP-branded applet plaque, inside the application rather than a fake OS titlebar.
 pub fn brand(ui: &mut egui::Ui) {
-    ui.add_space(3.0);
-    ui.label(RichText::new("Tasks").size(12.0).strong().color(NAV_BLUE));
-    ui.add_space(7.0);
+    let (rect, _) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width().max(0.0), 58.0),
+        Sense::hover(),
+    );
+    let painter = ui.painter_at(rect);
+    gradient(
+        &painter,
+        rect,
+        Color32::from_rgb(73, 132, 218),
+        Color32::from_rgb(21, 69, 163),
+    );
+    painter.line_segment(
+        [rect.left_top() + egui::vec2(1.0, 1.0), rect.right_top() + egui::vec2(-1.0, 1.0)],
+        Stroke::new(1.0, Color32::from_rgb(170, 211, 255)),
+    );
+    paint_icon(&painter, rect.left_top() + egui::vec2(10.0, 12.0), XpIcon::Wine, 34.0);
+    painter.text(
+        rect.left_top() + egui::vec2(52.0, 10.0),
+        Align2::LEFT_TOP,
+        "RiceWine",
+        FontId::proportional(20.0),
+        Color32::WHITE,
+    );
+    painter.text(
+        rect.left_top() + egui::vec2(53.0, 38.0),
+        Align2::LEFT_TOP,
+        "WINDOWS COMPATIBILITY",
+        FontId::proportional(9.0),
+        Color32::from_rgb(222, 238, 255),
+    );
+}
+
+/// An XP Control Panel-style rail. Navigation buttons keep focus and keyboard
+/// activation; the artwork itself does not intercept pointer input.
+pub fn applet_nav(
+    ui: &mut egui::Ui,
+    label: &str,
+    icon: XpIcon,
+    selected: bool,
+) -> egui::Response {
+    let response = ui.add_sized(
+        [ui.available_width().max(0.0), 46.0],
+        egui::Button::new(
+            RichText::new(format!("       {label}"))
+                .size(12.0)
+                .color(if selected { Color32::from_rgb(16, 56, 137) }
+                       else { Color32::from_rgb(48, 56, 68) })
+                .strong(),
+        )
+        .fill(if selected { Color32::WHITE } else { Color32::from_rgb(238, 236, 223) })
+        .stroke(Stroke::new(
+            1.0,
+            if selected { Color32::from_rgb(115, 153, 218) }
+            else { Color32::from_rgb(207, 204, 187) },
+        ))
+        .corner_radius(egui::CornerRadius::same(2)),
+    );
+    paint_icon(
+        ui.painter(),
+        response.rect.left_center() + egui::vec2(8.0, -14.0),
+        icon,
+        28.0,
+    );
+    if selected {
+        let r = response.rect;
+        ui.painter().line_segment(
+            [r.right_top() + egui::vec2(-2.0, 2.0),
+             r.right_bottom() + egui::vec2(-2.0, -2.0)],
+            Stroke::new(3.0, Color32::from_rgb(44, 102, 203)),
+        );
+    }
+    response
+}
+
+pub fn rail_heading(ui: &mut egui::Ui, title: &str) {
+    ui.label(RichText::new(title)
+        .size(10.0)
+        .strong()
+        .color(Color32::from_rgb(85, 83, 73)));
+    let (rect, _) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width().max(0.0), 2.0), Sense::hover()
+    );
+    ui.painter().line_segment(
+        [rect.left_top(), rect.right_top()],
+        Stroke::new(1.0, Color32::from_rgb(184, 181, 163)),
+    );
+    ui.add_space(5.0);
+}
+
+/// A period-correct blue selected-program strip above the applet's program list.
+/// The actual program actions remain in the safe, reviewable details section.
+pub fn programs_bar(ui: &mut egui::Ui, count: usize, selected_name: Option<&str>) {
+    let selected = selected_name.is_some();
+    let full_width = ui.available_width();
+    egui::Frame::new()
+        .fill(if selected {
+            Color32::from_rgb(51, 104, 194)
+        } else {
+            Color32::from_rgb(246, 244, 232)
+        })
+        .stroke(Stroke::new(1.0, if selected {
+            Color32::from_rgb(25, 76, 160)
+        } else {
+            Color32::from_rgb(174, 180, 185)
+        }))
+        .inner_margin(egui::Margin::symmetric(12, 8))
+        .show(ui, |ui| {
+            ui.set_min_width((full_width - 26.0).max(0.0));
+            if let Some(name) = selected_name {
+                ui.label(RichText::new(name).size(14.0).strong().color(Color32::WHITE));
+                ui.label(
+                    RichText::new("Selected program · Review actions and compatibility below")
+                        .size(11.0)
+                        .color(Color32::from_rgb(233, 241, 255)),
+                );
+            } else {
+                ui.label(RichText::new(format!("Currently installed programs: {count}"))
+                    .size(12.0).strong()
+                    .color(Color32::from_rgb(49, 58, 75)));
+                ui.small("Select a program to see available actions.");
+            }
+        });
+    ui.add_space(6.0);
 }
 
 /// XP Explorer task links are compact blue text, not modern filled navigation
@@ -385,7 +519,7 @@ pub fn content_heading(ui: &mut egui::Ui, title: &str, subtitle: &str) {
         egui::StrokeKind::Inside,
     );
     let icon = match title {
-        "Program Library" => XpIcon::Programs,
+        "Program Library" | "Add or Remove Programs" => XpIcon::Programs,
         "Wine Prefixes" => XpIcon::Prefix,
         "Compatibility Runners" => XpIcon::Runner,
         _ => XpIcon::Settings,
@@ -420,24 +554,24 @@ pub fn empty_library(ui: &mut egui::Ui) {
         .stroke(Stroke::new(1.0, Color32::from_rgb(146, 164, 183)))
         .show(ui, |ui| {
             ui.set_min_width(ui.available_width());
-            ui.set_min_height(ui.available_height().max(310.0));
+            ui.set_min_height(ui.available_height().max(190.0));
             program_list_header(ui);
-            ui.add_space(18.0);
+            ui.add_space(24.0);
             ui.horizontal(|ui| {
-                ui.add_space(14.0);
+                ui.add_space(16.0);
+                let (rect, _) = ui.allocate_exact_size(egui::vec2(48.0, 48.0), Sense::hover());
+                paint_icon(ui.painter(), rect.min, XpIcon::Install, 44.0);
                 ui.vertical(|ui| {
                     ui.label(
-                        RichText::new("There are no Windows programs to display.")
-                            .size(12.0)
-                            .color(Color32::from_rgb(52, 64, 84)),
+                        RichText::new("No Windows programs are installed.")
+                            .size(13.0).strong()
+                            .color(Color32::from_rgb(42, 65, 109)),
                     );
-                    ui.add_space(3.0);
+                    ui.add_space(4.0);
                     ui.label(
-                        RichText::new(
-                            "To get started, choose Install a program in the Tasks pane.",
-                        )
-                        .size(11.0)
-                        .color(Color32::from_rgb(85, 97, 117)),
+                        RichText::new("Use Install a program in the task pane to get started.")
+                            .size(11.5)
+                            .color(Color32::from_rgb(85, 97, 117)),
                     );
                 });
             });

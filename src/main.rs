@@ -2168,9 +2168,8 @@ impl RiceWineApp {
                         {
                             self.mac_inspector_open = !self.mac_inspector_open;
                         }
-                        let (search_icon, _) = ui.allocate_exact_size(
-                            egui::vec2(17.0, 17.0), egui::Sense::hover(),
-                        );
+                        let (search_icon, _) =
+                            ui.allocate_exact_size(egui::vec2(17.0, 17.0), egui::Sense::hover());
                         mac::paint_icon(
                             ui.painter(),
                             search_icon.min,
@@ -2195,17 +2194,22 @@ impl RiceWineApp {
                     }
                     ui.menu_button("Action ▾", |ui| {
                         ui.horizontal(|ui| {
-                            let (icon_rect, _) = ui.allocate_exact_size(
-                                egui::vec2(19.0, 19.0), egui::Sense::hover(),
-                            );
+                            let (icon_rect, _) = ui
+                                .allocate_exact_size(egui::vec2(19.0, 19.0), egui::Sense::hover());
                             mac::paint_icon(
-                                ui.painter(), icon_rect.min, mac::Icon::Import,
-                                18.0, Color32::from_rgb(88, 96, 108),
+                                ui.painter(),
+                                icon_rect.min,
+                                mac::Icon::Import,
+                                18.0,
+                                Color32::from_rgb(88, 96, 108),
                             );
-                            if ui.add_enabled(
-                                can_install,
-                                egui::Button::new("Import existing prefix…"),
-                            ).clicked() {
+                            if ui
+                                .add_enabled(
+                                    can_install,
+                                    egui::Button::new("Import existing prefix…"),
+                                )
+                                .clicked()
+                            {
                                 self.import = Some(ImportDraft::default());
                                 ui.close();
                             }

@@ -2118,7 +2118,13 @@ impl RiceWineApp {
                             }
                         });
                     } else {
-                        mac::toolbar_title(ui, self.page.label(), description);
+                        let title = match self.page {
+                            Page::Library => "Applications",
+                            Page::Prefixes => "Environments",
+                            Page::Runners => "Compatibility",
+                            Page::Settings => "Preferences",
+                        };
+                        mac::toolbar_title(ui, title, description);
                     }
                     ui.separator();
                     if self.page == Page::Library {
@@ -5274,11 +5280,11 @@ mod rice_tests {
 }
 
 #[cfg(test)]
-mod luna_layout_tests {
+mod native_shell_route_tests {
     use super::*;
 
     #[test]
-    fn luna_never_falls_back_to_a_generic_toolbar() {
+    fn xp_and_macos_have_dedicated_shells_with_unified_fallback_enabled() {
         assert!(!use_shared_shell(Theme::Luna, true));
         assert!(!use_shared_shell(Theme::Luna, false));
         assert!(!use_shared_shell(Theme::MacOS, true));

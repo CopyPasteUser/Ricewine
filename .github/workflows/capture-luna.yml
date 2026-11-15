@@ -64,6 +64,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh luna
+      - name: Capture full-size Mojave/Finder Mac screens for visual review
+        if: github.event_name == 'pull_request'
+        run: |
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh macos
       - name: Smoke-test six pages in each of seven Rices at minimum and common laptop sizes
         if: github.event_name == 'pull_request'
         run: |
@@ -99,6 +103,21 @@ jobs:
             docs/screenshots/luna-settings.webp
             docs/screenshots/luna-install.webp
             docs/screenshots/luna-import.webp
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload seven full-size macOS screenshots
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-mojave-finder
+          path: |
+            docs/screenshots/macos-library.webp
+            docs/screenshots/macos-library-populated.webp
+            docs/screenshots/macos-prefixes.webp
+            docs/screenshots/macos-runners.webp
+            docs/screenshots/macos-settings.webp
+            docs/screenshots/macos-install.webp
+            docs/screenshots/macos-import.webp
           retention-days: 14
           if-no-files-found: error
       - name: Publish screenshots

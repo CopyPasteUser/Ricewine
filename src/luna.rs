@@ -379,9 +379,25 @@ pub fn rail_heading(ui: &mut egui::Ui, title: &str) {
     ui.add_space(5.0);
 }
 
-/// A period-correct blue selected-program strip above the applet's program list.
-/// The actual program actions remain in the safe, reviewable details section.
-pub fn programs_bar(ui: &mut egui::Ui, count: usize, selected_name: Option<&str>) {
+/// Actions are chosen here, but executed by RiceWineApp: this view never
+/// directly launches programs or mutates Wine data.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProgramBarAction {
+    None,
+    Run,
+    Configure,
+    Remove,
+}
+
+/// The XP Add/Remove Programs selection area is actionable on the first screen
+/// without requiring the user to scroll below the app list.
+pub fn programs_bar(
+    ui: &mut egui::Ui,
+    count: usize,
+    selected_name: Option<&str>,
+    can_run: bool,
+) -> ProgramBarAction {
+    let mut action = ProgramBarAction::None;
     let selected = selected_name.is_some();
     let full_width = ui.available_width();
     egui::Frame::new()
@@ -408,10 +424,22 @@ pub fn programs_bar(ui: &mut egui::Ui, count: usize, selected_name: Option<&str>
                         .strong()
                         .color(Color32::WHITE),
                 );
+                ui.add_space(3.0);
+                ui.horizontal_wrapped(|ui| {
+                    if xp_button(ui, "Run program", can_run).clicked() {
+                        action = ProgramBarAction::Run;
+                    }
+                    if xp_button(ui, "Diagnose…", true).clicked() {
+                        action = ProgramBarAction::Configure;
+                    }
+                    if xp_button(ui, "Remove entry…", true).clicked() {
+                        action = ProgramBarAction::Remove;
+                    }
+                });
                 ui.label(
-                    RichText::new("Selected program · Review actions and compatibility below")
-                        .size(11.0)
-                        .color(Color32::from_rgb(233, 241, 255)),
+                    RichText::new("Removing a library entry never deletes its Wine environment.")
+                        .size(10.5)
+                        .color(Color32::from_rgb(235, 243, 255)),
                 );
             } else {
                 ui.label(
@@ -424,6 +452,7 @@ pub fn programs_bar(ui: &mut egui::Ui, count: usize, selected_name: Option<&str>
             }
         });
     ui.add_space(6.0);
+    action
 }
 
 /// XP Explorer task links are compact blue text, not modern filled navigation
@@ -614,17 +643,36 @@ pub fn empty_library(ui: &mut egui::Ui) {
 /// A compact icon-bearing Explorer list row. The selectable widget retains
 /// keyboard navigation and selection semantics.
 pub fn program_row(ui: &mut egui::Ui, name: &str, selected: bool, width: f32) -> egui::Response {
+    // Keep a real selectable egui button with an accessible program name, but
+    // draw its label left-aligned like the Windows XP Explorer details list.
+    // The invisible text remains in egui's accessibility tree.
     let response = ui.add_sized(
         [width, 28.0],
-        egui::Button::selectable(selected, format!("       {name}")),
+        egui::Button::selectable(selected, RichText::new(name).color(Color32::TRANSPARENT)),
     );
+    let painter = ui.painter().with_clip_rect(response.rect.shrink(1.0));
     paint_icon(
-        ui.painter(),
+        &painter,
         response.rect.left_center() + egui::vec2(7.0, -8.0),
         XpIcon::Programs,
         16.0,
     );
-    response
+    painter.text(
+        response.rect.left_center() + egui::vec2(31.0, 0.0),
+        Align2::LEFT_CENTER,
+        name,
+        FontId::proportional(12.0),
+        if selected {
+            Color32::WHITE
+        } else {
+            Color32::from_rgb(42, 54, 78)
+        },
+    );
+    if name.chars().count() > 48 {
+        response.on_hover_text(name)
+    } else {
+        response
+    }
 }
 
 pub fn program_list_header(ui: &mut egui::Ui) {

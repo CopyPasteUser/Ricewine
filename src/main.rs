@@ -2831,14 +2831,43 @@ impl RiceWineApp {
         let mut next_selected: Option<String> = None;
         let display = |ui: &mut egui::Ui| {
             if luna_mode {
-                let selected_name = self
+                let selected_app = self
                     .selected
                     .as_ref()
                     .and_then(|id| self.store.as_ref()?.get(id))
-                    .map(|app| app.name.as_str());
-                luna::programs_bar(ui, matching_indices.len(), selected_name);
+                    .cloned();
+                let can_run = selected_app.as_ref().is_some_and(|app| {
+                    !self.busy
+                        && !self.compatibility_busy.contains(&app.id)
+                        && app.executable.is_some()
+                        && self
+                            .profile_cache
+                            .get(&app.id)
+                            .and_then(|profile| profile.as_ref().ok())
+                            .is_some_and(|profile| {
+                                self.wine.is_some() || !matches!(profile.runner, Runner::SystemWine)
+                            })
+                });
+                let action = luna::programs_bar(
+                    ui,
+                    matching_indices.len(),
+                    selected_app.as_ref().map(|app| app.name.as_str()),
+                    can_run,
+                );
+                if let Some(app) = selected_app {
+                    match action {
+                        luna::ProgramBarAction::Run if can_run => self.play(app),
+                        luna::ProgramBarAction::Configure => self.open_troubleshooter(&app),
+                        luna::ProgramBarAction::Remove => {
+                            self.remove_confirmation = Some(app.id);
+                        }
+                        _ => {}
+                    }
+                }
             }
-            let list_height = if luna_mode || win10_mode {
+            let list_height = if luna_mode {
+                190.0
+            } else if win10_mode {
                 254.0
             } else if stacked {
                 260.0

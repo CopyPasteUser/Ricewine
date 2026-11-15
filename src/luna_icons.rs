@@ -5,6 +5,9 @@ use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum XpIcon {
+    Wine,
+    Back,
+    Home,
     Programs,
     Install,
     Import,
@@ -59,6 +62,39 @@ pub fn paint_icon(p: &Painter, at: Pos2, icon: XpIcon, size: f32) {
     let shadow = rgb(80, 91, 102);
     let white = Color32::WHITE;
     match icon {
+        XpIcon::Wine => {
+            // Original XP-era RiceWine glass: 16px geometry and glossy cyan highlights.
+            block(p, at, k, [2.0, 1.0, 12.0, 1.0], rgb(29, 60, 119));
+            block(p, at, k, [3.0, 2.0, 10.0, 6.0], rgb(58, 144, 226));
+            block(p, at, k, [4.0, 3.0, 8.0, 2.0], rgb(175, 225, 255));
+            block(p, at, k, [5.0, 5.0, 6.0, 3.0], rgb(38, 95, 187));
+            block(p, at, k, [6.0, 8.0, 4.0, 2.0], rgb(36, 89, 172));
+            block(p, at, k, [7.0, 10.0, 2.0, 4.0], rgb(230, 239, 255));
+            block(p, at, k, [4.0, 14.0, 8.0, 2.0], rgb(24, 64, 135));
+            block(p, at, k, [5.0, 14.0, 6.0, 1.0], rgb(183, 218, 250));
+        }
+        XpIcon::Back => {
+            disc(p, at, k, 8.0, 8.0, 7.2, rgb(31, 104, 23));
+            disc(p, at, k, 8.0, 7.5, 6.0, rgb(103, 187, 61));
+            segment(p, at, k, [5.0, 7.8], [12.3, 7.8], white, 2.3);
+            segment(p, at, k, [5.8, 7.8], [8.4, 5.2], white, 2.3);
+            segment(p, at, k, [5.8, 7.8], [8.4, 10.4], white, 2.3);
+        }
+        XpIcon::Home => {
+            p.add(egui::Shape::convex_polygon(
+                vec![
+                    at + egui::vec2(1.0 * k, 7.0 * k),
+                    at + egui::vec2(8.0 * k, 1.0 * k),
+                    at + egui::vec2(15.0 * k, 7.0 * k),
+                ],
+                rgb(42, 128, 42),
+                Stroke::new(k.max(0.8), rgb(30, 85, 33)),
+            ));
+            block(p, at, k, [3.0, 7.0, 10.0, 8.0], rgb(244, 218, 141));
+            block(p, at, k, [4.0, 8.0, 8.0, 6.0], rgb(255, 239, 182));
+            block(p, at, k, [7.0, 10.0, 3.0, 5.0], rgb(63, 131, 205));
+            block(p, at, k, [7.0, 10.0, 1.0, 5.0], rgb(148, 207, 251));
+        }
         XpIcon::Programs => {
             block(p, at, k, [1.0, 1.0, 14.0, 11.0], navy);
             block(p, at, k, [2.0, 2.0, 12.0, 9.0], rgb(139, 200, 240));

@@ -1695,14 +1695,14 @@ impl RiceWineApp {
                 if luna::applet_nav(ui, "Installed programs", luna::XpIcon::Programs, self.page == Page::Library).clicked() {
                     self.page = Page::Library;
                 }
-                if luna::applet_nav(ui, "Install a program", luna::XpIcon::Install, false)
-                    .clicked() && !self.busy && self.store.is_some()
-                {
+                if ui.add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
+                    luna::applet_nav(ui, "Install a program", luna::XpIcon::Install, false)
+                }).inner.clicked() {
                     self.install = Some(InstallDraft::default());
                 }
-                if luna::applet_nav(ui, "Import existing", luna::XpIcon::Import, false)
-                    .clicked() && !self.busy && self.store.is_some()
-                {
+                if ui.add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
+                    luna::applet_nav(ui, "Import existing", luna::XpIcon::Import, false)
+                }).inner.clicked() {
                     self.import = Some(ImportDraft::default());
                 }
                 ui.add_space(10.0);
@@ -1717,10 +1717,14 @@ impl RiceWineApp {
                     self.page = Page::Settings;
                 }
                 ui.add_space(13.0);
-                luna::rail_heading(ui, "SEE ALSO");
-                if luna::task_link(ui, "About RiceWine", luna::XpIcon::Info, false).clicked() {
-                    self.about_open = true;
-                }
+                luna::task_panel(ui, |ui| {
+                    luna::task_header(ui, "See also");
+                    ui.add_space(3.0);
+                    if luna::task_link(ui, "About RiceWine", luna::XpIcon::Info, false).clicked() {
+                        self.about_open = true;
+                    }
+                    ui.add_space(7.0);
+                });
                 ui.add_space(8.0);
                 ui.label(
                     RichText::new("Your Windows applications,\non your Linux desktop.")

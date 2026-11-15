@@ -1692,28 +1692,64 @@ impl RiceWineApp {
                 luna::brand(ui);
                 ui.add_space(12.0);
                 luna::rail_heading(ui, "PROGRAM TASKS");
-                if luna::applet_nav(ui, "Installed programs", luna::XpIcon::Programs, self.page == Page::Library).clicked() {
+                if luna::applet_nav(
+                    ui,
+                    "Installed programs",
+                    luna::XpIcon::Programs,
+                    self.page == Page::Library,
+                )
+                .clicked()
+                {
                     self.page = Page::Library;
                 }
-                if ui.add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
-                    luna::applet_nav(ui, "Install a program", luna::XpIcon::Install, false)
-                }).inner.clicked() {
+                if ui
+                    .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
+                        luna::applet_nav(ui, "Install a program", luna::XpIcon::Install, false)
+                    })
+                    .inner
+                    .clicked()
+                {
                     self.install = Some(InstallDraft::default());
                 }
-                if ui.add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
-                    luna::applet_nav(ui, "Import existing", luna::XpIcon::Import, false)
-                }).inner.clicked() {
+                if ui
+                    .add_enabled_ui(!self.busy && self.store.is_some(), |ui| {
+                        luna::applet_nav(ui, "Import existing", luna::XpIcon::Import, false)
+                    })
+                    .inner
+                    .clicked()
+                {
                     self.import = Some(ImportDraft::default());
                 }
                 ui.add_space(10.0);
                 luna::rail_heading(ui, "COMPATIBILITY");
-                if luna::applet_nav(ui, "Wine prefixes", luna::XpIcon::Prefix, self.page == Page::Prefixes).clicked() {
+                if luna::applet_nav(
+                    ui,
+                    "Wine prefixes",
+                    luna::XpIcon::Prefix,
+                    self.page == Page::Prefixes,
+                )
+                .clicked()
+                {
                     self.page = Page::Prefixes;
                 }
-                if luna::applet_nav(ui, "Wine & Proton", luna::XpIcon::Runner, self.page == Page::Runners).clicked() {
+                if luna::applet_nav(
+                    ui,
+                    "Wine & Proton",
+                    luna::XpIcon::Runner,
+                    self.page == Page::Runners,
+                )
+                .clicked()
+                {
                     self.page = Page::Runners;
                 }
-                if luna::applet_nav(ui, "Preferences", luna::XpIcon::Settings, self.page == Page::Settings).clicked() {
+                if luna::applet_nav(
+                    ui,
+                    "Preferences",
+                    luna::XpIcon::Settings,
+                    self.page == Page::Settings,
+                )
+                .clicked()
+                {
                     self.page = Page::Settings;
                 }
                 ui.add_space(13.0);
@@ -1755,10 +1791,22 @@ impl RiceWineApp {
                             }
                         }
                     });
-                    if ui.add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Install…")).clicked() {
+                    if ui
+                        .add_enabled(
+                            !self.busy && self.store.is_some(),
+                            egui::Button::new("Install…"),
+                        )
+                        .clicked()
+                    {
                         self.install = Some(InstallDraft::default());
                     }
-                    if ui.add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Import…")).clicked() {
+                    if ui
+                        .add_enabled(
+                            !self.busy && self.store.is_some(),
+                            egui::Button::new("Import…"),
+                        )
+                        .clicked()
+                    {
                         self.import = Some(ImportDraft::default());
                     }
                 });
@@ -2473,9 +2521,10 @@ impl RiceWineApp {
                         .corner_radius(egui::CornerRadius::same(2))
                         .show(ui, |ui| {
                             let (title, subtitle) = match self.page {
-                                Page::Library => {
-                                    ("Add or Remove Programs", "Choose a Windows program to run or configure")
-                                }
+                                Page::Library => (
+                                    "Add or Remove Programs",
+                                    "Choose a Windows program to run or configure",
+                                ),
                                 Page::Prefixes => {
                                     ("Wine Prefixes", "Back up and restore environments")
                                 }
@@ -2772,7 +2821,8 @@ impl RiceWineApp {
         // Split only when the list and details genuinely fit side by side.
         // XP's applet shows one full-width programs list; program details follow it.
         // No generic library/inspector columns in the Luna presentation.
-        let stacked = luna_mode || win10_mode || !ui_layout::split_panes(ui.available_width(), 355.0, 235.0);
+        let stacked =
+            luna_mode || win10_mode || !ui_layout::split_panes(ui.available_width(), 355.0, 235.0);
         let width = if stacked {
             ui.available_width().max(0.0)
         } else {
@@ -2781,7 +2831,9 @@ impl RiceWineApp {
         let mut next_selected: Option<String> = None;
         let display = |ui: &mut egui::Ui| {
             if luna_mode {
-                let selected_name = self.selected.as_ref()
+                let selected_name = self
+                    .selected
+                    .as_ref()
                     .and_then(|id| self.store.as_ref()?.get(id))
                     .map(|app| app.name.as_str());
                 luna::programs_bar(ui, matching_indices.len(), selected_name);

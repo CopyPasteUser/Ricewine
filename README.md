@@ -37,7 +37,7 @@ RiceWine now opens with **seven independent, OS-native application layouts** bui
 - **Tools:** Wine prefixes/backups, Wine/Proton runners, importing existing prefixes and refreshing runner profiles.
 - **Settings:** choose your Rice and optionally follow the desktop's recognized theme. Recovery and diagnostic controls remain under *Advanced settings & diagnostics*.
 
-Each Rice uses the navigation, controls and dialogs of its reference OS generation: **Windows 98 property sheets**, **XP task panes**, **Windows 7 Control Panel**, **Windows 10 Settings**, **macOS Finder/System Preferences**, **ChromeOS Files/Settings** and **a Vista-era Frutiger Aero utility**. Actions and data remain shared, including safety confirmations. A deliberately generic legacy interface remains available for debugging with `RICEWINE_UNIFIED_UI=1 ricewine` and does not change any Wine configuration. OS-native interfaces are the normal default.
+Each Rice uses the navigation, controls and dialogs of its reference OS generation: **Windows 98 property sheets**, **XP task panes**, **Windows 7 Control Panel**, **Windows 10 Settings**, **macOS Mojave Finder/System Preferences**, **ChromeOS Files/Settings** and **a Vista-era Frutiger Aero utility**. Actions and data remain shared, including safety confirmations. The deliberately generic legacy interface remains available for debugging non-XP/non-macOS Rices with `RICEWINE_UNIFIED_UI=1 ricewine`; XP and macOS intentionally always use their own native-era shell. OS-native interfaces are the normal default.
 
 The installer registers the bundled **RiceWine goblet icon** in the current user's XDG icon theme; the app-menu launcher and Open With entry use the matching `ricewine` icon name. Shortcuts for individual Windows programs retain their generic Wine icon until application-specific icons are available.
 
@@ -56,7 +56,7 @@ The installer registers the bundled **RiceWine goblet icon** in the current user
 | Rice | Style |
 | --- | --- |
 | **XP Luna Blue** | Classic Explorer menus, task panes and XP-inspired icons |
-| **macOS** | Finder-inspired navigation and compact application lists |
+| **macOS** | Mojave Finder utility: brushed toolbar, original icons, Locations sidebar, striped list and optional preview inspector |
 | **Windows 10** | Settings / Apps & features layout |
 | **Windows 98** | 1998-style property tabs, dense sunken program list, beveled controls and classic dialogs |
 | **Windows 7 Aero** | Programs and Features, breadcrumbs, pale Explorer command bar and navigation links |

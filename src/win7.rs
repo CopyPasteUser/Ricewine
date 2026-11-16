@@ -2,9 +2,7 @@
 //! Original vector glyphs and native egui painting; the Linux compositor
 //! owns window decorations. Wine actions remain in RiceWineApp.
 
-use eframe::egui::{
-    self, Align2, Color32, FontId, Rect, Response, RichText, Sense, Stroke, Vec2,
-};
+use eframe::egui::{self, Align2, Color32, FontId, Rect, Response, RichText, Sense, Stroke, Vec2};
 
 pub const TEXT: Color32 = Color32::from_rgb(27, 43, 62);
 pub const MUTED: Color32 = Color32::from_rgb(86, 106, 125);
@@ -17,10 +15,17 @@ pub const SELECT: Color32 = Color32::from_rgb(206, 232, 247);
 pub const SELECT_BORDER: Color32 = Color32::from_rgb(107, 174, 207);
 
 pub fn shell_frame() -> egui::Frame {
-    egui::Frame::new().fill(BACKDROP).inner_margin(egui::Margin::same(0))
+    egui::Frame::new()
+        .fill(BACKDROP)
+        .inner_margin(egui::Margin::same(0))
 }
 
-pub fn explorer_bar(ui: &mut egui::Ui, page: &str, search: &mut String, show_search: bool) -> Option<Response> {
+pub fn explorer_bar(
+    ui: &mut egui::Ui,
+    page: &str,
+    search: &mut String,
+    show_search: bool,
+) -> Option<Response> {
     let mut result = None;
     egui::Frame::new()
         .fill(Color32::from_rgb(223, 238, 247))
@@ -39,11 +44,13 @@ pub fn explorer_bar(ui: &mut egui::Ui, page: &str, search: &mut String, show_sea
                 }
                 if show_search && ui.available_width() >= 160.0 {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        result = Some(ui.add(
-                            egui::TextEdit::singleline(search)
-                                .hint_text("Search programs")
-                                .desired_width(ui.available_width().min(170.0)),
-                        ));
+                        result = Some(
+                            ui.add(
+                                egui::TextEdit::singleline(search)
+                                    .hint_text("Search programs")
+                                    .desired_width(ui.available_width().min(170.0)),
+                            ),
+                        );
                     });
                 }
             });
@@ -202,13 +209,15 @@ fn draw_text(
     if rect.width() <= indent || rect.height() <= 0.0 {
         return;
     }
-    painter.with_clip_rect(rect.shrink2(Vec2::new(1.0, 0.0))).text(
-        egui::pos2(rect.left() + indent, rect.center().y),
-        Align2::LEFT_CENTER,
-        value,
-        FontId::proportional(size),
-        color,
-    );
+    painter
+        .with_clip_rect(rect.shrink2(Vec2::new(1.0, 0.0)))
+        .text(
+            egui::pos2(rect.left() + indent, rect.center().y),
+            Align2::LEFT_CENTER,
+            value,
+            FontId::proportional(size),
+            color,
+        );
 }
 
 pub fn program_row(
@@ -275,10 +284,7 @@ pub fn program_row(
     }
     draw_text(
         &painter,
-        Rect::from_min_max(
-            egui::pos2(rect.left() + runtime_end, rect.top()),
-            rect.max,
-        ),
+        Rect::from_min_max(egui::pos2(rect.left() + runtime_end, rect.top()), rect.max),
         status,
         8.0,
         TEXT,

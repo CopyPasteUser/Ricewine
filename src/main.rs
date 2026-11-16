@@ -3089,7 +3089,6 @@ impl RiceWineApp {
                             });
                     });
                 });
-    
             }
             if workspace_changed && let Err(error) = self.persist_workspace() {
                 self.notice = Some((true, format!("Could not save Library view: {error}")));
@@ -4682,7 +4681,11 @@ impl RiceWineApp {
                         ui.small("Select an EXE or MSI; Wine handles the installation.");
                         ui.separator();
                     }
-                    ui.label(RichText::new("1. Choose a Windows program").strong());
+                    let mut heading = RichText::new("1. Choose a Windows program").strong();
+                    if self.theme == Theme::Windows98 {
+                        heading = heading.color(win98::INK);
+                    }
+                    ui.label(heading);
                     ui.small("Select a setup EXE/MSI, or an EXE that runs without installation.");
                     ui.add_space(3.0);
                     ui.horizontal_wrapped(|ui| {
@@ -4706,7 +4709,11 @@ impl RiceWineApp {
                         }
                     });
                     ui.add_space(8.0);
-                    ui.label(RichText::new("2. Confirm the name").strong());
+                    let mut heading = RichText::new("2. Confirm the name").strong();
+                    if self.theme == Theme::Windows98 {
+                        heading = heading.color(win98::INK);
+                    }
+                    ui.label(heading);
                     if ui.add(
                         egui::TextEdit::singleline(&mut draft.name)
                             .hint_text("Name shown in your library"),

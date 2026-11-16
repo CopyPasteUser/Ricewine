@@ -310,7 +310,7 @@ pub fn program_row(
     response.on_hover_text(format!("{name} • {runner} • {status}"))
 }
 
-pub fn status_bar(ui: &mut egui::Ui, count: usize, selected: Option<&str>) {
+pub fn status_bar(ui: &mut egui::Ui, count: usize, selected: Option<&str>, compact: bool) {
     let full_width = ui.available_width().max(0.0);
     egui::Frame::new()
         .fill(Color32::from_rgb(223, 239, 251))
@@ -318,30 +318,47 @@ pub fn status_bar(ui: &mut egui::Ui, count: usize, selected: Option<&str>) {
         .inner_margin(egui::Margin::symmetric(10, 5))
         .show(ui, |ui| {
             ui.set_min_width((full_width - 22.0).max(0.0));
-            ui.horizontal(|ui| {
-                crate::rice_identity::symbol(
-                    ui,
-                    crate::rice_identity::Family::Aero7,
-                    crate::rice_identity::Icon::Programs,
-                    LINK,
-                    23.0,
-                );
-                ui.vertical(|ui| {
+            if compact {
+                ui.horizontal(|ui| {
                     ui.label(
-                        RichText::new(selected.unwrap_or("Currently installed programs"))
-                            .size(12.0)
+                        RichText::new(format!("{count} registered"))
+                            .size(11.0)
                             .strong()
                             .color(TEXT),
                     );
+                    ui.separator();
                     ui.label(
-                        RichText::new(format!(
-                            "{count} registered  •  Wine prefixes are not removed"
-                        ))
-                        .size(11.0)
-                        .color(MUTED),
+                        RichText::new("Wine prefixes preserved")
+                            .size(11.0)
+                            .color(MUTED),
                     );
                 });
-            });
+            } else {
+                ui.horizontal(|ui| {
+                    crate::rice_identity::symbol(
+                        ui,
+                        crate::rice_identity::Family::Aero7,
+                        crate::rice_identity::Icon::Programs,
+                        LINK,
+                        23.0,
+                    );
+                    ui.vertical(|ui| {
+                        ui.label(
+                            RichText::new(selected.unwrap_or("Currently installed programs"))
+                                .size(12.0)
+                                .strong()
+                                .color(TEXT),
+                        );
+                        ui.label(
+                            RichText::new(format!(
+                                "{count} registered  •  Wine prefixes are not removed"
+                            ))
+                            .size(11.0)
+                            .color(MUTED),
+                        );
+                    });
+                });
+            }
         });
 }
 

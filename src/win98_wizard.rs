@@ -7,7 +7,7 @@ use crate::{ImportDraft, InstallDraft, RiceWineApp};
 use eframe::egui::{self, Color32, RichText};
 use ricewine::core;
 use ricewine::runtime::Template;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) enum Step {
@@ -235,10 +235,25 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
     let step = draft.win98_step;
     let is_last = step == Step::Review;
     let ready = install_details_ready(draft) && install_compatibility_ready(draft);
-    footer(ui, &mut draft.win98_step, step != Step::Details,
-        if step == Step::Details { install_details_ready(draft) } else { ready },
-        is_last, if draft.portable { "Add portable program" } else { "Run installer" },
-        ready)
+    let next = if step == Step::Details {
+        install_details_ready(draft)
+    } else {
+        ready
+    };
+    let finish_label = if draft.portable {
+        "Add portable program"
+    } else {
+        "Run installer"
+    };
+    footer(
+        ui,
+        &mut draft.win98_step,
+        step != Step::Details,
+        next,
+        is_last,
+        finish_label,
+        ready,
+    )
 }
 
 /// Import is non-destructive: Finish merely asks the app's original import
@@ -305,9 +320,16 @@ pub(crate) fn import(ui: &mut egui::Ui, draft: &mut ImportDraft) -> Action {
         ui.colored_label(Color32::DARK_RED, error);
     }
     let step = draft.win98_step;
-    footer(ui, &mut draft.win98_step, step != Step::Details,
-        import_details_ready(draft), step == Step::Review, "Import program",
-        import_details_ready(draft))
+    let ready = import_details_ready(draft);
+    footer(
+        ui,
+        &mut draft.win98_step,
+        step != Step::Details,
+        ready,
+        step == Step::Review,
+        "Import program",
+        ready,
+    )
 }
 
 #[cfg(test)]

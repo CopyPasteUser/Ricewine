@@ -8,6 +8,7 @@ mod rice_identity;
 mod ui_layout;
 mod win10;
 mod win98;
+mod win98_wizard;
 
 use eframe::egui::{self, Color32, RichText};
 use ricewine::backup::{self, BackupEntry};
@@ -436,6 +437,7 @@ struct InstallDraft {
     proton_dir: String,
     game_id: String,
     template: Template,
+    win98_step: win98_wizard::Step,
 }
 
 #[derive(Default)]
@@ -444,6 +446,7 @@ struct ImportDraft {
     prefix: String,
     executable: String,
     error: Option<String>,
+    win98_step: win98_wizard::Step,
 }
 
 impl InstallDraft {
@@ -4665,6 +4668,14 @@ impl RiceWineApp {
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width(ui_layout::dialog_width(ctx.content_rect().width(), 460.0));
+                    if self.theme == Theme::Windows98 {
+                        match win98_wizard::install(ui, draft) {
+                            win98_wizard::Action::None => {}
+                            win98_wizard::Action::Cancel => cancel_dialog = true,
+                            win98_wizard::Action::Finish => submit = Some(draft.clone()),
+                        }
+                        return;
+                    }
                     let mut draw_form = |ui: &mut egui::Ui| {
                     if luna_mode {
                         luna::dialog_intro(
@@ -4835,7 +4846,7 @@ impl RiceWineApp {
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
                 .resizable(true)
-                .vscroll(true)
+                .vscroll(self.theme != Theme::Windows98)
                 .max_size([
                     (ctx.content_rect().width() - 24.0).max(280.0),
                     (ctx.content_rect().height() - 24.0).max(220.0),
@@ -4843,6 +4854,20 @@ impl RiceWineApp {
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width(ui_layout::dialog_width(ctx.content_rect().width(), 450.0));
+                    if self.theme == Theme::Windows98 {
+                        match win98_wizard::import(ui, draft) {
+                            win98_wizard::Action::None => {}
+                            win98_wizard::Action::Cancel => cancel_dialog = true,
+                            win98_wizard::Action::Finish => {
+                                imported = Some(core::imported_application(
+                                    &draft.name,
+                                    &PathBuf::from(draft.prefix.trim()),
+                                    &PathBuf::from(draft.executable.trim()),
+                                ));
+                            }
+                        }
+                        return;
+                    }
                     if luna_mode {
                         luna::dialog_intro(
                             ui,

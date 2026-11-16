@@ -105,12 +105,33 @@ fn detail(ui: &mut egui::Ui, name: &str, value: &str) {
     });
 }
 
+fn advance(step: Step, is_import: bool, ready: bool) -> Step {
+    if !ready {
+        return step;
+    }
+    match step {
+        Step::Details if is_import => Step::Review,
+        Step::Details => Step::Compatibility,
+        Step::Compatibility => Step::Review,
+        Step::Review => Step::Review,
+    }
+}
+
+fn retreat(step: Step, is_import: bool) -> Step {
+    match step {
+        Step::Review if is_import => Step::Details,
+        Step::Review => Step::Compatibility,
+        Step::Compatibility | Step::Details => Step::Details,
+    }
+}
+
 fn footer(
     ui: &mut egui::Ui,
     step: &mut Step,
     back: bool,
     next: bool,
     is_last: bool,
+    is_import: bool,
     finish: &str,
     finish_enabled: bool,
 ) -> Action {
@@ -118,31 +139,11 @@ fn footer(
     ui.separator();
     ui.horizontal_wrapped(|ui| {
         if win98::push_button(ui, "< Back", back).clicked() {
-            *step = match *step {
-                Step::Details => Step::Details,
-                Step::Compatibility => Step::Details,
-                Step::Review => {
-                    if is_last && finish == "Import program" {
-                        Step::Details
-                    } else {
-                        Step::Compatibility
-                    }
-                }
-            };
+            *step = retreat(*step, is_import);
         }
         if !is_last {
             if win98::push_button(ui, "Next >", next).clicked() {
-                *step = match *step {
-                    Step::Details => {
-                        if finish == "Import program" {
-                            Step::Review
-                        } else {
-                            Step::Compatibility
-                        }
-                    }
-                    Step::Compatibility => Step::Review,
-                    Step::Review => Step::Review,
-                };
+                *step = advance(*step, is_import, next);
             }
         } else if win98::push_button(ui, finish, finish_enabled).clicked() {
             action = Action::Finish;
@@ -266,6 +267,7 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
         step != Step::Details,
         next,
         is_last,
+        false,
         finish_label,
         ready,
     )
@@ -342,6 +344,7 @@ pub(crate) fn import(ui: &mut egui::Ui, draft: &mut ImportDraft) -> Action {
         step != Step::Details,
         ready,
         step == Step::Review,
+        true,
         "Import program",
         ready,
     )
@@ -369,6 +372,18 @@ mod tests {
         assert!(install_compatibility_ready(&draft));
         draft.runner_kind = 9;
         assert!(!install_compatibility_ready(&draft));
+    }
+
+    #[test]
+    fn wizard_navigation_is_theme_specific_and_blocks_unready_pages() {
+        assert_eq!(advance(Step::Details, false, false), Step::Details);
+        assert_eq!(advance(Step::Details, false, true), Step::Compatibility);
+        assert_eq!(advance(Step::Compatibility, false, true), Step::Review);
+        assert_eq!(retreat(Step::Review, false), Step::Compatibility);
+        assert_eq!(retreat(Step::Compatibility, false), Step::Details);
+        assert_eq!(advance(Step::Details, true, true), Step::Review);
+        assert_eq!(retreat(Step::Review, true), Step::Details);
+        assert_eq!(advance(Step::Review, true, true), Step::Review);
     }
 
     #[test]

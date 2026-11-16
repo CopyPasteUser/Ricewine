@@ -2424,11 +2424,12 @@ impl RiceWineApp {
         let short = ui.ctx().content_rect().height() < 520.0;
         win7::shell_frame().show(ui, |ui| {
             let search_response = win7::explorer_bar(ui, title, &mut self.search, self.page == Page::Library);
-            if self.search_focus_requested && self.page == Page::Library {
-                if let Some(response) = search_response {
-                    response.request_focus();
-                    self.search_focus_requested = false;
-                }
+            if self.search_focus_requested
+                && self.page == Page::Library
+                && let Some(response) = search_response
+            {
+                response.request_focus();
+                self.search_focus_requested = false;
             }
             let usable_height = (ui.available_height() - if short { 47.0 } else { 53.0 })
                 .max(0.0);

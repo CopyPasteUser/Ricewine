@@ -84,8 +84,11 @@ fn header(ui: &mut egui::Ui, title: &str, step: Step, import: bool) {
                 );
                 ui.vertical(|ui| {
                     ui.label(RichText::new(title).strong().size(13.0).color(win98::INK));
-                    ui.label(RichText::new(format!("Step {index} of {count}: {caption}"))
-                        .size(11.0).color(win98::INK));
+                    ui.label(
+                        RichText::new(format!("Step {index} of {count}: {caption}"))
+                            .size(11.0)
+                            .color(win98::INK),
+                    );
                 });
             });
         });
@@ -102,8 +105,15 @@ fn detail(ui: &mut egui::Ui, name: &str, value: &str) {
     });
 }
 
-fn footer(ui: &mut egui::Ui, step: &mut Step, back: bool, next: bool,
-          is_last: bool, finish: &str, finish_enabled: bool) -> Action {
+fn footer(
+    ui: &mut egui::Ui,
+    step: &mut Step,
+    back: bool,
+    next: bool,
+    is_last: bool,
+    finish: &str,
+    finish_enabled: bool,
+) -> Action {
     let mut action = Action::None;
     ui.separator();
     ui.horizontal_wrapped(|ui| {
@@ -111,21 +121,25 @@ fn footer(ui: &mut egui::Ui, step: &mut Step, back: bool, next: bool,
             *step = match *step {
                 Step::Details => Step::Details,
                 Step::Compatibility => Step::Details,
-                Step::Review => if is_last && finish == "Import program" {
-                    Step::Details
-                } else {
-                    Step::Compatibility
-                },
+                Step::Review => {
+                    if is_last && finish == "Import program" {
+                        Step::Details
+                    } else {
+                        Step::Compatibility
+                    }
+                }
             };
         }
         if !is_last {
             if win98::push_button(ui, "Next >", next).clicked() {
                 *step = match *step {
-                    Step::Details => if finish == "Import program" {
-                        Step::Review
-                    } else {
-                        Step::Compatibility
-                    },
+                    Step::Details => {
+                        if finish == "Import program" {
+                            Step::Review
+                        } else {
+                            Step::Compatibility
+                        }
+                    }
                     Step::Compatibility => Step::Review,
                     Step::Review => Step::Review,
                 };

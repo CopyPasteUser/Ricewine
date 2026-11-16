@@ -2440,6 +2440,7 @@ impl RiceWineApp {
                             ui.close();
                         }
                     });
+                    let mut view_changed = false;
                     ui.menu_button("View", |ui| {
                         for (page, label) in [
                             (Page::Library, "Install/Remove"),
@@ -2453,12 +2454,36 @@ impl RiceWineApp {
                             }
                         }
                         ui.separator();
+                        if self.page == Page::Library {
+                            ui.separator();
+                            ui.label("Show programs");
+                            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                                for filter in LibraryFilter::ALL {
+                                    view_changed |= ui
+                                        .selectable_value(&mut self.workspace.filter, filter, filter.label())
+                                        .changed();
+                                }
+                            });
+                            ui.separator();
+                            ui.label("Sort programs");
+                            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                                for order in LibraryOrder::ALL {
+                                    view_changed |= ui
+                                        .selectable_value(&mut self.workspace.order, order, order.label())
+                                        .changed();
+                                }
+                            });
+                        }
+                        ui.separator();
                         if ui.button("Refresh runner profiles").clicked() {
                             self.refresh_profile_cache();
                             self.sync_runner_draft();
                             ui.close();
                         }
                     });
+                    if view_changed && let Err(error) = self.persist_workspace() {
+                        self.notice = Some((true, format!("Could not save Library view: {error}")));
+                    }
                     ui.menu_button("Help", |ui| {
                         if ui.button("About RiceWine…").clicked() {
                             self.about_open = true;
@@ -2503,7 +2528,11 @@ impl RiceWineApp {
                                     "Choose appearance and desktop integration.",
                                 ),
                             };
-                            win98::caption(ui, title, description);
+                            if ui.ctx().content_rect().height() < 520.0 {
+                                win98::compact_caption(ui, title);
+                            } else {
+                                win98::caption(ui, title, description);
+                            }
                             ui.separator();
                             if self.page == Page::Library {
                                 ui.horizontal_wrapped(|ui| {
@@ -2525,6 +2554,7 @@ impl RiceWineApp {
                                     {
                                         self.import = Some(ImportDraft::default());
                                     }
+                                    self.win98_program_actions(ui);
                                 });
                                 ui.add_space(4.0);
                             }
@@ -2540,6 +2570,53 @@ impl RiceWineApp {
                     .map_or(0, |store| store.applications().len());
                 win98::status_bar(ui, count);
             });
+    }
+
+    /// Commands are placed beside Install/Import to keep the Win98 details
+    /// list visible at 560x400 instead of adding a second command row.
+    fn win98_program_actions(&mut self, ui: &mut egui::Ui) {
+        if self.store.is_some() {
+            let selected = self
+                .selected
+                .as_deref()
+                .and_then(|id| self.store.as_ref()?.get(id))
+                .filter(|app| {
+                    self.workspace.filter == LibraryFilter::All
+                        || self.workspace.is_favorite(&app.id)
+                })
+                .cloned();
+            let can_run = selected.as_ref().is_some_and(|app| {
+                !self.busy
+                    && app.executable.is_some()
+                    && !self.compatibility_busy.contains(&app.id)
+                    && self
+                        .profile_cache
+                        .get(&app.id)
+                        .and_then(|profile| profile.as_ref().ok())
+                        .is_some_and(|profile| {
+                            self.wine.is_some() || !matches!(profile.runner, Runner::SystemWine)
+                        })
+            });
+            ui.horizontal_wrapped(|ui| {
+                if win98::push_button(ui, "Run", can_run).clicked()
+                    && let Some(app) = selected.as_ref()
+                {
+                    self.play(app.clone());
+                }
+                if win98::push_button(ui, "Properties…", selected.is_some()).clicked()
+                    && let Some(app) = selected.as_ref()
+                {
+                    self.open_troubleshooter(app);
+                }
+                if win98::push_button(ui, "Remove entry…", !self.busy && selected.is_some())
+                    .clicked()
+                    && let Some(app) = selected.as_ref()
+                {
+                    self.remove_confirmation = Some(app.id.clone());
+                }
+            });
+            ui.add_space(4.0);
+        }
     }
 
     /// Four RiceBowl-inspired shells share Wine workflows, but not their navigation chrome.
@@ -2816,6 +2893,7 @@ impl RiceWineApp {
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
         let win98_mode = self.theme == Theme::Windows98;
+        let win98_compact = win98_mode && ui.ctx().content_rect().height() < 520.0;
         // Copy layout flags before the details closure mutably borrows app state.
         let mac_mode = self.theme == Theme::MacOS;
         let mac_inspector_open = self.mac_inspector_open;
@@ -2937,7 +3015,7 @@ impl RiceWineApp {
             } else {
                 10.0
             });
-            if self.store.is_some() && !tight_library {
+            if self.store.is_some() && !tight_library && !win98_mode {
                 ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
             }
             // Finder has one functional search field in its toolbar.
@@ -2965,7 +3043,7 @@ impl RiceWineApp {
                     {
                         self.search.clear();
                     }
-                    if !win10_mode && ui.small_button("↻ Refresh profiles").clicked() {
+                    if !win10_mode && !win98_mode && ui.small_button("↻ Refresh profiles").clicked() {
                         self.refresh_profile_cache();
                         self.sync_runner_draft();
                     }
@@ -2976,85 +3054,46 @@ impl RiceWineApp {
                 });
             }
             let mut workspace_changed = false;
-            ui.horizontal_wrapped(|ui| {
-                ui.label("Show:");
-                ui.add_enabled_ui(self.workspace_writable, |ui| {
-                    egui::ComboBox::from_id_salt("ricewine_3_filter")
-                        .selected_text(self.workspace.filter.label())
-                        .show_ui(ui, |ui| {
-                            for filter in LibraryFilter::ALL {
-                                workspace_changed |= ui
-                                    .selectable_value(
-                                        &mut self.workspace.filter,
-                                        filter,
-                                        filter.label(),
-                                    )
-                                    .changed();
-                            }
-                        });
+            if !win98_compact {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Show:");
+                    ui.add_enabled_ui(self.workspace_writable, |ui| {
+                        egui::ComboBox::from_id_salt("ricewine_3_filter")
+                            .selected_text(self.workspace.filter.label())
+                            .show_ui(ui, |ui| {
+                                for filter in LibraryFilter::ALL {
+                                    workspace_changed |= ui
+                                        .selectable_value(
+                                            &mut self.workspace.filter,
+                                            filter,
+                                            filter.label(),
+                                        )
+                                        .changed();
+                                }
+                            });
+                    });
+                    ui.label("Order:");
+                    ui.add_enabled_ui(self.workspace_writable, |ui| {
+                        egui::ComboBox::from_id_salt("ricewine_3_order")
+                            .selected_text(self.workspace.order.label())
+                            .show_ui(ui, |ui| {
+                                for order in LibraryOrder::ALL {
+                                    workspace_changed |= ui
+                                        .selectable_value(
+                                            &mut self.workspace.order,
+                                            order,
+                                            order.label(),
+                                        )
+                                        .changed();
+                                }
+                            });
+                    });
                 });
-                ui.label("Order:");
-                ui.add_enabled_ui(self.workspace_writable, |ui| {
-                    egui::ComboBox::from_id_salt("ricewine_3_order")
-                        .selected_text(self.workspace.order.label())
-                        .show_ui(ui, |ui| {
-                            for order in LibraryOrder::ALL {
-                                workspace_changed |= ui
-                                    .selectable_value(
-                                        &mut self.workspace.order,
-                                        order,
-                                        order.label(),
-                                    )
-                                    .changed();
-                            }
-                        });
-                });
-            });
+    
+            }
             if workspace_changed && let Err(error) = self.persist_workspace() {
                 self.notice = Some((true, format!("Could not save Library view: {error}")));
             }
-        }
-        if win98_mode && self.store.is_some() {
-            let selected = self
-                .selected
-                .as_deref()
-                .and_then(|id| self.store.as_ref()?.get(id))
-                .filter(|app| {
-                    self.workspace.filter == LibraryFilter::All
-                        || self.workspace.is_favorite(&app.id)
-                })
-                .cloned();
-            let can_run = selected.as_ref().is_some_and(|app| {
-                !self.busy
-                    && app.executable.is_some()
-                    && !self.compatibility_busy.contains(&app.id)
-                    && self
-                        .profile_cache
-                        .get(&app.id)
-                        .and_then(|profile| profile.as_ref().ok())
-                        .is_some_and(|profile| {
-                            self.wine.is_some() || !matches!(profile.runner, Runner::SystemWine)
-                        })
-            });
-            ui.horizontal_wrapped(|ui| {
-                if win98::push_button(ui, "Run", can_run).clicked()
-                    && let Some(app) = selected.as_ref()
-                {
-                    self.play(app.clone());
-                }
-                if win98::push_button(ui, "Properties…", selected.is_some()).clicked()
-                    && let Some(app) = selected.as_ref()
-                {
-                    self.open_troubleshooter(app);
-                }
-                if win98::push_button(ui, "Remove entry…", !self.busy && selected.is_some())
-                    .clicked()
-                    && let Some(app) = selected.as_ref()
-                {
-                    self.remove_confirmation = Some(app.id.clone());
-                }
-            });
-            ui.add_space(4.0);
         }
         if self.store.is_none() {
             ui.add_space(28.0);
@@ -3096,6 +3135,8 @@ impl RiceWineApp {
                 if win10::empty_library(ui, !self.busy && self.store.is_some()) {
                     self.install = Some(InstallDraft::default());
                 }
+            } else if win98_mode {
+                win98::empty_library(ui);
             } else if let Some(flavor) = self.theme.extra_flavor()
                 && extra_rices::empty_library(ui, flavor, !self.busy && self.store.is_some())
             {
@@ -3112,7 +3153,9 @@ impl RiceWineApp {
                     .ordered_indices(store.applications(), &self.search)
             })
             .unwrap_or_default();
-        ui.small(format!("{} matching program(s)", matching_indices.len()));
+        if !win98_compact {
+            ui.small(format!("{} matching program(s)", matching_indices.len()));
+        }
         if matching_indices.is_empty() {
             if self.workspace.filter == LibraryFilter::Favorites {
                 ui.label(

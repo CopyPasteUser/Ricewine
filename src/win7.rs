@@ -311,11 +311,13 @@ pub fn program_row(
 }
 
 pub fn status_bar(ui: &mut egui::Ui, count: usize, selected: Option<&str>) {
+    let full_width = ui.available_width().max(0.0);
     egui::Frame::new()
         .fill(Color32::from_rgb(223, 239, 251))
         .stroke(Stroke::new(1.0, BORDER))
         .inner_margin(egui::Margin::symmetric(10, 5))
         .show(ui, |ui| {
+            ui.set_min_width((full_width - 22.0).max(0.0));
             ui.horizontal(|ui| {
                 crate::rice_identity::symbol(
                     ui,

@@ -2432,13 +2432,17 @@ impl RiceWineApp {
                 self.search_focus_requested = false;
             }
             let count = self.store.as_ref().map_or(0, |store| store.applications().len());
-            let selected_name = self.selected.as_deref().and_then(|id| {
-                self.store.as_ref()?.get(id).map(|app| app.name.clone())
-            });
+            let selected_name = if self.page == Page::Library {
+                self.selected.as_deref().and_then(|id| {
+                    self.store.as_ref()?.get(id).map(|app| app.name.clone())
+                })
+            } else {
+                Some(title.to_owned())
+            };
             // Bottom-up layout reserves the Explorer information strip before
             // assigning remaining height to the scrollable Programs viewport.
             ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
-                win7::status_bar(ui, count, selected_name.as_deref());
+                win7::status_bar(ui, count, selected_name.as_deref(), short);
                 ui.add_space(5.0);
                 let usable_height = (ui.available_height() - 12.0).max(0.0);
                 ui.horizontal_top(|ui| {

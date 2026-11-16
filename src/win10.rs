@@ -48,10 +48,7 @@ fn paint_navigation_glyph(painter: &egui::Painter, rect: Rect, glyph: Navigation
         NavigationGlyph::Applications => {
             for x in [-5.0_f32, 3.0] {
                 for y in [-5.0_f32, 3.0] {
-                    let square = Rect::from_min_size(
-                        center + Vec2::new(x, y),
-                        Vec2::splat(5.5),
-                    );
+                    let square = Rect::from_min_size(center + Vec2::new(x, y), Vec2::splat(5.5));
                     painter.rect_stroke(square, 0.0, stroke, egui::StrokeKind::Inside);
                 }
             }
@@ -71,10 +68,7 @@ fn paint_navigation_glyph(painter: &egui::Painter, rect: Rect, glyph: Navigation
                 stroke,
             );
             painter.line_segment(
-                [
-                    center + Vec2::new(-3.0, 9.0),
-                    center + Vec2::new(3.0, 9.0),
-                ],
+                [center + Vec2::new(-3.0, 9.0), center + Vec2::new(3.0, 9.0)],
                 stroke,
             );
         }
@@ -93,17 +87,11 @@ fn paint_navigation_glyph(painter: &egui::Painter, rect: Rect, glyph: Navigation
                 stroke,
             );
             painter.line_segment(
-                [
-                    center + Vec2::new(-1.5, 0.0),
-                    center + Vec2::new(-5.0, 3.0),
-                ],
+                [center + Vec2::new(-1.5, 0.0), center + Vec2::new(-5.0, 3.0)],
                 stroke,
             );
             painter.line_segment(
-                [
-                    center + Vec2::new(1.0, 3.5),
-                    center + Vec2::new(5.0, 3.5),
-                ],
+                [center + Vec2::new(1.0, 3.5), center + Vec2::new(5.0, 3.5)],
                 stroke,
             );
         }
@@ -116,10 +104,7 @@ fn paint_navigation_glyph(painter: &egui::Painter, rect: Rect, glyph: Navigation
                 Vec2::new(0.0, -10.0),
                 Vec2::new(0.0, 10.0),
             ] {
-                painter.line_segment(
-                    [center + offset * 0.83, center + offset],
-                    stroke,
-                );
+                painter.line_segment([center + offset * 0.83, center + offset], stroke);
             }
         }
     }
@@ -151,10 +136,7 @@ pub fn navigation(ui: &mut egui::Ui, label: &str, selected: bool) -> Response {
     }
     paint_navigation_glyph(
         &painter,
-        Rect::from_center_size(
-            rect.left_center() + Vec2::new(24.0, 0.0),
-            Vec2::splat(18.0),
-        ),
+        Rect::from_center_size(rect.left_center() + Vec2::new(24.0, 0.0), Vec2::splat(18.0)),
         navigation_glyph(label),
     );
     painter.text(
@@ -341,10 +323,22 @@ mod tests {
 
     #[test]
     fn navigation_icons_follow_distinct_windows_10_categories() {
-        assert!(matches!(navigation_glyph("Apps & features"), NavigationGlyph::Applications));
-        assert!(matches!(navigation_glyph("Wine environments"), NavigationGlyph::Environments));
-        assert!(matches!(navigation_glyph("Wine & Proton"), NavigationGlyph::Runners));
-        assert!(matches!(navigation_glyph("Appearance"), NavigationGlyph::Appearance));
+        assert!(matches!(
+            navigation_glyph("Apps & features"),
+            NavigationGlyph::Applications
+        ));
+        assert!(matches!(
+            navigation_glyph("Wine environments"),
+            NavigationGlyph::Environments
+        ));
+        assert!(matches!(
+            navigation_glyph("Wine & Proton"),
+            NavigationGlyph::Runners
+        ));
+        assert!(matches!(
+            navigation_glyph("Appearance"),
+            NavigationGlyph::Appearance
+        ));
     }
 
     #[test]

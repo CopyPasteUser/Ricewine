@@ -160,11 +160,11 @@ fn footer(
 pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
     header(ui, "Add New Programs", draft.win98_step, false);
     ui.add_space(5.0);
-    let area_height = (ui.ctx().content_rect().height() - 188.0).max(100.0);
+    let area_height = (ui.ctx().content_rect().height() - 188.0).clamp(100.0, 325.0);
     egui::ScrollArea::vertical()
         .id_salt("win98-install-steps")
         .max_height(area_height)
-        .auto_shrink([false, false])
+        .auto_shrink([false, true])
         .show(ui, |ui| match draft.win98_step {
             Step::Details => {
                 classic_group(ui, "Setup program", |ui| {
@@ -240,9 +240,9 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
                     });
                 });
                 ui.label(RichText::new(
-                    "Windows applications can access files owned by your Linux user. Only run trusted software."
+                    "Only run Windows software you trust; it can access your user files."
                 ).color(win98::INK));
-                ui.small("Finish runs the existing RiceWine validation and setup flow.");
+                ui.small("Finish uses RiceWine's verified setup flow.");
             }
         });
     if let Some(error) = &draft.error {
@@ -268,11 +268,11 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
 pub(crate) fn import(ui: &mut egui::Ui, draft: &mut ImportDraft) -> Action {
     header(ui, "Import Existing Program", draft.win98_step, true);
     ui.add_space(5.0);
-    let area_height = (ui.ctx().content_rect().height() - 185.0).max(100.0);
+    let area_height = (ui.ctx().content_rect().height() - 185.0).clamp(100.0, 325.0);
     egui::ScrollArea::vertical()
         .id_salt("win98-import-steps")
         .max_height(area_height)
-        .auto_shrink([false, false])
+        .auto_shrink([false, true])
         .show(ui, |ui| {
             if draft.win98_step == Step::Details {
                 classic_group(ui, "Existing Wine installation", |ui| {

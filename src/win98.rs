@@ -103,6 +103,28 @@ pub fn caption(ui: &mut egui::Ui, title: &str, explanation: &str) {
     });
 }
 
+/// A single-line applet heading for short X11 windows: keep the command bar
+/// and at least several installed program rows above the fold.
+pub fn compact_caption(ui: &mut egui::Ui, title: &str) {
+    ui.horizontal(|ui| {
+        crate::rice_identity::symbol(
+            ui,
+            crate::rice_identity::Family::Win98,
+            crate::rice_identity::Icon::Programs,
+            NAVY,
+            18.0,
+        );
+        ui.label(RichText::new(title).strong().size(12.0).color(INK));
+    });
+}
+
+pub fn empty_library(ui: &mut egui::Ui) {
+    sunken_list().show(ui, |ui| {
+        ui.label(RichText::new("No Windows programs are registered.").color(INK));
+        ui.small("Choose Install or Import above to add a program.");
+    });
+}
+
 pub fn list_header(ui: &mut egui::Ui) {
     let width = ui.available_width().max(0.0);
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, 24.0), Sense::hover());

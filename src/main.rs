@@ -3437,7 +3437,6 @@ impl RiceWineApp {
                         }
                     },
                 );
-
             };
             if win98_mode {
                 win98::sunken_list().show(ui, |ui| draw_program_list(ui));

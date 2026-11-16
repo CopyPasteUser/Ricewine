@@ -20,7 +20,7 @@ pub fn shell_frame() -> egui::Frame {
     egui::Frame::new().fill(BACKDROP).inner_margin(egui::Margin::same(0))
 }
 
-pub fn explorer_bar(ui: &mut egui::Ui, page: &str, search: &mut String) -> Response {
+pub fn explorer_bar(ui: &mut egui::Ui, page: &str, search: &mut String, show_search: bool) -> Option<Response> {
     let mut result = None;
     egui::Frame::new()
         .fill(Color32::from_rgb(223, 238, 247))
@@ -37,7 +37,7 @@ pub fn explorer_bar(ui: &mut egui::Ui, page: &str, search: &mut String) -> Respo
                     ui.label(RichText::new("›").color(MUTED));
                     ui.label(RichText::new(page).size(12.0).color(TEXT));
                 }
-                if ui.available_width() >= 160.0 {
+                if show_search && ui.available_width() >= 160.0 {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         result = Some(ui.add(
                             egui::TextEdit::singleline(search)
@@ -48,12 +48,14 @@ pub fn explorer_bar(ui: &mut egui::Ui, page: &str, search: &mut String) -> Respo
                 }
             });
         });
-    result.unwrap_or_else(|| {
-        ui.add(
-            egui::TextEdit::singleline(search)
-                .hint_text("Search programs")
-                .desired_width(ui.available_width().min(220.0)),
-        )
+    result.or_else(|| {
+        show_search.then(|| {
+            ui.add(
+                egui::TextEdit::singleline(search)
+                    .hint_text("Search programs")
+                    .desired_width(ui.available_width().min(220.0)),
+            )
+        })
     })
 }
 

@@ -188,10 +188,11 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
                         .hint_text("Name in your program list")).changed() {
                         draft.error = None;
                     }
-                    if draft.name.trim().is_empty() && !draft.file.trim().is_empty() {
-                        if win98::push_button(ui, "Suggest name", true).clicked() {
-                            draft.name = InstallDraft::suggested_name(Path::new(&draft.file));
-                        }
+                    if draft.name.trim().is_empty()
+                        && !draft.file.trim().is_empty()
+                        && win98::push_button(ui, "Suggest name", true).clicked()
+                    {
+                        draft.name = InstallDraft::suggested_name(Path::new(&draft.file));
                     }
                     ui.checkbox(&mut draft.portable,
                         "This is a portable program (do not run setup)");

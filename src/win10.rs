@@ -154,6 +154,11 @@ pub fn navigation(ui: &mut egui::Ui, label: &str, selected: bool) -> Response {
             egui::StrokeKind::Inside,
         );
     }
+    response.widget_info(|| {
+        let mut info = egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label);
+        info.selected = Some(selected);
+        info
+    });
     response.on_hover_text(label)
 }
 
@@ -285,6 +290,15 @@ pub fn app_row(
         FontId::proportional(11.5),
         if status == "Ready" { ACCENT } else { MUTED },
     );
+    response.widget_info(|| {
+        let mut info = egui::WidgetInfo::labeled(
+            egui::Role::Button,
+            ui.is_enabled(),
+            format!("{name}, {runtime}, {status}"),
+        );
+        info.selected = Some(selected);
+        info
+    });
     response.on_hover_text(format!("{name}\n{runtime} · {status}"))
 }
 

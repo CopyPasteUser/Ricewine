@@ -2,9 +2,7 @@
 //! Original primitive-drawn controls; Linux owns the actual window decoration.
 //! All Wine operations and dialog confirmations stay in RiceWineApp.
 
-use eframe::egui::{
-    self, Align2, Color32, FontId, Rect, Response, RichText, Sense, Stroke, Vec2,
-};
+use eframe::egui::{self, Align2, Color32, FontId, Rect, Response, RichText, Sense, Stroke, Vec2};
 
 pub const FACE: Color32 = Color32::from_rgb(192, 192, 192);
 pub const PAPER: Color32 = Color32::WHITE;
@@ -18,7 +16,11 @@ pub const NAVY: Color32 = Color32::from_rgb(0, 0, 128);
 /// looking like a modern navigation button.
 pub fn tab(ui: &mut egui::Ui, text: &str, selected: bool) -> Response {
     let button = egui::Button::new(RichText::new(text).size(12.0).color(INK))
-        .fill(if selected { FACE } else { Color32::from_rgb(212, 212, 212) })
+        .fill(if selected {
+            FACE
+        } else {
+            Color32::from_rgb(212, 212, 212)
+        })
         .stroke(Stroke::new(1.0, if selected { SHADOW } else { DARK }))
         .corner_radius(egui::CornerRadius::ZERO);
     let width = (text.len() as f32 * 6.8 + 24.0).max(78.0);
@@ -68,11 +70,17 @@ pub fn push_button(ui: &mut egui::Ui, label: &str, enabled: bool) -> Response {
     let rect = response.rect;
     if enabled && !response.is_pointer_button_down_on() {
         ui.painter().line_segment(
-            [rect.left_top() + Vec2::splat(1.0), rect.right_top() - Vec2::new(1.0, -1.0)],
+            [
+                rect.left_top() + Vec2::splat(1.0),
+                rect.right_top() - Vec2::new(1.0, -1.0),
+            ],
             Stroke::new(1.0, LIGHT),
         );
         ui.painter().line_segment(
-            [rect.left_top() + Vec2::splat(1.0), rect.left_bottom() - Vec2::new(-1.0, 1.0)],
+            [
+                rect.left_top() + Vec2::splat(1.0),
+                rect.left_bottom() - Vec2::new(-1.0, 1.0),
+            ],
             Stroke::new(1.0, LIGHT),
         );
     }
@@ -107,7 +115,10 @@ pub fn list_header(ui: &mut egui::Ui) {
     let status_width = if width >= 250.0 { 110.0 } else { 72.0 };
     let divider_x = rect.right() - status_width;
     painter.line_segment(
-        [egui::pos2(divider_x, rect.top()), egui::pos2(divider_x, rect.bottom())],
+        [
+            egui::pos2(divider_x, rect.top()),
+            egui::pos2(divider_x, rect.bottom()),
+        ],
         Stroke::new(1.0, SHADOW),
     );
     painter.text(
@@ -128,22 +139,15 @@ pub fn list_header(ui: &mut egui::Ui) {
 
 /// One full-width details-list row. Selection includes status and icon;
 /// text is clipped per column so long file names cannot move the status.
-pub fn program_row(
-    ui: &mut egui::Ui,
-    name: &str,
-    status: &str,
-    selected: bool,
-) -> Response {
+pub fn program_row(ui: &mut egui::Ui, name: &str, status: &str, selected: bool) -> Response {
     let width = ui.available_width().max(0.0);
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 27.0), Sense::click());
     let fg = if selected { PAPER } else { INK };
     let bg = if selected { NAVY } else { PAPER };
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 0.0, bg);
-    let icon_rect = Rect::from_center_size(
-        rect.left_center() + Vec2::new(13.0, 0.0),
-        Vec2::splat(16.0),
-    );
+    let icon_rect =
+        Rect::from_center_size(rect.left_center() + Vec2::new(13.0, 0.0), Vec2::splat(16.0));
     crate::rice_identity::paint(
         &painter,
         icon_rect,
@@ -164,16 +168,18 @@ pub fn program_row(
         FontId::proportional(12.0),
         fg,
     );
-    painter.with_clip_rect(Rect::from_min_max(
-        egui::pos2(divider_x + 4.0, rect.top()),
-        rect.right_bottom(),
-    )).text(
-        egui::pos2(divider_x + 6.0, rect.center().y),
-        Align2::LEFT_CENTER,
-        status,
-        FontId::proportional(11.0),
-        fg,
-    );
+    painter
+        .with_clip_rect(Rect::from_min_max(
+            egui::pos2(divider_x + 4.0, rect.top()),
+            rect.right_bottom(),
+        ))
+        .text(
+            egui::pos2(divider_x + 6.0, rect.center().y),
+            Align2::LEFT_CENTER,
+            status,
+            FontId::proportional(11.0),
+            fg,
+        );
     if response.has_focus() {
         painter.rect_stroke(
             rect.shrink(2.0),
@@ -201,14 +207,22 @@ pub fn status_bar(ui: &mut egui::Ui, count: usize) {
             .stroke(Stroke::new(1.0, SHADOW))
             .inner_margin(egui::Margin::symmetric(6, 3))
             .show(ui, |ui| {
-                ui.label(RichText::new(format!("{count} program(s)")).size(11.0).color(INK));
+                ui.label(
+                    RichText::new(format!("{count} program(s)"))
+                        .size(11.0)
+                        .color(INK),
+                );
             });
         egui::Frame::new()
             .fill(FACE)
             .stroke(Stroke::new(1.0, SHADOW))
             .inner_margin(egui::Margin::symmetric(6, 3))
             .show(ui, |ui| {
-                ui.label(RichText::new("Wine prefixes are preserved on removal").size(11.0).color(INK));
+                ui.label(
+                    RichText::new("Wine prefixes are preserved on removal")
+                        .size(11.0)
+                        .color(INK),
+                );
             });
     });
 }

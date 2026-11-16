@@ -740,6 +740,33 @@ impl RiceWineApp {
             receiver,
         };
         app.sync_runner_draft();
+        // Screenshot-only wizard states in a disposable XDG capture environment.
+        // No setup/import is executed by the capture script.
+        if app.theme == Theme::Windows98 {
+            let step = std::env::var("RICEWINE_CAPTURE_WIZARD_STEP").ok();
+            match (capture_dialog.as_deref(), step.as_deref()) {
+                (Some("install"), Some("compatibility" | "review")) => {
+                    if let Some(draft) = &mut app.install {
+                        draft.name = "Example Windows Program".into();
+                        draft.file = "/preview/setup.exe".into();
+                        draft.win98_step = if step.as_deref() == Some("review") {
+                            win98_wizard::Step::Review
+                        } else {
+                            win98_wizard::Step::Compatibility
+                        };
+                    }
+                }
+                (Some("import"), Some("review")) => {
+                    if let Some(draft) = &mut app.import {
+                        draft.name = "Example Imported Program".into();
+                        draft.prefix = "/preview/wine-prefix".into();
+                        draft.executable = "/preview/wine-prefix/drive_c/Program.exe".into();
+                        draft.win98_step = win98_wizard::Step::Review;
+                    }
+                }
+                _ => {}
+            }
+        }
         app
     }
 

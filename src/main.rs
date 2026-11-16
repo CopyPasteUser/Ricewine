@@ -2420,14 +2420,20 @@ impl RiceWineApp {
                 ui.horizontal(|ui| {
                     ui.menu_button("File", |ui| {
                         if ui
-                            .add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Install program…"))
+                            .add_enabled(
+                                !self.busy && self.store.is_some(),
+                                egui::Button::new("Install program…"),
+                            )
                             .clicked()
                         {
                             self.install = Some(InstallDraft::default());
                             ui.close();
                         }
                         if ui
-                            .add_enabled(!self.busy && self.store.is_some(), egui::Button::new("Import existing prefix…"))
+                            .add_enabled(
+                                !self.busy && self.store.is_some(),
+                                egui::Button::new("Import existing prefix…"),
+                            )
                             .clicked()
                         {
                             self.import = Some(ImportDraft::default());
@@ -2501,13 +2507,21 @@ impl RiceWineApp {
                             ui.separator();
                             if self.page == Page::Library {
                                 ui.horizontal_wrapped(|ui| {
-                                    if win98::push_button(ui, "Install…", !self.busy && self.store.is_some())
-                                        .clicked()
+                                    if win98::push_button(
+                                        ui,
+                                        "Install…",
+                                        !self.busy && self.store.is_some(),
+                                    )
+                                    .clicked()
                                     {
                                         self.install = Some(InstallDraft::default());
                                     }
-                                    if win98::push_button(ui, "Import…", !self.busy && self.store.is_some())
-                                        .clicked()
+                                    if win98::push_button(
+                                        ui,
+                                        "Import…",
+                                        !self.busy && self.store.is_some(),
+                                    )
+                                    .clicked()
                                     {
                                         self.import = Some(ImportDraft::default());
                                     }
@@ -2520,7 +2534,10 @@ impl RiceWineApp {
                         });
                     },
                 );
-                let count = self.store.as_ref().map_or(0, |store| store.applications().len());
+                let count = self
+                    .store
+                    .as_ref()
+                    .map_or(0, |store| store.applications().len());
                 win98::status_bar(ui, count);
             });
     }
@@ -2998,21 +3015,25 @@ impl RiceWineApp {
             }
         }
         if win98_mode && self.store.is_some() {
-            let selected = self.selected.as_deref().and_then(|id| {
-                self.store.as_ref()?.get(id)
-            }).filter(|app| {
-                self.workspace.filter == LibraryFilter::All
-                    || self.workspace.is_favorite(&app.id)
-            }).cloned();
+            let selected = self
+                .selected
+                .as_deref()
+                .and_then(|id| self.store.as_ref()?.get(id))
+                .filter(|app| {
+                    self.workspace.filter == LibraryFilter::All
+                        || self.workspace.is_favorite(&app.id)
+                })
+                .cloned();
             let can_run = selected.as_ref().is_some_and(|app| {
                 !self.busy
                     && app.executable.is_some()
                     && !self.compatibility_busy.contains(&app.id)
-                    && self.profile_cache.get(&app.id)
+                    && self
+                        .profile_cache
+                        .get(&app.id)
                         .and_then(|profile| profile.as_ref().ok())
                         .is_some_and(|profile| {
-                            self.wine.is_some()
-                                || !matches!(profile.runner, Runner::SystemWine)
+                            self.wine.is_some() || !matches!(profile.runner, Runner::SystemWine)
                         })
             });
             ui.horizontal_wrapped(|ui| {
@@ -3026,7 +3047,8 @@ impl RiceWineApp {
                 {
                     self.open_troubleshooter(app);
                 }
-                if win98::push_button(ui, "Remove entry…", !self.busy && selected.is_some()).clicked()
+                if win98::push_button(ui, "Remove entry…", !self.busy && selected.is_some())
+                    .clicked()
                     && let Some(app) = selected.as_ref()
                 {
                     self.remove_confirmation = Some(app.id.clone());
@@ -3415,7 +3437,7 @@ impl RiceWineApp {
                         }
                     },
                 );
-    
+
             };
             if win98_mode {
                 win98::sunken_list().show(ui, |ui| draw_program_list(ui));
@@ -5295,7 +5317,11 @@ impl RiceWineApp {
 /// XP Luna, macOS, Windows 10 and Windows 98 use independent native-era
 /// shells, even with the diagnostic unified toolbar enabled.
 fn use_shared_shell(theme: Theme, simple_ui: bool) -> bool {
-    simple_ui && !matches!(theme, Theme::Luna | Theme::MacOS | Theme::Windows10 | Theme::Windows98)
+    simple_ui
+        && !matches!(
+            theme,
+            Theme::Luna | Theme::MacOS | Theme::Windows10 | Theme::Windows98
+        )
 }
 
 impl eframe::App for RiceWineApp {

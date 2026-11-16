@@ -23,19 +23,143 @@ pub fn section_label(ui: &mut egui::Ui, label: &str) {
     ui.add_space(8.0);
 }
 
-/// Full-width Settings navigation: neutral hover fill + thin blue selection rail.
+/// Original, narrow-line navigation glyphs from the Windows 10 Settings era.
+#[derive(Clone, Copy)]
+enum NavigationGlyph {
+    Applications,
+    Environments,
+    Runners,
+    Appearance,
+}
+
+fn navigation_glyph(label: &str) -> NavigationGlyph {
+    match label {
+        "Wine environments" => NavigationGlyph::Environments,
+        "Wine & Proton" => NavigationGlyph::Runners,
+        "Appearance" => NavigationGlyph::Appearance,
+        _ => NavigationGlyph::Applications,
+    }
+}
+
+fn paint_navigation_glyph(painter: &egui::Painter, rect: Rect, glyph: NavigationGlyph) {
+    let stroke = Stroke::new(1.45, TEXT);
+    let center = rect.center();
+    match glyph {
+        NavigationGlyph::Applications => {
+            for x in [-5.0_f32, 3.0] {
+                for y in [-5.0_f32, 3.0] {
+                    let square = Rect::from_min_size(center + Vec2::new(x, y), Vec2::splat(5.5));
+                    painter.rect_stroke(square, 0.0, stroke, egui::StrokeKind::Inside);
+                }
+            }
+        }
+        NavigationGlyph::Environments => {
+            painter.rect_stroke(
+                Rect::from_center_size(center, Vec2::new(15.0, 12.0)),
+                0.0,
+                stroke,
+                egui::StrokeKind::Inside,
+            );
+            painter.line_segment(
+                [
+                    center + Vec2::new(-7.0, -2.0),
+                    center + Vec2::new(7.0, -2.0),
+                ],
+                stroke,
+            );
+            painter.line_segment(
+                [center + Vec2::new(-3.0, 9.0), center + Vec2::new(3.0, 9.0)],
+                stroke,
+            );
+        }
+        NavigationGlyph::Runners => {
+            painter.rect_stroke(
+                Rect::from_center_size(center, Vec2::new(16.0, 13.0)),
+                0.0,
+                stroke,
+                egui::StrokeKind::Inside,
+            );
+            painter.line_segment(
+                [
+                    center + Vec2::new(-5.0, -3.0),
+                    center + Vec2::new(-1.5, 0.0),
+                ],
+                stroke,
+            );
+            painter.line_segment(
+                [center + Vec2::new(-1.5, 0.0), center + Vec2::new(-5.0, 3.0)],
+                stroke,
+            );
+            painter.line_segment(
+                [center + Vec2::new(1.0, 3.5), center + Vec2::new(5.0, 3.5)],
+                stroke,
+            );
+        }
+        NavigationGlyph::Appearance => {
+            painter.circle_stroke(center, 6.8, stroke);
+            painter.circle_filled(center, 2.3, TEXT);
+            for offset in [
+                Vec2::new(-10.0, 0.0),
+                Vec2::new(10.0, 0.0),
+                Vec2::new(0.0, -10.0),
+                Vec2::new(0.0, 10.0),
+            ] {
+                painter.line_segment([center + offset * 0.83, center + offset], stroke);
+            }
+        }
+    }
+}
+
+/// Settings navigation uses left-aligned text, period-appropriate line icons
+/// and a blue 3px active rail, with a full-row pointer and keyboard target.
 pub fn navigation(ui: &mut egui::Ui, label: &str, selected: bool) -> Response {
-    let response = ui.add_sized(
-        [ui.available_width(), 39.0],
-        egui::Button::new(RichText::new(label).size(13.0).color(TEXT))
-            .fill(if selected { SELECTED } else { SIDEBAR })
-            .stroke(Stroke::NONE),
+    let width = ui.available_width().max(0.0);
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 39.0), Sense::click());
+    let painter = ui.painter_at(rect);
+    painter.rect_filled(
+        rect,
+        0.0,
+        if selected {
+            SELECTED
+        } else if response.hovered() {
+            HOVER
+        } else {
+            SIDEBAR
+        },
     );
     if selected {
-        let rail = Rect::from_min_size(response.rect.min, Vec2::new(3.0, response.rect.height()));
-        ui.painter().rect_filled(rail, 0.0, ACCENT);
+        painter.rect_filled(
+            Rect::from_min_size(rect.min, Vec2::new(3.0, rect.height())),
+            0.0,
+            ACCENT,
+        );
     }
-    response
+    paint_navigation_glyph(
+        &painter,
+        Rect::from_center_size(rect.left_center() + Vec2::new(24.0, 0.0), Vec2::splat(18.0)),
+        navigation_glyph(label),
+    );
+    painter.text(
+        rect.left_center() + Vec2::new(42.0, 0.0),
+        Align2::LEFT_CENTER,
+        label,
+        FontId::proportional(13.0),
+        TEXT,
+    );
+    if response.has_focus() {
+        painter.rect_stroke(
+            rect.shrink(2.0),
+            0.0,
+            Stroke::new(1.0, ACCENT),
+            egui::StrokeKind::Inside,
+        );
+    }
+    response.widget_info(|| {
+        let mut info = egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label);
+        info.selected = Some(selected);
+        info
+    });
+    response.on_hover_text(label)
 }
 
 pub fn page_heading(ui: &mut egui::Ui, title: &str) {
@@ -99,6 +223,21 @@ pub fn app_row(
             CANVAS
         },
     );
+    if selected {
+        painter.rect_filled(
+            Rect::from_min_size(rect.min, Vec2::new(3.0, rect.height())),
+            0.0,
+            ACCENT,
+        );
+    }
+    if response.has_focus() {
+        painter.rect_stroke(
+            rect.shrink(2.0),
+            0.0,
+            Stroke::new(1.0, ACCENT),
+            egui::StrokeKind::Inside,
+        );
+    }
     painter.line_segment(
         [rect.left_bottom(), rect.right_bottom()],
         Stroke::new(1.0, HAIRLINE),
@@ -151,7 +290,16 @@ pub fn app_row(
         FontId::proportional(11.5),
         if status == "Ready" { ACCENT } else { MUTED },
     );
-    response.on_hover_text(name)
+    response.widget_info(|| {
+        let mut info = egui::WidgetInfo::labeled(
+            egui::Role::Button,
+            ui.is_enabled(),
+            format!("{name}, {runtime}, {status}"),
+        );
+        info.selected = Some(selected);
+        info
+    });
+    response.on_hover_text(format!("{name}\n{runtime} · {status}"))
 }
 
 pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
@@ -181,4 +329,37 @@ pub fn empty_library(ui: &mut egui::Ui, enabled: bool) -> bool {
             .color(MUTED),
     );
     install
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn navigation_icons_follow_distinct_windows_10_categories() {
+        assert!(matches!(
+            navigation_glyph("Apps & features"),
+            NavigationGlyph::Applications
+        ));
+        assert!(matches!(
+            navigation_glyph("Wine environments"),
+            NavigationGlyph::Environments
+        ));
+        assert!(matches!(
+            navigation_glyph("Wine & Proton"),
+            NavigationGlyph::Runners
+        ));
+        assert!(matches!(
+            navigation_glyph("Appearance"),
+            NavigationGlyph::Appearance
+        ));
+    }
+
+    #[test]
+    fn compact_settings_palette_remains_square_and_legible() {
+        assert_eq!(ACCENT, Color32::from_rgb(0, 103, 184));
+        assert_eq!(CANVAS, Color32::WHITE);
+        assert_ne!(TEXT, MUTED);
+        assert_ne!(SELECTED, HOVER);
+    }
 }

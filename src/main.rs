@@ -1637,10 +1637,10 @@ impl RiceWineApp {
         let height = ui.available_height();
         egui::Frame::new()
             .fill(win10::SIDEBAR)
-            .inner_margin(egui::Margin::symmetric(14, 21))
+            .inner_margin(egui::Margin::symmetric(13, 18))
             .show(ui, |ui| {
                 ui.set_min_width(192.0);
-                ui.set_min_height((height - 42.0).max(0.0));
+                ui.set_min_height((height - 36.0).max(0.0));
                 ui.horizontal(|ui| {
                     if ui
                         .button("←")
@@ -1652,29 +1652,24 @@ impl RiceWineApp {
                     ui.add_space(8.0);
                     win10::sidebar_heading(ui);
                 });
-                ui.add_space(26.0);
-                if ui
-                    .add(
-                        egui::TextEdit::singleline(&mut self.search)
-                            .hint_text("Find an app")
-                            .desired_width(ui.available_width()),
-                    )
-                    .changed()
-                {
+                ui.add_space(20.0);
+                win10::section_label(ui, "Apps");
+                if win10::navigation(ui, "Apps & features", self.page == Page::Library).clicked() {
                     self.page = Page::Library;
                 }
-                win10::section_label(ui, "Apps");
-                for (page, label) in [
-                    (Page::Library, "Apps & features"),
-                    (Page::Prefixes, "Wine environments"),
-                    (Page::Runners, "Wine & Proton"),
-                    (Page::Settings, "Appearance"),
-                ] {
-                    if win10::navigation(ui, label, self.page == page).clicked() {
-                        self.page = page;
-                    }
+                win10::section_label(ui, "Wine tools");
+                if win10::navigation(ui, "Wine environments", self.page == Page::Prefixes).clicked()
+                {
+                    self.page = Page::Prefixes;
                 }
-                ui.add_space(24.0);
+                if win10::navigation(ui, "Wine & Proton", self.page == Page::Runners).clicked() {
+                    self.page = Page::Runners;
+                }
+                win10::section_label(ui, "Personalization");
+                if win10::navigation(ui, "Appearance", self.page == Page::Settings).clicked() {
+                    self.page = Page::Settings;
+                }
+                ui.add_space(22.0);
                 ui.separator();
                 if win10::link_action(ui, "About RiceWine", true).clicked() {
                     self.about_open = true;
@@ -2307,7 +2302,26 @@ impl RiceWineApp {
         };
         let compact = ui.available_width() < 760.0;
         if compact {
-            self.compact_navigation(ui);
+            ui.horizontal(|ui| {
+                ui.menu_button("☰  Settings", |ui| {
+                    for (page, label) in [
+                        (Page::Library, "Apps & features"),
+                        (Page::Prefixes, "Wine environments"),
+                        (Page::Runners, "Wine & Proton"),
+                        (Page::Settings, "Appearance"),
+                    ] {
+                        if ui.selectable_label(self.page == page, label).clicked() {
+                            self.page = page;
+                        }
+                    }
+                    ui.separator();
+                    if ui.button("About RiceWine").clicked() {
+                        self.about_open = true;
+                    }
+                });
+                ui.label(RichText::new("Apps").size(12.0).color(win10::MUTED));
+            });
+            ui.separator();
         }
         let available_height = ui.available_height().max(0.0);
         ui.horizontal_top(|ui| {
@@ -2985,7 +2999,7 @@ impl RiceWineApp {
             let list_height = if luna_mode {
                 190.0
             } else if win10_mode {
-                254.0
+                330.0
             } else if stacked {
                 260.0
             } else {
@@ -3026,118 +3040,215 @@ impl RiceWineApp {
                             Theme::Windows10 => 63.0,
                         }
                     };
-                    egui::ScrollArea::vertical().show_rows(
-                        ui,
-                        row_height,
-                        matching_indices.len(),
-                        |ui, range| {
-                            for index in range {
-                                let app = &self
-                                    .store
-                                    .as_ref()
-                                    .expect("library is available while displaying rows")
-                                    .applications()[matching_indices[index]];
-                                let selected = self.selected.as_deref() == Some(&app.id);
-                                let profile = self.profile_cache.get(&app.id);
-                                let runtime = profile
-                                    .and_then(|result| result.as_ref().ok())
-                                    .map(|profile| profile.runner.label())
-                                    .unwrap_or("Invalid profile");
-                                let display_name = if self.workspace.is_favorite(&app.id) {
-                                    format!("★ {}", app.name)
-                                } else {
-                                    app.name.clone()
-                                };
-                                let status = if runtime == "Invalid profile" {
-                                    "Check runner"
-                                } else if app.executable.is_none() {
-                                    "Choose EXE"
-                                } else if self.running.contains(&app.id) {
-                                    "Running"
-                                } else if self.wine.is_none() && runtime == "System Wine" {
-                                    "Wine missing"
-                                } else {
-                                    "Ready"
-                                };
-                                if use_shared_shell(self.theme, self.simple_ui) {
-                                    let palette = self.theme.palette();
-                                    ui.horizontal(|ui| {
-                                        let name = egui::Button::new(
-                                            RichText::new(&display_name).strong().color(
-                                                if selected {
-                                                    Color32::WHITE
-                                                } else {
-                                                    palette.text
-                                                },
-                                            ),
-                                        )
-                                        .fill(if selected {
-                                            palette.accent
-                                        } else {
-                                            palette.button
-                                        })
-                                        .stroke(egui::Stroke::new(1.0, palette.border))
-                                        .corner_radius(egui::CornerRadius::same(
-                                            palette.corner_radius,
-                                        ));
-                                        if ui
-                                            .add_sized(
-                                                [(width - 116.0).max(80.0), row_height - 5.0],
-                                                name,
-                                            )
-                                            .clicked()
-                                        {
-                                            next_selected = Some(app.id.clone());
-                                        }
-                                        ui.label(
-                                            RichText::new(status).size(11.5).color(palette.muted),
-                                        );
-                                    });
-                                } else if win10_mode {
-                                    if win10::app_row(ui, &display_name, runtime, status, selected)
+                    if win10_mode {
+                        egui::ScrollArea::vertical()
+                            .max_height(list_height)
+                            .show(ui, |ui| {
+                                for &app_index in &matching_indices {
+                                    let app = self
+                                        .store
+                                        .as_ref()
+                                        .expect("library is available while displaying rows")
+                                        .applications()[app_index]
+                                        .clone();
+                                    let selected = self.selected.as_deref() == Some(&app.id);
+                                    let runtime = self
+                                        .profile_cache
+                                        .get(&app.id)
+                                        .and_then(|result| result.as_ref().ok())
+                                        .map(|profile| profile.runner.label())
+                                        .unwrap_or("Invalid profile");
+                                    let status = if runtime == "Invalid profile" {
+                                        "Check runner"
+                                    } else if app.executable.is_none() {
+                                        "Choose EXE"
+                                    } else if self.running.contains(&app.id) {
+                                        "Running"
+                                    } else if self.wine.is_none() && runtime == "System Wine" {
+                                        "Wine missing"
+                                    } else {
+                                        "Ready"
+                                    };
+                                    let name = if self.workspace.is_favorite(&app.id) {
+                                        format!("★ {}", app.name)
+                                    } else {
+                                        app.name.clone()
+                                    };
+                                    if win10::app_row(ui, &name, runtime, status, selected)
                                         .clicked()
                                     {
                                         next_selected = Some(app.id.clone());
                                     }
-                                } else {
-                                    ui.horizontal(|ui| {
-                                        let row_width = (ui.available_width() - 122.0).max(0.0);
-                                        let response = if luna_mode {
-                                            luna::program_row(
-                                                ui,
-                                                &display_name,
-                                                selected,
-                                                row_width,
+                                    if selected {
+                                        egui::Frame::new()
+                                            .fill(Color32::from_rgb(247, 249, 251))
+                                            .inner_margin(egui::Margin::symmetric(13, 11))
+                                            .show(ui, |ui| {
+                                                let can_run = !self.busy
+                                                    && !self.compatibility_busy.contains(&app.id)
+                                                    && app.executable.is_some()
+                                                    && self.profile_cache.get(&app.id)
+                                                        .and_then(|entry| entry.as_ref().ok())
+                                                        .is_some_and(|profile| {
+                                                            self.wine.is_some()
+                                                                || !matches!(
+                                                                    profile.runner,
+                                                                    Runner::SystemWine
+                                                                )
+                                                        });
+                                                ui.horizontal_wrapped(|ui| {
+                                                    if win10::primary_action(ui, "Launch", can_run)
+                                                        .clicked()
+                                                    {
+                                                        self.play(app.clone());
+                                                    }
+                                                    if self.running.contains(&app.id)
+                                                        && win10::secondary_action(ui, "Stop…", true)
+                                                            .clicked()
+                                                    {
+                                                        self.stop_confirmation = Some(app.id.clone());
+                                                    }
+                                                    if win10::secondary_action(
+                                                        ui,
+                                                        "Diagnose & recover…",
+                                                        true,
+                                                    )
+                                                    .clicked()
+                                                    {
+                                                        self.open_troubleshooter(&app);
+                                                    }
+                                                    if win10::secondary_action(
+                                                        ui,
+                                                        "Remove entry…",
+                                                        !self.busy,
+                                                    )
+                                                    .clicked()
+                                                    {
+                                                        self.remove_confirmation =
+                                                            Some(app.id.clone());
+                                                    }
+                                                });
+                                                ui.small(
+                                                    "Removing an entry never deletes its Wine prefix.",
+                                                );
+                                            });
+                                    }
+                                }
+                            });
+                    } else {
+                        egui::ScrollArea::vertical().show_rows(
+                            ui,
+                            row_height,
+                            matching_indices.len(),
+                            |ui, range| {
+                                for index in range {
+                                    let app = &self
+                                        .store
+                                        .as_ref()
+                                        .expect("library is available while displaying rows")
+                                        .applications()[matching_indices[index]];
+                                    let selected = self.selected.as_deref() == Some(&app.id);
+                                    let profile = self.profile_cache.get(&app.id);
+                                    let runtime = profile
+                                        .and_then(|result| result.as_ref().ok())
+                                        .map(|profile| profile.runner.label())
+                                        .unwrap_or("Invalid profile");
+                                    let display_name = if self.workspace.is_favorite(&app.id) {
+                                        format!("★ {}", app.name)
+                                    } else {
+                                        app.name.clone()
+                                    };
+                                    let status = if runtime == "Invalid profile" {
+                                        "Check runner"
+                                    } else if app.executable.is_none() {
+                                        "Choose EXE"
+                                    } else if self.running.contains(&app.id) {
+                                        "Running"
+                                    } else if self.wine.is_none() && runtime == "System Wine" {
+                                        "Wine missing"
+                                    } else {
+                                        "Ready"
+                                    };
+                                    if use_shared_shell(self.theme, self.simple_ui) {
+                                        let palette = self.theme.palette();
+                                        ui.horizontal(|ui| {
+                                            let name = egui::Button::new(
+                                                RichText::new(&display_name).strong().color(
+                                                    if selected {
+                                                        Color32::WHITE
+                                                    } else {
+                                                        palette.text
+                                                    },
+                                                ),
                                             )
-                                        } else if self.theme == Theme::MacOS {
-                                            mac::program_row(
-                                                ui,
-                                                &display_name,
-                                                selected,
-                                                row_width,
-                                                index,
-                                            )
-                                        } else if let Some(flavor) = self.theme.extra_flavor() {
-                                            extra_rices::program_row(
-                                                ui,
-                                                flavor,
-                                                &display_name,
-                                                status,
-                                                selected,
-                                                row_width,
-                                            )
-                                        } else {
-                                            ui.button(&display_name)
-                                        };
-                                        if response.clicked() {
+                                            .fill(if selected {
+                                                palette.accent
+                                            } else {
+                                                palette.button
+                                            })
+                                            .stroke(egui::Stroke::new(1.0, palette.border))
+                                            .corner_radius(egui::CornerRadius::same(
+                                                palette.corner_radius,
+                                            ));
+                                            if ui
+                                                .add_sized(
+                                                    [(width - 116.0).max(80.0), row_height - 5.0],
+                                                    name,
+                                                )
+                                                .clicked()
+                                            {
+                                                next_selected = Some(app.id.clone());
+                                            }
+                                            ui.label(
+                                                RichText::new(status).size(11.5).color(palette.muted),
+                                            );
+                                        });
+                                    } else if win10_mode {
+                                        if win10::app_row(ui, &display_name, runtime, status, selected)
+                                            .clicked()
+                                        {
                                             next_selected = Some(app.id.clone());
                                         }
-                                        ui.label(if luna_mode { runtime } else { status });
-                                    });
+                                    } else {
+                                        ui.horizontal(|ui| {
+                                            let row_width = (ui.available_width() - 122.0).max(0.0);
+                                            let response = if luna_mode {
+                                                luna::program_row(
+                                                    ui,
+                                                    &display_name,
+                                                    selected,
+                                                    row_width,
+                                                )
+                                            } else if self.theme == Theme::MacOS {
+                                                mac::program_row(
+                                                    ui,
+                                                    &display_name,
+                                                    selected,
+                                                    row_width,
+                                                    index,
+                                                )
+                                            } else if let Some(flavor) = self.theme.extra_flavor() {
+                                                extra_rices::program_row(
+                                                    ui,
+                                                    flavor,
+                                                    &display_name,
+                                                    status,
+                                                    selected,
+                                                    row_width,
+                                                )
+                                            } else {
+                                                ui.button(&display_name)
+                                            };
+                                            if response.clicked() {
+                                                next_selected = Some(app.id.clone());
+                                            }
+                                            ui.label(if luna_mode { runtime } else { status });
+                                        });
+                                    }
                                 }
-                            }
-                        },
-                    );
+                            },
+                        );
+                    }
                 },
             );
             if !win10_mode {
@@ -3439,11 +3550,7 @@ impl RiceWineApp {
             } else if luna_mode {
                 luna::option_group(ui, "Program details", luna::XpIcon::Programs, details);
             } else if win10_mode {
-                win10::section_heading(ui, "Selected app");
-                egui::Frame::new()
-                    .fill(Color32::from_rgb(247, 247, 247))
-                    .inner_margin(egui::Margin::same(16))
-                    .show(ui, details);
+                ui.collapsing("Advanced settings for selected app", details);
             } else if mac_mode && !mac_inspector_open {
                 ui.collapsing("Application actions", details);
             } else if mac_mode {
@@ -4994,10 +5101,10 @@ impl RiceWineApp {
     }
 }
 
-/// XP Luna and macOS always use their own native-era shells, independently
-/// of the diagnostic unified-toolbar preference. Other Rices are unchanged.
+/// XP Luna, macOS and Windows 10 always use their native-era shells,
+/// independently of the diagnostic unified-toolbar preference.
 fn use_shared_shell(theme: Theme, simple_ui: bool) -> bool {
-    simple_ui && !matches!(theme, Theme::Luna | Theme::MacOS)
+    simple_ui && !matches!(theme, Theme::Luna | Theme::MacOS | Theme::Windows10)
 }
 
 impl eframe::App for RiceWineApp {
@@ -5365,11 +5472,12 @@ mod native_shell_route_tests {
     use super::*;
 
     #[test]
-    fn xp_and_macos_have_dedicated_shells_with_unified_fallback_enabled() {
+    fn xp_macos_and_windows10_have_dedicated_shells() {
         assert!(!use_shared_shell(Theme::Luna, true));
         assert!(!use_shared_shell(Theme::Luna, false));
         assert!(!use_shared_shell(Theme::MacOS, true));
         assert!(!use_shared_shell(Theme::MacOS, false));
-        assert!(use_shared_shell(Theme::Windows10, true));
+        assert!(!use_shared_shell(Theme::Windows10, true));
+        assert!(!use_shared_shell(Theme::Windows10, false));
     }
 }

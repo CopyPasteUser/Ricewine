@@ -128,13 +128,13 @@ fn retreat(step: Step, is_import: bool) -> Step {
 fn footer(
     ui: &mut egui::Ui,
     step: &mut Step,
-    back: bool,
     next: bool,
-    is_last: bool,
     is_import: bool,
     finish: &str,
     finish_enabled: bool,
 ) -> Action {
+    let back = *step != Step::Details;
+    let is_last = *step == Step::Review;
     let mut action = Action::None;
     ui.separator();
     ui.horizontal_wrapped(|ui| {
@@ -249,7 +249,6 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
         ui.colored_label(Color32::DARK_RED, error);
     }
     let step = draft.win98_step;
-    let is_last = step == Step::Review;
     let ready = install_details_ready(draft) && install_compatibility_ready(draft);
     let next = if step == Step::Details {
         install_details_ready(draft)
@@ -264,9 +263,7 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
     footer(
         ui,
         &mut draft.win98_step,
-        step != Step::Details,
         next,
-        is_last,
         false,
         finish_label,
         ready,
@@ -336,14 +333,11 @@ pub(crate) fn import(ui: &mut egui::Ui, draft: &mut ImportDraft) -> Action {
     if let Some(error) = &draft.error {
         ui.colored_label(Color32::DARK_RED, error);
     }
-    let step = draft.win98_step;
     let ready = import_details_ready(draft);
     footer(
         ui,
         &mut draft.win98_step,
-        step != Step::Details,
         ready,
-        step == Step::Review,
         true,
         "Import program",
         ready,

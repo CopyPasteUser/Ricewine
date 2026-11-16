@@ -2460,7 +2460,11 @@ impl RiceWineApp {
                             ui.add_enabled_ui(self.workspace_writable, |ui| {
                                 for filter in LibraryFilter::ALL {
                                     view_changed |= ui
-                                        .selectable_value(&mut self.workspace.filter, filter, filter.label())
+                                        .selectable_value(
+                                            &mut self.workspace.filter,
+                                            filter,
+                                            filter.label(),
+                                        )
                                         .changed();
                                 }
                             });
@@ -2469,7 +2473,11 @@ impl RiceWineApp {
                             ui.add_enabled_ui(self.workspace_writable, |ui| {
                                 for order in LibraryOrder::ALL {
                                     view_changed |= ui
-                                        .selectable_value(&mut self.workspace.order, order, order.label())
+                                        .selectable_value(
+                                            &mut self.workspace.order,
+                                            order,
+                                            order.label(),
+                                        )
                                         .changed();
                                 }
                             });
@@ -3043,7 +3051,8 @@ impl RiceWineApp {
                     {
                         self.search.clear();
                     }
-                    if !win10_mode && !win98_mode && ui.small_button("↻ Refresh profiles").clicked() {
+                    if !win10_mode && !win98_mode && ui.small_button("↻ Refresh profiles").clicked()
+                    {
                         self.refresh_profile_cache();
                         self.sync_runner_draft();
                     }

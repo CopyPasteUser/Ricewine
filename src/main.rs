@@ -2585,7 +2585,17 @@ impl RiceWineApp {
                 if changed && let Err(error) = self.persist_workspace() {
                     self.notice = Some((true, format!("Could not save Library view: {error}")));
                 }
-                if win7::command(ui, if compact_commands { "Install…" } else { "Install a program" }, can_install).clicked() {
+                if win7::command(
+                    ui,
+                    if compact_commands {
+                        "Install…"
+                    } else {
+                        "Install a program"
+                    },
+                    can_install,
+                )
+                .clicked()
+                {
                     self.install = Some(InstallDraft::default());
                 }
                 if win7::command(ui, "Import…", can_install).clicked() {
@@ -2607,7 +2617,10 @@ impl RiceWineApp {
                             ui.close();
                         }
                         if ui
-                            .add_enabled(!self.busy && selected.is_some(), egui::Button::new("Remove entry…"))
+                            .add_enabled(
+                                !self.busy && selected.is_some(),
+                                egui::Button::new("Remove entry…"),
+                            )
                             .clicked()
                             && let Some(app) = selected.as_ref()
                         {
@@ -2621,7 +2634,8 @@ impl RiceWineApp {
                     {
                         self.open_troubleshooter(app);
                     }
-                    if win7::command(ui, "Remove entry…", !self.busy && selected.is_some()).clicked()
+                    if win7::command(ui, "Remove entry…", !self.busy && selected.is_some())
+                        .clicked()
                         && let Some(app) = selected.as_ref()
                     {
                         self.remove_confirmation = Some(app.id.clone());

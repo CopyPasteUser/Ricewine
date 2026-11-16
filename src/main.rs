@@ -2431,92 +2431,104 @@ impl RiceWineApp {
                 response.request_focus();
                 self.search_focus_requested = false;
             }
-            let usable_height = (ui.available_height() - if short { 47.0 } else { 53.0 })
-                .max(0.0);
-            ui.horizontal_top(|ui| {
-                if !compact {
+            let count = self.store.as_ref().map_or(0, |store| store.applications().len());
+            let selected_name = self.selected.as_deref().and_then(|id| {
+                self.store.as_ref()?.get(id).map(|app| app.name.clone())
+            });
+            // Bottom-up layout reserves the Explorer information strip before
+            // assigning remaining height to the scrollable Programs viewport.
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+                win7::status_bar(ui, count, selected_name.as_deref());
+                ui.add_space(5.0);
+                let usable_height = (ui.available_height() - 12.0).max(0.0);
+                ui.horizontal_top(|ui| {
+                    if !compact {
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(176.0, usable_height),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                win7::task_pane().show(ui, |ui| {
+                                    win7::task_heading(ui, "Control Panel Home");
+                                    for (page, label) in [
+                                        (Page::Library, "Uninstall or change a program"),
+                                        (Page::Prefixes, "Wine environments"),
+                                        (Page::Runners, "Compatibility tools"),
+                                        (Page::Settings, "Personalization"),
+                                    ] {
+                                        if win7::task_link(ui, label, self.page == page).clicked() {
+                                            self.page = page;
+                                        }
+                                    }
+                                    ui.add_space(10.0);
+                                    win7::task_heading(ui, "See also");
+                                    if win7::task_link(ui, "About RiceWine", false).clicked() {
+                                        self.about_open = true;
+                                    }
+                                });
+                            },
+                        );
+                        ui.separator();
+                    }
+                    let width = ui.available_width().max(0.0);
                     ui.allocate_ui_with_layout(
-                        egui::vec2(176.0, usable_height),
+                        egui::vec2(width, usable_height),
                         egui::Layout::top_down(egui::Align::Min),
                         |ui| {
-                            win7::task_pane().show(ui, |ui| {
-                                win7::task_heading(ui, "Control Panel Home");
-                                for (page, label) in [
-                                    (Page::Library, "Uninstall or change a program"),
-                                    (Page::Prefixes, "Wine environments"),
-                                    (Page::Runners, "Compatibility tools"),
-                                    (Page::Settings, "Personalization"),
-                                ] {
-                                    if win7::task_link(ui, label, self.page == page).clicked() {
-                                        self.page = page;
-                                    }
+                            win7::content_frame().show(ui, |ui| {
+                                if compact {
+                                    ui.horizontal(|ui| {
+                                        ui.menu_button("Control Panel ▾", |ui| {
+                                            for (page, label) in [
+                                                (Page::Library, "Programs and Features"),
+                                                (Page::Prefixes, "Wine environments"),
+                                                (Page::Runners, "Compatibility tools"),
+                                                (Page::Settings, "Appearance"),
+                                            ] {
+                                                if ui.selectable_label(self.page == page, label).clicked() {
+                                                    self.page = page;
+                                                    ui.close();
+                                                }
+                                            }
+                                            ui.separator();
+                                            if ui.button("About RiceWine").clicked() {
+                                                self.about_open = true;
+                                                ui.close();
+                                            }
+                                        });
+                                        ui.label(
+                                            RichText::new(title)
+                                                .size(16.0)
+                                                .color(Color32::from_rgb(19, 64, 113)),
+                                        );
+                                    });
                                 }
-                                ui.add_space(10.0);
-                                win7::task_heading(ui, "See also");
-                                if win7::task_link(ui, "About RiceWine", false).clicked() {
-                                    self.about_open = true;
+                                let description = match self.page {
+                                    Page::Library => "To change a program, select it from the list and choose an action.",
+                                    Page::Prefixes => "Manage and back up the Windows environments used by your programs.",
+                                    Page::Runners => "Choose Wine or Proton versions and configure compatibility.",
+                                    Page::Settings => "Customize RiceWine without changing your Linux desktop.",
+                                };
+                                if !compact {
+                                    win7::page_heading(ui, title, description, short);
                                 }
+                                ui.add_space(if short { 4.0 } else { 10.0 });
+                                if self.page == Page::Library {
+                                    self.win7_command_bar(ui);
+                                    ui.add_space(4.0);
+                                }
+                                egui::ScrollArea::vertical()
+                                    .auto_shrink([false, false])
+                                    .show(ui, |ui| self.page_body(ui));
                             });
                         },
                     );
-                    ui.separator();
-                }
-                let width = ui.available_width().max(0.0);
-                ui.allocate_ui_with_layout(
-                    egui::vec2(width, usable_height),
-                    egui::Layout::top_down(egui::Align::Min),
-                    |ui| {
-                        win7::content_frame().show(ui, |ui| {
-                            if compact {
-                                ui.horizontal(|ui| {
-                                    ui.menu_button("Control Panel ▾", |ui| {
-                                        for (page, label) in [
-                                            (Page::Library, "Programs and Features"),
-                                            (Page::Prefixes, "Wine environments"),
-                                            (Page::Runners, "Compatibility tools"),
-                                            (Page::Settings, "Appearance"),
-                                        ] {
-                                            if ui.selectable_label(self.page == page, label).clicked() {
-                                                self.page = page;
-                                                ui.close();
-                                            }
-                                        }
-                                        ui.separator();
-                                        if ui.button("About RiceWine").clicked() {
-                                            self.about_open = true;
-                                            ui.close();
-                                        }
-                                    });
-                                });
-                            }
-                            let description = match self.page {
-                                Page::Library => "To change a program, select it from the list and choose an action.",
-                                Page::Prefixes => "Manage and back up the Windows environments used by your programs.",
-                                Page::Runners => "Choose Wine or Proton versions and configure compatibility.",
-                                Page::Settings => "Customize RiceWine without changing your Linux desktop.",
-                            };
-                            win7::page_heading(ui, title, description, short);
-                            ui.add_space(if short { 4.0 } else { 10.0 });
-                            if self.page == Page::Library {
-                                self.win7_command_bar(ui);
-                                ui.add_space(4.0);
-                            }
-                            egui::ScrollArea::vertical()
-                                .auto_shrink([false, false])
-                                .show(ui, |ui| self.page_body(ui));
-                        });
-                    },
-                );
+                });
             });
-            let count = self.store.as_ref().map_or(0, |store| store.applications().len());
-            let selected_name = self.selected.as_deref().and_then(|id| {
-                self.store.as_ref()?.get(id).map(|app| app.name.as_str())
-            });
-            win7::status_bar(ui, count, selected_name);
         });
     }
 
     fn win7_command_bar(&mut self, ui: &mut egui::Ui) {
+        let compact_commands = ui.ctx().content_rect().width() < 600.0;
         let can_install = !self.busy && self.store.is_some();
         let selected = self
             .selected
@@ -2573,7 +2585,7 @@ impl RiceWineApp {
                 if changed && let Err(error) = self.persist_workspace() {
                     self.notice = Some((true, format!("Could not save Library view: {error}")));
                 }
-                if win7::command(ui, "Install a program", can_install).clicked() {
+                if win7::command(ui, if compact_commands { "Install…" } else { "Install a program" }, can_install).clicked() {
                     self.install = Some(InstallDraft::default());
                 }
                 if win7::command(ui, "Import…", can_install).clicked() {
@@ -2584,15 +2596,36 @@ impl RiceWineApp {
                 {
                     self.play(app.clone());
                 }
-                if win7::command(ui, "Properties", selected.is_some()).clicked()
-                    && let Some(app) = selected.as_ref()
-                {
-                    self.open_troubleshooter(app);
-                }
-                if win7::command(ui, "Remove entry…", !self.busy && selected.is_some()).clicked()
-                    && let Some(app) = selected.as_ref()
-                {
-                    self.remove_confirmation = Some(app.id.clone());
+                if compact_commands {
+                    ui.menu_button("More ▾", |ui| {
+                        if ui
+                            .add_enabled(selected.is_some(), egui::Button::new("Properties…"))
+                            .clicked()
+                            && let Some(app) = selected.as_ref()
+                        {
+                            self.open_troubleshooter(app);
+                            ui.close();
+                        }
+                        if ui
+                            .add_enabled(!self.busy && selected.is_some(), egui::Button::new("Remove entry…"))
+                            .clicked()
+                            && let Some(app) = selected.as_ref()
+                        {
+                            self.remove_confirmation = Some(app.id.clone());
+                            ui.close();
+                        }
+                    });
+                } else {
+                    if win7::command(ui, "Properties", selected.is_some()).clicked()
+                        && let Some(app) = selected.as_ref()
+                    {
+                        self.open_troubleshooter(app);
+                    }
+                    if win7::command(ui, "Remove entry…", !self.busy && selected.is_some()).clicked()
+                        && let Some(app) = selected.as_ref()
+                    {
+                        self.remove_confirmation = Some(app.id.clone());
+                    }
                 }
             });
         });

@@ -2517,16 +2517,21 @@ impl RiceWineApp {
 
     fn win7_command_bar(&mut self, ui: &mut egui::Ui) {
         let can_install = !self.busy && self.store.is_some();
-        let selected = self.selected.as_deref().and_then(|id| {
-            self.store.as_ref()?.get(id)
-        }).filter(|app| {
-            self.workspace.filter == LibraryFilter::All || self.workspace.is_favorite(&app.id)
-        }).cloned();
+        let selected = self
+            .selected
+            .as_deref()
+            .and_then(|id| self.store.as_ref()?.get(id))
+            .filter(|app| {
+                self.workspace.filter == LibraryFilter::All || self.workspace.is_favorite(&app.id)
+            })
+            .cloned();
         let can_run = selected.as_ref().is_some_and(|app| {
             !self.busy
                 && !self.compatibility_busy.contains(&app.id)
                 && app.executable.is_some()
-                && self.profile_cache.get(&app.id)
+                && self
+                    .profile_cache
+                    .get(&app.id)
                     .and_then(|profile| profile.as_ref().ok())
                     .is_some_and(|profile| {
                         self.wine.is_some() || !matches!(profile.runner, Runner::SystemWine)
@@ -2539,18 +2544,22 @@ impl RiceWineApp {
                     ui.label("Show");
                     ui.add_enabled_ui(self.workspace_writable, |ui| {
                         for filter in LibraryFilter::ALL {
-                            changed |= ui.selectable_value(
-                                &mut self.workspace.filter, filter, filter.label()
-                            ).changed();
+                            changed |= ui
+                                .selectable_value(
+                                    &mut self.workspace.filter,
+                                    filter,
+                                    filter.label(),
+                                )
+                                .changed();
                         }
                     });
                     ui.separator();
                     ui.label("Sort by");
                     ui.add_enabled_ui(self.workspace_writable, |ui| {
                         for order in LibraryOrder::ALL {
-                            changed |= ui.selectable_value(
-                                &mut self.workspace.order, order, order.label()
-                            ).changed();
+                            changed |= ui
+                                .selectable_value(&mut self.workspace.order, order, order.label())
+                                .changed();
                         }
                     });
                     ui.separator();
@@ -3411,7 +3420,11 @@ impl RiceWineApp {
             } else if win98_mode {
                 if tight_library { 130.0 } else { 250.0 }
             } else if win7_mode {
-                if ui.ctx().content_rect().height() < 520.0 { 140.0 } else { 305.0 }
+                if ui.ctx().content_rect().height() < 520.0 {
+                    140.0
+                } else {
+                    305.0
+                }
             } else if win10_mode {
                 330.0
             } else if stacked {
@@ -5642,9 +5655,7 @@ impl eframe::App for RiceWineApp {
                     Theme::Windows10 => self.win10_shell(ui),
                     Theme::Windows98 => self.win98_shell(ui),
                     Theme::Windows7 => self.win7_shell(ui),
-                    Theme::ChromeOS | Theme::FrutigerAero => {
-                        self.ricebowl_shell(ui)
-                    }
+                    Theme::ChromeOS | Theme::FrutigerAero => self.ricebowl_shell(ui),
                 }
             }
         });

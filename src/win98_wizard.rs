@@ -260,14 +260,7 @@ pub(crate) fn install(ui: &mut egui::Ui, draft: &mut InstallDraft) -> Action {
     } else {
         "Run installer"
     };
-    footer(
-        ui,
-        &mut draft.win98_step,
-        next,
-        false,
-        finish_label,
-        ready,
-    )
+    footer(ui, &mut draft.win98_step, next, false, finish_label, ready)
 }
 
 /// Import is non-destructive: Finish merely asks the app's original import

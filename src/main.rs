@@ -1658,8 +1658,7 @@ impl RiceWineApp {
                     self.page = Page::Library;
                 }
                 win10::section_label(ui, "Wine tools");
-                if win10::navigation(ui, "Wine environments", self.page == Page::Prefixes)
-                    .clicked()
+                if win10::navigation(ui, "Wine environments", self.page == Page::Prefixes).clicked()
                 {
                     self.page = Page::Prefixes;
                 }

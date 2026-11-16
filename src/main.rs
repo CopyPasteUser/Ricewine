@@ -2319,7 +2319,7 @@ impl RiceWineApp {
                         self.about_open = true;
                     }
                 });
-                ui.label(RichText::new("Apps").size(12.0).color(win10::MUTED));
+                ui.label(RichText::new(title).size(12.0).color(win10::MUTED));
             });
             ui.separator();
         }
@@ -4410,7 +4410,7 @@ impl RiceWineApp {
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
                 .resizable(true)
-                .vscroll(true)
+                .vscroll(!win10_mode)
                 .max_size([
                     (ctx.content_rect().width() - 24.0).max(280.0),
                     (ctx.content_rect().height() - 24.0).max(220.0),
@@ -4418,6 +4418,7 @@ impl RiceWineApp {
                 .open(&mut keep_open)
                 .show(ctx, |ui| {
                     ui.set_min_width(ui_layout::dialog_width(ctx.content_rect().width(), 460.0));
+                    let mut draw_form = |ui: &mut egui::Ui| {
                     if luna_mode {
                         luna::dialog_intro(
                             ui,
@@ -4512,6 +4513,15 @@ impl RiceWineApp {
                         ui.small("Choose an EXE/MSI to continue.");
                     }
                     ui.add_space(9.0);
+                    };
+                    if win10_mode && ctx.content_rect().height() < 520.0 {
+                        egui::ScrollArea::vertical()
+                            .max_height((ctx.content_rect().height() - 125.0).max(120.0))
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| draw_form(ui));
+                    } else {
+                        draw_form(ui);
+                    }
                     ui.separator();
                     let install_label = if draft.portable {
                         "Add portable program"

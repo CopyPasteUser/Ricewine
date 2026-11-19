@@ -370,23 +370,27 @@ pub fn program_row(
         RichText::new(name).size(13.0).color(Color32::TRANSPARENT)
     } else {
         RichText::new(format!("      {name}"))
-            .size(if rice == Flavor::Classic98 { 12.0 } else { 13.0 })
+            .size(if rice == Flavor::Classic98 {
+                12.0
+            } else {
+                13.0
+            })
             .color(fg)
     };
     let button = egui::Button::new(label)
-    .fill(fill)
-    .stroke(if rice == Flavor::Classic98 {
-        egui::Stroke::NONE
-    } else {
-        rice.stroke()
-    })
-    .corner_radius(egui::CornerRadius::same(if rice == Flavor::Classic98 {
-        0
-    } else if rice == Flavor::Aero7 {
-        2
-    } else {
-        rice.radius()
-    }));
+        .fill(fill)
+        .stroke(if rice == Flavor::Classic98 {
+            egui::Stroke::NONE
+        } else {
+            rice.stroke()
+        })
+        .corner_radius(egui::CornerRadius::same(if rice == Flavor::Classic98 {
+            0
+        } else if rice == Flavor::Aero7 {
+            2
+        } else {
+            rice.radius()
+        }));
     let response = ui.add_sized([width.max(0.0), height], button);
     let icon_size = if rice == Flavor::Classic98 {
         16.0
@@ -413,15 +417,13 @@ pub fn program_row(
     if left_aligned {
         // Clip to the selectable row: long names must not overlap adjacent
         // status fields or expand the row beyond the available viewport.
-        ui.painter()
-            .with_clip_rect(response.rect.shrink(2.0))
-            .text(
-                response.rect.left_center() + egui::vec2(39.0, 0.0),
-                egui::Align2::LEFT_CENTER,
-                name,
-                egui::FontId::proportional(13.0),
-                fg,
-            );
+        ui.painter().with_clip_rect(response.rect.shrink(2.0)).text(
+            response.rect.left_center() + egui::vec2(39.0, 0.0),
+            egui::Align2::LEFT_CENTER,
+            name,
+            egui::FontId::proportional(13.0),
+            fg,
+        );
     }
     response.on_hover_text(format!("{name} · {status}"))
 }

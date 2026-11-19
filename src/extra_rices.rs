@@ -326,6 +326,18 @@ pub fn status(ui: &mut egui::Ui, rice: Flavor, count: usize) {
     }
 }
 
+/// Return row height and whether the row paints its label manually.
+/// ChromeOS and Frutiger use left-aligned Files-style lists, not centered
+/// pill-button labels. Both still expose the full program name through egui.
+fn row_layout(rice: Flavor) -> (f32, bool) {
+    match rice {
+        Flavor::Classic98 => (26.0, false),
+        Flavor::Aero7 => (31.0, false),
+        Flavor::ChromeOS => (38.0, true),
+        Flavor::FrutigerAero => (36.0, true),
+    }
+}
+
 /// Four OS-specific library row styles. The Wine operation is owned by the
 /// caller; rows are selectable, keyboard-focusable controls rather than art.
 pub fn program_row(
@@ -336,12 +348,7 @@ pub fn program_row(
     selected: bool,
     width: f32,
 ) -> Response {
-    let height = match rice {
-        Flavor::Classic98 => 26.0,
-        Flavor::Aero7 => 31.0,
-        Flavor::ChromeOS => 46.0,
-        Flavor::FrutigerAero => 42.0,
-    };
+    let (height, left_aligned) = row_layout(rice);
     let fill = match (rice, selected) {
         (Flavor::Classic98, true) => Color32::from_rgb(0, 0, 128),
         (Flavor::Classic98, false) => Color32::WHITE,
@@ -357,15 +364,16 @@ pub fn program_row(
     } else {
         rice.foreground()
     };
-    let button = egui::Button::new(
+    let label = if left_aligned {
+        // A normal egui button retains its keyboard, selection and accessibility
+        // semantics. The visible label is drawn at a fixed left inset below.
+        RichText::new(name).size(13.0).color(Color32::TRANSPARENT)
+    } else {
         RichText::new(format!("      {name}"))
-            .size(if rice == Flavor::Classic98 {
-                12.0
-            } else {
-                13.0
-            })
-            .color(fg),
-    )
+            .size(if rice == Flavor::Classic98 { 12.0 } else { 13.0 })
+            .color(fg)
+    };
+    let button = egui::Button::new(label)
     .fill(fill)
     .stroke(if rice == Flavor::Classic98 {
         egui::Stroke::NONE
@@ -402,6 +410,19 @@ pub fn program_row(
         crate::rice_identity::Icon::Programs,
         rice.accent(),
     );
+    if left_aligned {
+        // Clip to the selectable row: long names must not overlap adjacent
+        // status fields or expand the row beyond the available viewport.
+        ui.painter()
+            .with_clip_rect(response.rect.shrink(2.0))
+            .text(
+                response.rect.left_center() + egui::vec2(39.0, 0.0),
+                egui::Align2::LEFT_CENTER,
+                name,
+                egui::FontId::proportional(13.0),
+                fg,
+            );
+    }
     response.on_hover_text(format!("{name} · {status}"))
 }
 
@@ -546,4 +567,21 @@ pub fn toolbar_action(
                 },
             )),
     )
+}
+
+#[cfg(test)]
+mod row_tests {
+    use super::*;
+
+    #[test]
+    fn chrome_and_frutiger_are_compact_left_aligned_lists() {
+        assert_eq!(row_layout(Flavor::ChromeOS), (38.0, true));
+        assert_eq!(row_layout(Flavor::FrutigerAero), (36.0, true));
+    }
+
+    #[test]
+    fn legacy_list_density_is_unchanged() {
+        assert_eq!(row_layout(Flavor::Classic98), (26.0, false));
+        assert_eq!(row_layout(Flavor::Aero7), (31.0, false));
+    }
 }

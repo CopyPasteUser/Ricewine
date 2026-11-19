@@ -75,6 +75,12 @@ impl Flavor {
     }
 }
 
+/// Use a dense mobile-height arrangement only for ChromeOS and Frutiger.
+/// This is presentation-only; navigation and Wine operations remain available.
+pub fn compact_height_layout(rice: Flavor, viewport_height: f32) -> bool {
+    matches!(rice, Flavor::ChromeOS | Flavor::FrutigerAero) && viewport_height <= 640.0
+}
+
 /// Keep recognizable desktop language, not one generic header with four palettes.
 /// Header text deliberately describes the current page; it does not impersonate
 /// native window chrome (that stays the Linux compositor's responsibility).
@@ -167,35 +173,57 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) -> bool {
                     });
                 }
                 Flavor::FrutigerAero => {
-                    ui.horizontal_wrapped(|ui| {
-                        crate::rice_identity::symbol(
-                            ui,
-                            crate::rice_identity::Family::Frutiger,
-                            crate::rice_identity::Icon::Brand,
-                            rice.accent(),
-                            33.0,
-                        );
-                        ui.vertical(|ui| {
+                    if compact_height_layout(rice, ui.ctx().content_rect().height()) {
+                        // The decorative subtitle and second header line hide
+                        // the program list on 560x400 windows.
+                        ui.horizontal(|ui| {
+                            crate::rice_identity::symbol(
+                                ui,
+                                crate::rice_identity::Family::Frutiger,
+                                crate::rice_identity::Icon::Brand,
+                                rice.accent(),
+                                24.0,
+                            );
                             ui.label(
                                 RichText::new("RiceWine")
-                                    .size(24.0)
+                                    .size(18.0)
                                     .strong()
                                     .color(rice.foreground()),
                             );
-                            ui.label(
-                                RichText::new("Windows on Linux • your personal workspace")
-                                    .size(11.0)
-                                    .color(rice.accent()),
-                            );
+                            ui.separator();
+                            ui.label(RichText::new(page).size(12.0).color(rice.foreground()));
                         });
-                    });
-                    ui.add_space(5.0);
-                    ui.label(
-                        RichText::new(page)
-                            .size(13.0)
-                            .strong()
-                            .color(rice.foreground()),
-                    );
+                    } else {
+                        ui.horizontal_wrapped(|ui| {
+                            crate::rice_identity::symbol(
+                                ui,
+                                crate::rice_identity::Family::Frutiger,
+                                crate::rice_identity::Icon::Brand,
+                                rice.accent(),
+                                33.0,
+                            );
+                            ui.vertical(|ui| {
+                                ui.label(
+                                    RichText::new("RiceWine")
+                                        .size(24.0)
+                                        .strong()
+                                        .color(rice.foreground()),
+                                );
+                                ui.label(
+                                    RichText::new("Windows on Linux • your personal workspace")
+                                        .size(11.0)
+                                        .color(rice.accent()),
+                                );
+                            });
+                        });
+                        ui.add_space(5.0);
+                        ui.label(
+                            RichText::new(page)
+                                .size(13.0)
+                                .strong()
+                                .color(rice.foreground()),
+                        );
+                    }
                 }
             }
         });
@@ -268,7 +296,16 @@ pub fn navigation(
         .corner_radius(egui::CornerRadius::same(corner_radius));
     ui.add_sized(
         if horizontal {
-            [ui.available_width().min(120.0), 33.0]
+            [
+                ui.available_width().min(
+                    if compact_height_layout(rice, ui.ctx().content_rect().height()) {
+                        82.0
+                    } else {
+                        120.0
+                    },
+                ),
+                33.0,
+            ]
         } else {
             [ui.available_width().min(180.0), 36.0]
         },
@@ -277,12 +314,14 @@ pub fn navigation(
 }
 
 /// A consistent content frame around the existing functional page, without a second app state.
-pub fn content_frame(rice: Flavor) -> egui::Frame {
+pub fn content_frame(rice: Flavor, compact: bool) -> egui::Frame {
     egui::Frame::new()
         .fill(rice.canvas())
         .stroke(rice.stroke())
         .inner_margin(if rice == Flavor::Classic98 {
             egui::Margin::same(12)
+        } else if compact {
+            egui::Margin::same(9)
         } else {
             egui::Margin::same(18)
         })
@@ -609,6 +648,18 @@ mod row_tests {
                 );
             }
         });
+    }
+
+    #[test]
+    fn dense_layout_activates_only_for_chrome_and_frutiger_at_short_heights() {
+        for flavor in [Flavor::ChromeOS, Flavor::FrutigerAero] {
+            assert!(compact_height_layout(flavor, 400.0));
+            assert!(compact_height_layout(flavor, 600.0));
+            assert!(!compact_height_layout(flavor, 700.0));
+        }
+        for flavor in [Flavor::Classic98, Flavor::Aero7] {
+            assert!(!compact_height_layout(flavor, 400.0));
+        }
     }
 
     #[test]

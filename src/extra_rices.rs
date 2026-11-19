@@ -75,6 +75,12 @@ impl Flavor {
     }
 }
 
+/// Use a dense mobile-height arrangement only for ChromeOS and Frutiger.
+/// This is presentation-only; navigation and Wine operations remain available.
+pub fn compact_height_layout(rice: Flavor, viewport_height: f32) -> bool {
+    matches!(rice, Flavor::ChromeOS | Flavor::FrutigerAero) && viewport_height <= 640.0
+}
+
 /// Keep recognizable desktop language, not one generic header with four palettes.
 /// Header text deliberately describes the current page; it does not impersonate
 /// native window chrome (that stays the Linux compositor's responsibility).
@@ -167,35 +173,57 @@ pub fn masthead(ui: &mut egui::Ui, rice: Flavor, page: &str) -> bool {
                     });
                 }
                 Flavor::FrutigerAero => {
-                    ui.horizontal_wrapped(|ui| {
-                        crate::rice_identity::symbol(
-                            ui,
-                            crate::rice_identity::Family::Frutiger,
-                            crate::rice_identity::Icon::Brand,
-                            rice.accent(),
-                            33.0,
-                        );
-                        ui.vertical(|ui| {
+                    if compact_height_layout(rice, ui.ctx().content_rect().height()) {
+                        // The decorative subtitle and second header line hide
+                        // the program list on 560x400 windows.
+                        ui.horizontal(|ui| {
+                            crate::rice_identity::symbol(
+                                ui,
+                                crate::rice_identity::Family::Frutiger,
+                                crate::rice_identity::Icon::Brand,
+                                rice.accent(),
+                                24.0,
+                            );
                             ui.label(
                                 RichText::new("RiceWine")
-                                    .size(24.0)
+                                    .size(18.0)
                                     .strong()
                                     .color(rice.foreground()),
                             );
-                            ui.label(
-                                RichText::new("Windows on Linux • your personal workspace")
-                                    .size(11.0)
-                                    .color(rice.accent()),
-                            );
+                            ui.separator();
+                            ui.label(RichText::new(page).size(12.0).color(rice.foreground()));
                         });
-                    });
-                    ui.add_space(5.0);
-                    ui.label(
-                        RichText::new(page)
-                            .size(13.0)
-                            .strong()
-                            .color(rice.foreground()),
-                    );
+                    } else {
+                        ui.horizontal_wrapped(|ui| {
+                            crate::rice_identity::symbol(
+                                ui,
+                                crate::rice_identity::Family::Frutiger,
+                                crate::rice_identity::Icon::Brand,
+                                rice.accent(),
+                                33.0,
+                            );
+                            ui.vertical(|ui| {
+                                ui.label(
+                                    RichText::new("RiceWine")
+                                        .size(24.0)
+                                        .strong()
+                                        .color(rice.foreground()),
+                                );
+                                ui.label(
+                                    RichText::new("Windows on Linux • your personal workspace")
+                                        .size(11.0)
+                                        .color(rice.accent()),
+                                );
+                            });
+                        });
+                        ui.add_space(5.0);
+                        ui.label(
+                            RichText::new(page)
+                                .size(13.0)
+                                .strong()
+                                .color(rice.foreground()),
+                        );
+                    }
                 }
             }
         });
@@ -268,7 +296,16 @@ pub fn navigation(
         .corner_radius(egui::CornerRadius::same(corner_radius));
     ui.add_sized(
         if horizontal {
-            [ui.available_width().min(120.0), 33.0]
+            [
+                ui.available_width().min(
+                    if compact_height_layout(rice, ui.ctx().content_rect().height()) {
+                        82.0
+                    } else {
+                        120.0
+                    },
+                ),
+                33.0,
+            ]
         } else {
             [ui.available_width().min(180.0), 36.0]
         },
@@ -277,12 +314,14 @@ pub fn navigation(
 }
 
 /// A consistent content frame around the existing functional page, without a second app state.
-pub fn content_frame(rice: Flavor) -> egui::Frame {
+pub fn content_frame(rice: Flavor, compact: bool) -> egui::Frame {
     egui::Frame::new()
         .fill(rice.canvas())
         .stroke(rice.stroke())
         .inner_margin(if rice == Flavor::Classic98 {
             egui::Margin::same(12)
+        } else if compact {
+            egui::Margin::same(9)
         } else {
             egui::Margin::same(18)
         })
@@ -326,6 +365,18 @@ pub fn status(ui: &mut egui::Ui, rice: Flavor, count: usize) {
     }
 }
 
+/// Return row height and whether the row paints its label manually.
+/// ChromeOS and Frutiger use left-aligned Files-style lists, not centered
+/// pill-button labels. Both still expose the full program name through egui.
+fn row_layout(rice: Flavor) -> (f32, bool) {
+    match rice {
+        Flavor::Classic98 => (26.0, false),
+        Flavor::Aero7 => (31.0, false),
+        Flavor::ChromeOS => (38.0, true),
+        Flavor::FrutigerAero => (36.0, true),
+    }
+}
+
 /// Four OS-specific library row styles. The Wine operation is owned by the
 /// caller; rows are selectable, keyboard-focusable controls rather than art.
 pub fn program_row(
@@ -336,12 +387,7 @@ pub fn program_row(
     selected: bool,
     width: f32,
 ) -> Response {
-    let height = match rice {
-        Flavor::Classic98 => 26.0,
-        Flavor::Aero7 => 31.0,
-        Flavor::ChromeOS => 46.0,
-        Flavor::FrutigerAero => 42.0,
-    };
+    let (height, left_aligned) = row_layout(rice);
     let fill = match (rice, selected) {
         (Flavor::Classic98, true) => Color32::from_rgb(0, 0, 128),
         (Flavor::Classic98, false) => Color32::WHITE,
@@ -357,28 +403,42 @@ pub fn program_row(
     } else {
         rice.foreground()
     };
-    let button = egui::Button::new(
+    let label = if left_aligned {
+        // A normal egui button retains its keyboard, selection and accessibility
+        // semantics. The visible label is drawn at a fixed left inset below.
+        RichText::new(name).size(13.0).color(Color32::TRANSPARENT)
+    } else {
         RichText::new(format!("      {name}"))
             .size(if rice == Flavor::Classic98 {
                 12.0
             } else {
                 13.0
             })
-            .color(fg),
-    )
-    .fill(fill)
-    .stroke(if rice == Flavor::Classic98 {
-        egui::Stroke::NONE
+            .color(fg)
+    };
+    let button = egui::Button::new(label)
+        .fill(fill)
+        .stroke(if rice == Flavor::Classic98 {
+            egui::Stroke::NONE
+        } else {
+            rice.stroke()
+        })
+        .corner_radius(egui::CornerRadius::same(if rice == Flavor::Classic98 {
+            0
+        } else if rice == Flavor::Aero7 {
+            2
+        } else {
+            rice.radius()
+        }));
+    // Truncate the hidden semantic label instead of letting a very long
+    // program name increase the button's minimum width or wrap its height.
+    // Report selection to assistive technologies while retaining the
+    // original full name as the button's accessible label.
+    let button = if left_aligned {
+        button.truncate().selected(selected)
     } else {
-        rice.stroke()
-    })
-    .corner_radius(egui::CornerRadius::same(if rice == Flavor::Classic98 {
-        0
-    } else if rice == Flavor::Aero7 {
-        2
-    } else {
-        rice.radius()
-    }));
+        button
+    };
     let response = ui.add_sized([width.max(0.0), height], button);
     let icon_size = if rice == Flavor::Classic98 {
         16.0
@@ -402,6 +462,17 @@ pub fn program_row(
         crate::rice_identity::Icon::Programs,
         rice.accent(),
     );
+    if left_aligned {
+        // Clip to the selectable row: long names must not overlap adjacent
+        // status fields or expand the row beyond the available viewport.
+        ui.painter().with_clip_rect(response.rect.shrink(2.0)).text(
+            response.rect.left_center() + egui::vec2(39.0, 0.0),
+            egui::Align2::LEFT_CENTER,
+            name,
+            egui::FontId::proportional(13.0),
+            fg,
+        );
+    }
     response.on_hover_text(format!("{name} · {status}"))
 }
 
@@ -546,4 +617,54 @@ pub fn toolbar_action(
                 },
             )),
     )
+}
+
+#[cfg(test)]
+mod row_tests {
+    use super::*;
+
+    #[test]
+    fn chrome_and_frutiger_are_compact_left_aligned_lists() {
+        assert_eq!(row_layout(Flavor::ChromeOS), (38.0, true));
+        assert_eq!(row_layout(Flavor::FrutigerAero), (36.0, true));
+    }
+
+    #[test]
+    fn long_names_do_not_expand_compact_row_geometry() {
+        let very_long_name = "A Very Long Windows Program Name ".repeat(30);
+        egui::__run_test_ui(|ui| {
+            for (rice, expected_height) in [(Flavor::ChromeOS, 38.0), (Flavor::FrutigerAero, 36.0)]
+            {
+                let response = program_row(ui, rice, &very_long_name, "Wine missing", true, 185.0);
+                assert!(
+                    response.rect.width() <= 185.5,
+                    "{rice:?} overflowed to {} px",
+                    response.rect.width()
+                );
+                assert!(
+                    response.rect.height() <= expected_height + 0.5,
+                    "{rice:?} wrapped to {} px",
+                    response.rect.height()
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn dense_layout_activates_only_for_chrome_and_frutiger_at_short_heights() {
+        for flavor in [Flavor::ChromeOS, Flavor::FrutigerAero] {
+            assert!(compact_height_layout(flavor, 400.0));
+            assert!(compact_height_layout(flavor, 600.0));
+            assert!(!compact_height_layout(flavor, 700.0));
+        }
+        for flavor in [Flavor::Classic98, Flavor::Aero7] {
+            assert!(!compact_height_layout(flavor, 400.0));
+        }
+    }
+
+    #[test]
+    fn legacy_list_density_is_unchanged() {
+        assert_eq!(row_layout(Flavor::Classic98), (26.0, false));
+        assert_eq!(row_layout(Flavor::Aero7), (31.0, false));
+    }
 }

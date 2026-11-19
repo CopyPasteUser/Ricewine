@@ -2663,6 +2663,8 @@ impl RiceWineApp {
         let Some(flavor) = self.theme.extra_flavor() else {
             return;
         };
+        let short_height =
+            extra_rices::compact_height_layout(flavor, ui.ctx().content_rect().height());
 
         // Classic desktop menus use real program actions, not decorative text.
         if flavor == Flavor::Classic98 {
@@ -2728,24 +2730,37 @@ impl RiceWineApp {
                         self.page = page;
                     }
                 }
+                if short_height {
+                    // Keep navigation and both actions in one compact toolbar;
+                    // do not hide Install or Import behind a submenu.
+                    if extra_rices::toolbar_action(ui, flavor, "Add", can_add, true).clicked() {
+                        self.install = Some(InstallDraft::default());
+                    }
+                    if extra_rices::toolbar_action(ui, flavor, "Import", can_add, false).clicked() {
+                        self.import = Some(ImportDraft::default());
+                    }
+                }
             });
         }
-        ui.horizontal_wrapped(|ui| {
-            let install_label = match flavor {
-                Flavor::Classic98 => "Install…",
-                Flavor::Aero7 => "Install a program",
-                Flavor::ChromeOS => "Add app",
-                Flavor::FrutigerAero => "Add program",
-            };
-            if extra_rices::toolbar_action(ui, flavor, install_label, can_add, true).clicked() {
-                self.install = Some(InstallDraft::default());
-            }
-            if extra_rices::toolbar_action(ui, flavor, "Import existing…", can_add, false).clicked()
-            {
-                self.import = Some(ImportDraft::default());
-            }
-        });
-        ui.add_space(7.0);
+        if !short_height {
+            ui.horizontal_wrapped(|ui| {
+                let install_label = match flavor {
+                    Flavor::Classic98 => "Install…",
+                    Flavor::Aero7 => "Install a program",
+                    Flavor::ChromeOS => "Add app",
+                    Flavor::FrutigerAero => "Add program",
+                };
+                if extra_rices::toolbar_action(ui, flavor, install_label, can_add, true).clicked() {
+                    self.install = Some(InstallDraft::default());
+                }
+                if extra_rices::toolbar_action(ui, flavor, "Import existing…", can_add, false)
+                    .clicked()
+                {
+                    self.import = Some(ImportDraft::default());
+                }
+            });
+        }
+        ui.add_space(if short_height { 2.0 } else { 7.0 });
 
         let full_width = matches!(
             flavor,
@@ -2761,7 +2776,7 @@ impl RiceWineApp {
                 egui::vec2(ui.available_width().max(0.0), available_height),
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
-                    extra_rices::content_frame(flavor).show(ui, |ui| {
+                    extra_rices::content_frame(flavor, short_height).show(ui, |ui| {
                         if ui.available_width() >= 740.0 {
                             extra_rices::page_heading(ui, flavor, self.page.label());
                         }
@@ -2819,7 +2834,7 @@ impl RiceWineApp {
                     egui::vec2(width, available_height),
                     egui::Layout::top_down(egui::Align::Min),
                     |ui| {
-                        extra_rices::content_frame(flavor).show(ui, |ui| {
+                        extra_rices::content_frame(flavor, short_height).show(ui, |ui| {
                             extra_rices::page_heading(ui, flavor, self.page.label());
                             egui::ScrollArea::vertical()
                                 .auto_shrink([false, false])
@@ -2932,6 +2947,8 @@ impl RiceWineApp {
         let win10_mode = self.theme == Theme::Windows10;
         let win98_mode = self.theme == Theme::Windows98;
         let win98_compact = win98_mode && ui.ctx().content_rect().height() < 520.0;
+        let compact_extra_library = matches!(self.theme, Theme::ChromeOS | Theme::FrutigerAero)
+            && ui.ctx().content_rect().height() <= 640.0;
         // Copy layout flags before the details closure mutably borrows app state.
         let mac_mode = self.theme == Theme::MacOS;
         let mac_inspector_open = self.mac_inspector_open;
@@ -3037,16 +3054,20 @@ impl RiceWineApp {
             } else if win10_mode && !condensed_win10 {
                 win10::section_heading(ui, "Installed apps");
             }
-            ui.horizontal(|ui| {
-                if self.busy {
-                    ui.spinner();
-                    ui.label("Installing…");
-                    if ui.button("Cancel installation…").clicked() {
-                        self.cancel_install_confirmation = true;
+            if self.busy || !compact_extra_library {
+                ui.horizontal(|ui| {
+                    if self.busy {
+                        ui.spinner();
+                        ui.label("Installing…");
+                        if ui.button("Cancel installation…").clicked() {
+                            self.cancel_install_confirmation = true;
+                        }
                     }
-                }
-            });
-            ui.add_space(if tight_library {
+                });
+            }
+            ui.add_space(if compact_extra_library {
+                0.0
+            } else if tight_library {
                 2.0
             } else if luna_mode {
                 5.0
@@ -3057,7 +3078,9 @@ impl RiceWineApp {
                 ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
             }
             // Finder has one functional search field in its toolbar.
-            // The other Rices keep their existing in-content search and refresh.
+            // At short heights, filter/sort and profile refresh use a single
+            // accessible View menu instead of occupying another full row.
+            let mut workspace_changed = false;
             if self.theme != Theme::MacOS {
                 ui.horizontal_wrapped(|ui| {
                     if !win10_mode {
@@ -3081,10 +3104,48 @@ impl RiceWineApp {
                     {
                         self.search.clear();
                     }
-                    if !win10_mode && !win98_mode && ui.small_button("↻ Refresh profiles").clicked()
+                    if !win10_mode
+                        && !win98_mode
+                        && !compact_extra_library
+                        && ui.small_button("↻ Refresh profiles").clicked()
                     {
                         self.refresh_profile_cache();
                         self.sync_runner_draft();
+                    }
+                    if compact_extra_library {
+                        ui.menu_button("View ▾", |ui| {
+                            ui.label("Show");
+                            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                                for filter in LibraryFilter::ALL {
+                                    workspace_changed |= ui
+                                        .selectable_value(
+                                            &mut self.workspace.filter,
+                                            filter,
+                                            filter.label(),
+                                        )
+                                        .changed();
+                                }
+                            });
+                            ui.separator();
+                            ui.label("Sort");
+                            ui.add_enabled_ui(self.workspace_writable, |ui| {
+                                for order in LibraryOrder::ALL {
+                                    workspace_changed |= ui
+                                        .selectable_value(
+                                            &mut self.workspace.order,
+                                            order,
+                                            order.label(),
+                                        )
+                                        .changed();
+                                }
+                            });
+                            ui.separator();
+                            if ui.button("↻ Refresh profiles").clicked() {
+                                self.refresh_profile_cache();
+                                self.sync_runner_draft();
+                                ui.close();
+                            }
+                        });
                     }
                     if win10_mode && win10::link_action(ui, "Refresh", true).clicked() {
                         self.refresh_profile_cache();
@@ -3092,8 +3153,7 @@ impl RiceWineApp {
                     }
                 });
             }
-            let mut workspace_changed = false;
-            if !win98_compact {
+            if !win98_compact && !compact_extra_library {
                 ui.horizontal_wrapped(|ui| {
                     ui.label("Show:");
                     ui.add_enabled_ui(self.workspace_writable, |ui| {
@@ -3191,7 +3251,11 @@ impl RiceWineApp {
                     .ordered_indices(store.applications(), &self.search)
             })
             .unwrap_or_default();
-        if !win98_compact {
+        if !win98_compact
+            && (!compact_extra_library
+                || !self.search.is_empty()
+                || self.workspace.filter == LibraryFilter::Favorites)
+        {
             ui.small(format!("{} matching program(s)", matching_indices.len()));
         }
         if matching_indices.is_empty() {
@@ -3260,6 +3324,8 @@ impl RiceWineApp {
                 if tight_library { 130.0 } else { 250.0 }
             } else if win10_mode {
                 330.0
+            } else if compact_extra_library {
+                170.0
             } else if stacked {
                 260.0
             } else {
@@ -3298,8 +3364,8 @@ impl RiceWineApp {
                                 Theme::Windows98 | Theme::Luna => 28.0,
                                 Theme::Windows7 => 33.0,
                                 Theme::MacOS => 40.0,
-                                Theme::ChromeOS => 48.0,
-                                Theme::FrutigerAero => 44.0,
+                                Theme::ChromeOS => 40.0,
+                                Theme::FrutigerAero => 38.0,
                                 Theme::Windows10 => 63.0,
                             }
                         };

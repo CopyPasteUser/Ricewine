@@ -31,6 +31,10 @@ fn backups_root(data_root: &Path) -> PathBuf {
 
 fn copy_tree(source: &Path, target: &Path) -> Result<(), String> {
     fs::create_dir(target).map_err(|e| format!("Creating {}: {e}", target.display()))?;
+    copy_tree_contents(source, target)
+}
+
+fn copy_tree_contents(source: &Path, target: &Path) -> Result<(), String> {
     let entries = fs::read_dir(source).map_err(|e| format!("Reading {}: {e}", source.display()))?;
     for entry in entries {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -224,9 +228,15 @@ pub fn restore_backup(data_root: &Path, folder: &Path) -> Result<Application, St
     }
     let id = core::new_id(&manifest.application.name);
     let new_prefix = data_root.join("prefixes").join(&id);
-    let result = copy_tree(&source_prefix, &new_prefix)
+    // Reserve the destination atomically. If it already exists, it belongs
+    // to another operation/user: never remove or modify it on error.
+    fs::create_dir(&new_prefix)
+        .map_err(|e| format!("Cannot reserve a new restore prefix: {e}"))?;
+    let result = copy_tree_contents(&source_prefix, &new_prefix)
         .and_then(|_| verify_copy(&source_prefix, &new_prefix));
     if let Err(error) = result {
+        // Cleanup is safe only because create_dir above succeeded and
+        // this restore operation owns the freshly reserved destination.
         let _ = fs::remove_dir_all(&new_prefix);
         return Err(format!("Restore failed: {error}"));
     }

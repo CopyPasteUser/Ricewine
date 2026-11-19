@@ -223,8 +223,12 @@ pub fn restore_backup(data_root: &Path, folder: &Path) -> Result<Application, St
     }
     let manifest = read_manifest(&folder)?;
     let source_prefix = folder.join("prefix");
-    if !source_prefix.is_dir() {
-        return Err("Backup prefix data is missing".into());
+    // Never follow a forged snapshot-root symlink into an unrelated directory.
+    // Symlinks *inside* the Wine prefix remain supported and copied as links.
+    if !fs::symlink_metadata(&source_prefix)
+        .is_ok_and(|metadata| metadata.file_type().is_dir())
+    {
+        return Err("Backup prefix data is missing or is not a real directory".into());
     }
     let id = core::new_id(&manifest.application.name);
     let new_prefix = data_root.join("prefixes").join(&id);

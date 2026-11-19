@@ -114,7 +114,10 @@ fn restore_rejects_symlinked_snapshot_prefix_without_creating_a_target() {
     let before = fs::read_dir(store.root().join("prefixes")).unwrap().count();
     let error = backup::restore_backup(store.root(), &snapshot.folder).unwrap_err();
     assert!(error.contains("real directory"), "{error}");
-    assert_eq!(fs::read_dir(store.root().join("prefixes")).unwrap().count(), before);
+    assert_eq!(
+        fs::read_dir(store.root().join("prefixes")).unwrap().count(),
+        before
+    );
     assert_eq!(fs::read(outside.join("sentinel.txt")).unwrap(), b"preserve");
 }
 

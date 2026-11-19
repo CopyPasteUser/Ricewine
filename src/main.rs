@@ -4902,66 +4902,66 @@ impl RiceWineApp {
                         .max_height((ctx.content_rect().height() - 142.0).max(120.0))
                         .auto_shrink([false, true])
                         .show(ui, |ui| {
-                        if luna_mode {
-                            luna::dialog_intro(
-                                ui,
-                                luna::XpIcon::Import,
-                                "Import an existing prefix",
-                                "Register a program without moving any of its files.",
-                            );
-                        } else if self.theme == Theme::MacOS {
-                            mac::dialog_intro(ui, "Import Windows program",
-                                "Register an existing application without moving its files.");
-                        } else if self.theme == Theme::Windows98 {
-                            win98::dialog_intro(ui, "Import existing program",
-                                "Register a Wine environment without moving or deleting its files.");
-                        } else if let Some(flavor) = flavor {
-                            extra_rices::dialog_intro(ui, flavor, "Import existing program",
-                                "Register a Wine environment without moving or deleting its files.");
-                        } else if win10_mode {
-                            ui.label(RichText::new("Import a Wine environment").size(20.0).color(win10::TEXT));
-                            ui.small("Register an existing program without moving its files.");
-                            ui.separator();
-                        }
-                        ui.label("Program name");
-                        if ui.text_edit_singleline(&mut draft.name).changed() {
-                            draft.error = None;
-                        }
-                        if luna_mode {
-                            luna::section_heading(ui, "Existing environment", luna::XpIcon::Prefix);
-                        }
-                        ui.label("Existing Wine prefix directory");
-                        ui.horizontal_wrapped(|ui| {
-                            ui.add(egui::TextEdit::singleline(&mut draft.prefix)
-                                .desired_width(ui_layout::field_width(ui.available_width(), 108.0, 330.0)));
-                            if luna::action(ui, "Browse…", true, luna_mode).clicked()
-                                && let Some(path) = rfd::FileDialog::new().pick_folder()
-                            {
-                                draft.prefix = core::readable_path(&path);
+                            if luna_mode {
+                                luna::dialog_intro(
+                                    ui,
+                                    luna::XpIcon::Import,
+                                    "Import an existing prefix",
+                                    "Register a program without moving any of its files.",
+                                );
+                            } else if self.theme == Theme::MacOS {
+                                mac::dialog_intro(ui, "Import Windows program",
+                                    "Register an existing application without moving its files.");
+                            } else if self.theme == Theme::Windows98 {
+                                win98::dialog_intro(ui, "Import existing program",
+                                    "Register a Wine environment without moving or deleting its files.");
+                            } else if let Some(flavor) = flavor {
+                                extra_rices::dialog_intro(ui, flavor, "Import existing program",
+                                    "Register a Wine environment without moving or deleting its files.");
+                            } else if win10_mode {
+                                ui.label(RichText::new("Import a Wine environment").size(20.0).color(win10::TEXT));
+                                ui.small("Register an existing program without moving its files.");
+                                ui.separator();
+                            }
+                            ui.label("Program name");
+                            if ui.text_edit_singleline(&mut draft.name).changed() {
                                 draft.error = None;
                             }
-                        });
-                        ui.label("Existing launch EXE");
-                        ui.horizontal_wrapped(|ui| {
-                            ui.add(egui::TextEdit::singleline(&mut draft.executable)
-                                .desired_width(ui_layout::field_width(ui.available_width(), 108.0, 330.0)));
-                            if luna::action(ui, "Browse…", true, luna_mode).clicked()
-                                && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
-                            {
-                                draft.executable = core::readable_path(&path);
-                                if draft.name.trim().is_empty() {
-                                    draft.name = InstallDraft::suggested_name(&path);
+                            if luna_mode {
+                                luna::section_heading(ui, "Existing environment", luna::XpIcon::Prefix);
+                            }
+                            ui.label("Existing Wine prefix directory");
+                            ui.horizontal_wrapped(|ui| {
+                                ui.add(egui::TextEdit::singleline(&mut draft.prefix)
+                                    .desired_width(ui_layout::field_width(ui.available_width(), 108.0, 330.0)));
+                                if luna::action(ui, "Browse…", true, luna_mode).clicked()
+                                    && let Some(path) = rfd::FileDialog::new().pick_folder()
+                                {
+                                    draft.prefix = core::readable_path(&path);
+                                    draft.error = None;
                                 }
-                                draft.error = None;
+                            });
+                            ui.label("Existing launch EXE");
+                            ui.horizontal_wrapped(|ui| {
+                                ui.add(egui::TextEdit::singleline(&mut draft.executable)
+                                    .desired_width(ui_layout::field_width(ui.available_width(), 108.0, 330.0)));
+                                if luna::action(ui, "Browse…", true, luna_mode).clicked()
+                                    && let Some(path) = rfd::FileDialog::new().add_filter("Windows program", &["exe"]).pick_file()
+                                {
+                                    draft.executable = core::readable_path(&path);
+                                    if draft.name.trim().is_empty() {
+                                        draft.name = InstallDraft::suggested_name(&path);
+                                    }
+                                    draft.error = None;
+                                }
+                            });
+                            ui.small("Import only registers an existing prefix. Its files are never moved or deleted.");
+                            if let Some(error) = &draft.error {
+                                ui.add_space(5.0);
+                                ui.colored_label(Color32::DARK_RED, error);
                             }
+                            ui.add_space(8.0);
                         });
-                        ui.small("Import only registers an existing prefix. Its files are never moved or deleted.");
-                        if let Some(error) = &draft.error {
-                            ui.add_space(5.0);
-                            ui.colored_label(Color32::DARK_RED, error);
-                        }
-                        ui.add_space(8.0);
-                    });
                     ui.separator();
                     ui.horizontal_wrapped(|ui| {
                         let ready = !draft.name.trim().is_empty()

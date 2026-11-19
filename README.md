@@ -37,7 +37,7 @@ RiceWine now opens with **seven independent, OS-native application layouts** bui
 - **Tools:** Wine prefixes/backups, Wine/Proton runners, importing existing prefixes and refreshing runner profiles.
 - **Settings:** choose your Rice and optionally follow the desktop's recognized theme. Recovery and diagnostic controls remain under *Advanced settings & diagnostics*.
 
-Each Rice uses the navigation, controls and dialogs of its reference OS generation: **Windows 98 property sheets**, **XP task panes**, **Windows 7 Control Panel**, **Windows 10 Settings**, **macOS Mojave Finder/System Preferences**, **ChromeOS Files/Settings** and **a Vista-era Frutiger Aero utility**. Actions and data remain shared, including safety confirmations. The deliberately generic legacy interface remains available for debugging Windows 7, ChromeOS and Frutiger Aero with `RICEWINE_UNIFIED_UI=1 ricewine`; XP Luna, macOS, Windows 10 and Windows 98 intentionally always use their own native-era shell. OS-native interfaces are the normal default.
+Each Rice uses the navigation, controls and dialogs of its reference OS generation: **Windows 98 property sheets**, **XP task panes**, **Windows 7 Control Panel**, **Windows 10 Settings**, **macOS Mojave Finder/System Preferences**, **ChromeOS Files/Settings** and **a Vista-era Frutiger Aero utility**. Actions and data remain shared, including safety confirmations. The deliberately generic legacy interface remains available for debugging ChromeOS and Frutiger Aero with `RICEWINE_UNIFIED_UI=1 ricewine`; XP Luna, macOS, Windows 10, Windows 98 and Windows 7 intentionally always use their own native-era shell. OS-native interfaces are the normal default.
 
 The installer registers the bundled **RiceWine goblet icon** in the current user's XDG icon theme; the app-menu launcher and Open With entry use the matching `ricewine` icon name. Shortcuts for individual Windows programs retain their generic Wine icon until application-specific icons are available.
 
@@ -59,7 +59,7 @@ The installer registers the bundled **RiceWine goblet icon** in the current user
 | **macOS** | Mojave Finder utility: brushed toolbar, original icons, Locations sidebar, striped list and optional preview inspector |
 | **Windows 10** | 1809–1909 Settings / Apps & features, grouped navigation, original line icons, inline program actions and responsive compact menu |
 | **Windows 98** | Dedicated Add/Remove Programs property sheet: Win9x menus, raised tabs, 3D controls, original period pictograms, full-width inset details list and functional catalog commands |
-| **Windows 7 Aero** | Programs and Features, breadcrumbs, pale Explorer command bar and navigation links |
+| **Windows 7 Aero** | Standalone Control Panel → Programs and Features: original Aero Explorer breadcrumbs and search, task navigation, functional Organize/Install/Import/Run/Properties commands, sortable program details view and status pane |
 | **ChromeOS** | 2019-era Files-like toolbar, straightforward navigation and contextual app actions |
 | **Frutiger Aero** | Vista-era companion utility with aquatic restrained glossy navigation and custom icons |
 

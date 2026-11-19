@@ -7,6 +7,7 @@ mod mac;
 mod rice_identity;
 mod ui_layout;
 mod win10;
+mod win7;
 mod win98;
 mod win98_wizard;
 
@@ -2440,6 +2441,244 @@ impl RiceWineApp {
         });
     }
 
+    /// Windows 7's Programs and Features is an Explorer/Control Panel window,
+    /// not a recolored toolbar or a property sheet like the Windows 98 Rice.
+    fn win7_shell(&mut self, ui: &mut egui::Ui) {
+        let title = match self.page {
+            Page::Library => "Programs and Features",
+            Page::Prefixes => "Wine environments",
+            Page::Runners => "Compatibility tools",
+            Page::Settings => "Appearance",
+        };
+        let compact = ui.available_width() < 780.0;
+        let short = ui.ctx().content_rect().height() < 520.0;
+        win7::shell_frame().show(ui, |ui| {
+            let search_response = win7::explorer_bar(ui, title, &mut self.search, self.page == Page::Library);
+            if self.search_focus_requested
+                && self.page == Page::Library
+                && let Some(response) = search_response
+            {
+                response.request_focus();
+                self.search_focus_requested = false;
+            }
+            let count = self.store.as_ref().map_or(0, |store| store.applications().len());
+            let selected_name = if self.page == Page::Library {
+                self.selected.as_deref().and_then(|id| {
+                    self.store.as_ref()?.get(id).map(|app| app.name.clone())
+                })
+            } else {
+                Some(title.to_owned())
+            };
+            // Bottom-up layout reserves the Explorer information strip before
+            // assigning remaining height to the scrollable Programs viewport.
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+                win7::status_bar(ui, count, selected_name.as_deref(), short);
+                ui.add_space(5.0);
+                let usable_height = (ui.available_height() - 12.0).max(0.0);
+                ui.horizontal_top(|ui| {
+                    if !compact {
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(176.0, usable_height),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                win7::task_pane().show(ui, |ui| {
+                                    win7::task_heading(ui, "Control Panel Home");
+                                    for (page, label) in [
+                                        (Page::Library, "Uninstall or change a program"),
+                                        (Page::Prefixes, "Wine environments"),
+                                        (Page::Runners, "Compatibility tools"),
+                                        (Page::Settings, "Personalization"),
+                                    ] {
+                                        if win7::task_link(ui, label, self.page == page).clicked() {
+                                            self.page = page;
+                                        }
+                                    }
+                                    ui.add_space(10.0);
+                                    win7::task_heading(ui, "See also");
+                                    if win7::task_link(ui, "About RiceWine", false).clicked() {
+                                        self.about_open = true;
+                                    }
+                                });
+                            },
+                        );
+                        ui.separator();
+                    }
+                    let width = ui.available_width().max(0.0);
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(width, usable_height),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            win7::content_frame().show(ui, |ui| {
+                                if compact {
+                                    ui.horizontal(|ui| {
+                                        ui.menu_button("Control Panel ▾", |ui| {
+                                            for (page, label) in [
+                                                (Page::Library, "Programs and Features"),
+                                                (Page::Prefixes, "Wine environments"),
+                                                (Page::Runners, "Compatibility tools"),
+                                                (Page::Settings, "Appearance"),
+                                            ] {
+                                                if ui.selectable_label(self.page == page, label).clicked() {
+                                                    self.page = page;
+                                                    ui.close();
+                                                }
+                                            }
+                                            ui.separator();
+                                            if ui.button("About RiceWine").clicked() {
+                                                self.about_open = true;
+                                                ui.close();
+                                            }
+                                        });
+                                        ui.label(
+                                            RichText::new(title)
+                                                .size(16.0)
+                                                .color(Color32::from_rgb(19, 64, 113)),
+                                        );
+                                    });
+                                }
+                                let description = match self.page {
+                                    Page::Library => "To change a program, select it from the list and choose an action.",
+                                    Page::Prefixes => "Manage and back up the Windows environments used by your programs.",
+                                    Page::Runners => "Choose Wine or Proton versions and configure compatibility.",
+                                    Page::Settings => "Customize RiceWine without changing your Linux desktop.",
+                                };
+                                if !compact {
+                                    win7::page_heading(ui, title, description, short);
+                                }
+                                ui.add_space(if short { 4.0 } else { 10.0 });
+                                if self.page == Page::Library {
+                                    self.win7_command_bar(ui);
+                                    ui.add_space(4.0);
+                                }
+                                egui::ScrollArea::vertical()
+                                    .auto_shrink([false, false])
+                                    .show(ui, |ui| self.page_body(ui));
+                            });
+                        },
+                    );
+                });
+            });
+        });
+    }
+
+    fn win7_command_bar(&mut self, ui: &mut egui::Ui) {
+        let compact_commands = ui.ctx().content_rect().width() < 600.0;
+        let can_install = !self.busy && self.store.is_some();
+        let selected = self
+            .selected
+            .as_deref()
+            .and_then(|id| self.store.as_ref()?.get(id))
+            .filter(|app| {
+                self.workspace.filter == LibraryFilter::All || self.workspace.is_favorite(&app.id)
+            })
+            .cloned();
+        let can_run = selected.as_ref().is_some_and(|app| {
+            !self.busy
+                && !self.compatibility_busy.contains(&app.id)
+                && app.executable.is_some()
+                && self
+                    .profile_cache
+                    .get(&app.id)
+                    .and_then(|profile| profile.as_ref().ok())
+                    .is_some_and(|profile| {
+                        self.wine.is_some() || !matches!(profile.runner, Runner::SystemWine)
+                    })
+        });
+        win7::command_strip().show(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                let mut changed = false;
+                ui.menu_button("Organize ▾", |ui| {
+                    ui.label("Show");
+                    ui.add_enabled_ui(self.workspace_writable, |ui| {
+                        for filter in LibraryFilter::ALL {
+                            changed |= ui
+                                .selectable_value(
+                                    &mut self.workspace.filter,
+                                    filter,
+                                    filter.label(),
+                                )
+                                .changed();
+                        }
+                    });
+                    ui.separator();
+                    ui.label("Sort by");
+                    ui.add_enabled_ui(self.workspace_writable, |ui| {
+                        for order in LibraryOrder::ALL {
+                            changed |= ui
+                                .selectable_value(&mut self.workspace.order, order, order.label())
+                                .changed();
+                        }
+                    });
+                    ui.separator();
+                    if ui.button("Refresh program profiles").clicked() {
+                        self.refresh_profile_cache();
+                        self.sync_runner_draft();
+                        ui.close();
+                    }
+                });
+                if changed && let Err(error) = self.persist_workspace() {
+                    self.notice = Some((true, format!("Could not save Library view: {error}")));
+                }
+                if win7::command(
+                    ui,
+                    if compact_commands {
+                        "Install…"
+                    } else {
+                        "Install a program"
+                    },
+                    can_install,
+                )
+                .clicked()
+                {
+                    self.install = Some(InstallDraft::default());
+                }
+                if win7::command(ui, "Import…", can_install).clicked() {
+                    self.import = Some(ImportDraft::default());
+                }
+                if win7::command(ui, "Run", can_run).clicked()
+                    && let Some(app) = selected.as_ref()
+                {
+                    self.play(app.clone());
+                }
+                if compact_commands {
+                    ui.menu_button("More ▾", |ui| {
+                        if ui
+                            .add_enabled(selected.is_some(), egui::Button::new("Properties…"))
+                            .clicked()
+                            && let Some(app) = selected.as_ref()
+                        {
+                            self.open_troubleshooter(app);
+                            ui.close();
+                        }
+                        if ui
+                            .add_enabled(
+                                !self.busy && selected.is_some(),
+                                egui::Button::new("Remove entry…"),
+                            )
+                            .clicked()
+                            && let Some(app) = selected.as_ref()
+                        {
+                            self.remove_confirmation = Some(app.id.clone());
+                            ui.close();
+                        }
+                    });
+                } else {
+                    if win7::command(ui, "Properties", selected.is_some()).clicked()
+                        && let Some(app) = selected.as_ref()
+                    {
+                        self.open_troubleshooter(app);
+                    }
+                    if win7::command(ui, "Remove entry…", !self.busy && selected.is_some())
+                        .clicked()
+                        && let Some(app) = selected.as_ref()
+                    {
+                        self.remove_confirmation = Some(app.id.clone());
+                    }
+                }
+            });
+        });
+    }
+
     /// Windows 98 SE Add/Remove Programs: compact menu, property tabs and
     /// sunken application work area. The real titlebar remains Linux-native.
     fn win98_shell(&mut self, ui: &mut egui::Ui) {
@@ -2930,6 +3169,7 @@ impl RiceWineApp {
     fn library(&mut self, ui: &mut egui::Ui) {
         let luna_mode = self.theme == Theme::Luna;
         let win10_mode = self.theme == Theme::Windows10;
+        let win7_mode = self.theme == Theme::Windows7;
         let win98_mode = self.theme == Theme::Windows98;
         let win98_compact = win98_mode && ui.ctx().content_rect().height() < 520.0;
         // Copy layout flags before the details closure mutably borrows app state.
@@ -3053,12 +3293,12 @@ impl RiceWineApp {
             } else {
                 10.0
             });
-            if self.store.is_some() && !tight_library && !win98_mode {
+            if self.store.is_some() && !tight_library && !win98_mode && !win7_mode {
                 ui.small("Drop EXE/MSI to install · Ctrl+F to search your programs.");
             }
             // Finder has one functional search field in its toolbar.
             // The other Rices keep their existing in-content search and refresh.
-            if self.theme != Theme::MacOS {
+            if self.theme != Theme::MacOS && !win7_mode {
                 ui.horizontal_wrapped(|ui| {
                     if !win10_mode {
                         ui.label(if luna_mode { "Search for:" } else { "Search" });
@@ -3093,7 +3333,7 @@ impl RiceWineApp {
                 });
             }
             let mut workspace_changed = false;
-            if !win98_compact {
+            if !win98_compact && !win7_mode {
                 ui.horizontal_wrapped(|ui| {
                     ui.label("Show:");
                     ui.add_enabled_ui(self.workspace_writable, |ui| {
@@ -3175,6 +3415,8 @@ impl RiceWineApp {
                 }
             } else if win98_mode {
                 win98::empty_library(ui);
+            } else if win7_mode {
+                win7::empty_library(ui);
             } else if let Some(flavor) = self.theme.extra_flavor()
                 && extra_rices::empty_library(ui, flavor, !self.busy && self.store.is_some())
             {
@@ -3191,7 +3433,7 @@ impl RiceWineApp {
                     .ordered_indices(store.applications(), &self.search)
             })
             .unwrap_or_default();
-        if !win98_compact {
+        if !win98_compact && !win7_mode {
             ui.small(format!("{} matching program(s)", matching_indices.len()));
         }
         if matching_indices.is_empty() {
@@ -3209,6 +3451,7 @@ impl RiceWineApp {
         // No generic library/inspector columns in the Luna presentation.
         let stacked = luna_mode
             || win10_mode
+            || win7_mode
             || win98_mode
             || (self.theme == Theme::MacOS && !self.mac_inspector_open)
             || !ui_layout::split_panes(ui.available_width(), 355.0, 235.0);
@@ -3258,6 +3501,12 @@ impl RiceWineApp {
                 190.0
             } else if win98_mode {
                 if tight_library { 130.0 } else { 250.0 }
+            } else if win7_mode {
+                if ui.ctx().content_rect().height() < 520.0 {
+                    140.0
+                } else {
+                    305.0
+                }
             } else if win10_mode {
                 330.0
             } else if stacked {
@@ -3284,6 +3533,8 @@ impl RiceWineApp {
                             mac::list_header(ui);
                         } else if win98_mode {
                             win98::list_header(ui);
+                        } else if win7_mode {
+                            win7::table_header(ui);
                         } else {
                             ui.separator();
                         }
@@ -3474,6 +3725,10 @@ impl RiceWineApp {
                                             }
                                         } else if win98_mode {
                                             if win98::program_row(ui, &display_name, status, selected).clicked() {
+                                                next_selected = Some(app.id.clone());
+                                            }
+                                        } else if win7_mode {
+                                            if win7::program_row(ui, &display_name, runtime, status, selected, index % 2 != 0).clicked() {
                                                 next_selected = Some(app.id.clone());
                                             }
                                         } else {
@@ -3826,6 +4081,8 @@ impl RiceWineApp {
                 luna::option_group(ui, "Program details", luna::XpIcon::Programs, details);
             } else if win98_mode {
                 ui.collapsing("Program properties and advanced tools", details);
+            } else if win7_mode {
+                ui.collapsing("Program information and advanced tools", details);
             } else if win10_mode {
                 ui.collapsing("Advanced settings for selected app", details);
             } else if mac_mode && !mac_inspector_open {
@@ -4687,7 +4944,7 @@ impl RiceWineApp {
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
                 .resizable(true)
-                .vscroll(!win10_mode && self.theme != Theme::Windows98)
+                .vscroll(!win10_mode && self.theme != Theme::Windows98 && self.theme != Theme::Windows7)
                 .max_size([
                     (ctx.content_rect().width() - 24.0).max(280.0),
                     (ctx.content_rect().height() - 24.0).max(220.0),
@@ -4720,6 +4977,9 @@ impl RiceWineApp {
                     } else if self.theme == Theme::Windows98 {
                         win98::dialog_intro(ui, "Install Windows program",
                             "Choose a setup file and review its compatibility settings.");
+                    } else if self.theme == Theme::Windows7 {
+                        win7::dialog_intro(ui, "Install a program",
+                            "Choose a setup file and its Windows compatibility environment.");
                     } else if let Some(flavor) = flavor {
                         extra_rices::dialog_intro(ui, flavor, "Install a Windows program",
                             "Choose a setup file and review its compatibility settings.");
@@ -4810,7 +5070,7 @@ impl RiceWineApp {
                     }
                     ui.add_space(9.0);
                     };
-                    if (win10_mode || self.theme == Theme::Windows98) && ctx.content_rect().height() < 520.0 {
+                    if (win10_mode || self.theme == Theme::Windows98 || self.theme == Theme::Windows7) && ctx.content_rect().height() < 520.0 {
                         egui::ScrollArea::vertical()
                             .max_height((ctx.content_rect().height() - 125.0).max(120.0))
                             .auto_shrink([false, false])
@@ -4908,6 +5168,9 @@ impl RiceWineApp {
                     } else if self.theme == Theme::Windows98 {
                         win98::dialog_intro(ui, "Import existing program",
                             "Register a Wine environment without moving or deleting its files.");
+                    } else if self.theme == Theme::Windows7 {
+                        win7::dialog_intro(ui, "Import an existing program",
+                            "Register an existing Wine environment without moving its files.");
                     } else if let Some(flavor) = flavor {
                         extra_rices::dialog_intro(ui, flavor, "Import existing program",
                             "Register a Wine environment without moving or deleting its files.");
@@ -5424,13 +5687,13 @@ impl RiceWineApp {
     }
 }
 
-/// XP Luna, macOS, Windows 10 and Windows 98 use independent native-era
-/// shells, even with the diagnostic unified toolbar enabled.
+/// XP Luna, macOS, Windows 10, Windows 98 and Windows 7 have independent
+/// native-era shells even with the diagnostic unified toolbar enabled.
 fn use_shared_shell(theme: Theme, simple_ui: bool) -> bool {
     simple_ui
         && !matches!(
             theme,
-            Theme::Luna | Theme::MacOS | Theme::Windows10 | Theme::Windows98
+            Theme::Luna | Theme::MacOS | Theme::Windows10 | Theme::Windows98 | Theme::Windows7
         )
 }
 
@@ -5495,9 +5758,8 @@ impl eframe::App for RiceWineApp {
                     Theme::MacOS => self.mac_shell(ui),
                     Theme::Windows10 => self.win10_shell(ui),
                     Theme::Windows98 => self.win98_shell(ui),
-                    Theme::Windows7 | Theme::ChromeOS | Theme::FrutigerAero => {
-                        self.ricebowl_shell(ui)
-                    }
+                    Theme::Windows7 => self.win7_shell(ui),
+                    Theme::ChromeOS | Theme::FrutigerAero => self.ricebowl_shell(ui),
                 }
             }
         });
@@ -5809,6 +6071,8 @@ mod native_shell_route_tests {
         assert!(!use_shared_shell(Theme::Windows10, false));
         assert!(!use_shared_shell(Theme::Windows98, true));
         assert!(!use_shared_shell(Theme::Windows98, false));
-        assert!(use_shared_shell(Theme::Windows7, true));
+        assert!(!use_shared_shell(Theme::Windows7, true));
+        assert!(!use_shared_shell(Theme::Windows7, false));
+        assert!(use_shared_shell(Theme::ChromeOS, true));
     }
 }

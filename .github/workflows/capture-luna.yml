@@ -11,6 +11,7 @@ on:
       - src/luna_icons.rs
       - src/mac.rs
       - src/win10.rs
+      - src/win7.rs
       - src/win98.rs
       - src/extra_rices.rs
       - src/preferences.rs
@@ -23,6 +24,8 @@ on:
       - src/luna_icons.rs
       - src/mac.rs
       - src/win10.rs
+      - src/win7.rs
+      - src/win98.rs
       - src/extra_rices.rs
   workflow_dispatch:
 
@@ -77,6 +80,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh windows98
+      - name: Capture full-size Windows 7 Programs and Features screens for visual review
+        if: github.event_name == 'pull_request'
+        run: |
+          xvfb-run -a -s '-screen 0 1280x800x24' bash scripts/capture-luna.sh windows7
       - name: Smoke-test six pages in each of seven Rices at minimum and common laptop sizes
         if: github.event_name == 'pull_request'
         run: |
@@ -160,6 +167,21 @@ jobs:
             docs/screenshots/win98-install-compatibility.webp
             docs/screenshots/win98-install-review.webp
             docs/screenshots/win98-import-review.webp
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload seven full-size Windows 7 screenshots
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows7-aero-programs-features
+          path: |
+            docs/screenshots/win7-library.webp
+            docs/screenshots/win7-library-populated.webp
+            docs/screenshots/win7-prefixes.webp
+            docs/screenshots/win7-runners.webp
+            docs/screenshots/win7-settings.webp
+            docs/screenshots/win7-install.webp
+            docs/screenshots/win7-import.webp
           retention-days: 14
           if-no-files-found: error
       - name: Publish screenshots

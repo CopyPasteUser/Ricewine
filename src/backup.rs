@@ -230,8 +230,7 @@ pub fn restore_backup(data_root: &Path, folder: &Path) -> Result<Application, St
     let new_prefix = data_root.join("prefixes").join(&id);
     // Reserve the destination atomically. If it already exists, it belongs
     // to another operation/user: never remove or modify it on error.
-    fs::create_dir(&new_prefix)
-        .map_err(|e| format!("Cannot reserve a new restore prefix: {e}"))?;
+    fs::create_dir(&new_prefix).map_err(|e| format!("Cannot reserve a new restore prefix: {e}"))?;
     let result = copy_tree_contents(&source_prefix, &new_prefix)
         .and_then(|_| verify_copy(&source_prefix, &new_prefix));
     if let Err(error) = result {

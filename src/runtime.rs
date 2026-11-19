@@ -398,7 +398,18 @@ pub fn install_with_profile_control(
     if control.is_cancelled() {
         return Err("Installation cancelled before creating a prefix".into());
     }
+    // Reject unsupported installer/runner combinations before creating a prefix.
+    // A failed preflight must not leave an empty orphaned Wine environment.
+    if matches!(profile.runner, Runner::ProtonUmu { .. })
+        && file
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("msi"))
+    {
+        return Err("MSI via Proton is not supported; use Wine for installation".into());
+    }
     validate_profile(profile)?;
+    core::validate_name(name)?;
+    core::validate_installer(file, matches!(mode, InstallMode::Portable))?;
     let app = match &profile.runner {
         Runner::SystemWine => core::install_with_arch_control(
             root,

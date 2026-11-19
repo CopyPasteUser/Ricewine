@@ -6,24 +6,16 @@ on:
     paths:
       - .github/workflows/capture-luna.yml
       - scripts/capture-luna.sh
-      - src/main.rs
-      - src/luna.rs
-      - src/luna_icons.rs
-      - src/mac.rs
-      - src/win10.rs
-      - src/win98.rs
-      - src/extra_rices.rs
-      - src/preferences.rs
+      - "src/**"
+      - Cargo.toml
+      - Cargo.lock
   pull_request:
     paths:
       - .github/workflows/capture-luna.yml
       - scripts/capture-luna.sh
-      - src/main.rs
-      - src/luna.rs
-      - src/luna_icons.rs
-      - src/mac.rs
-      - src/win10.rs
-      - src/extra_rices.rs
+      - "src/**"
+      - Cargo.toml
+      - Cargo.lock
   workflow_dispatch:
 
 # Do not publish an older page capture after a newer visual commit.

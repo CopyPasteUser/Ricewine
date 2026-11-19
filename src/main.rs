@@ -2663,10 +2663,8 @@ impl RiceWineApp {
         let Some(flavor) = self.theme.extra_flavor() else {
             return;
         };
-        let short_height = extra_rices::compact_height_layout(
-            flavor,
-            ui.ctx().content_rect().height(),
-        );
+        let short_height =
+            extra_rices::compact_height_layout(flavor, ui.ctx().content_rect().height());
 
         // Classic desktop menus use real program actions, not decorative text.
         if flavor == Flavor::Classic98 {
@@ -2949,10 +2947,8 @@ impl RiceWineApp {
         let win10_mode = self.theme == Theme::Windows10;
         let win98_mode = self.theme == Theme::Windows98;
         let win98_compact = win98_mode && ui.ctx().content_rect().height() < 520.0;
-        let compact_extra_library = matches!(
-            self.theme,
-            Theme::ChromeOS | Theme::FrutigerAero
-        ) && ui.ctx().content_rect().height() <= 640.0;
+        let compact_extra_library = matches!(self.theme, Theme::ChromeOS | Theme::FrutigerAero)
+            && ui.ctx().content_rect().height() <= 640.0;
         // Copy layout flags before the details closure mutably borrows app state.
         let mac_mode = self.theme == Theme::MacOS;
         let mac_inspector_open = self.mac_inspector_open;
@@ -3121,22 +3117,26 @@ impl RiceWineApp {
                             ui.label("Show");
                             ui.add_enabled_ui(self.workspace_writable, |ui| {
                                 for filter in LibraryFilter::ALL {
-                                    workspace_changed |= ui.selectable_value(
-                                        &mut self.workspace.filter,
-                                        filter,
-                                        filter.label(),
-                                    ).changed();
+                                    workspace_changed |= ui
+                                        .selectable_value(
+                                            &mut self.workspace.filter,
+                                            filter,
+                                            filter.label(),
+                                        )
+                                        .changed();
                                 }
                             });
                             ui.separator();
                             ui.label("Sort");
                             ui.add_enabled_ui(self.workspace_writable, |ui| {
                                 for order in LibraryOrder::ALL {
-                                    workspace_changed |= ui.selectable_value(
-                                        &mut self.workspace.order,
-                                        order,
-                                        order.label(),
-                                    ).changed();
+                                    workspace_changed |= ui
+                                        .selectable_value(
+                                            &mut self.workspace.order,
+                                            order,
+                                            order.label(),
+                                        )
+                                        .changed();
                                 }
                             });
                             ui.separator();

@@ -288,6 +288,12 @@ mod tests {
 
         fs::remove_file(destination.join("nested/example.exe")).unwrap();
         assert!(verify_copy(&source, &destination).is_err());
+
+        // Copying into a pre-existing directory must fail without touching
+        // its files; restore cleanup must never own this destination.
+        fs::write(destination.join("protected"), b"keep").unwrap();
+        assert!(copy_tree(&source, &destination).is_err());
+        assert_eq!(fs::read(destination.join("protected")).unwrap(), b"keep");
         fs::remove_dir_all(root).unwrap();
     }
 }

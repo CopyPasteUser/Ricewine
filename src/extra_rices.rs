@@ -594,18 +594,9 @@ mod row_tests {
     fn long_names_do_not_expand_compact_row_geometry() {
         let very_long_name = "A Very Long Windows Program Name ".repeat(30);
         egui::__run_test_ui(|ui| {
-            for (rice, expected_height) in [
-                (Flavor::ChromeOS, 38.0),
-                (Flavor::FrutigerAero, 36.0),
-            ] {
-                let response = program_row(
-                    ui,
-                    rice,
-                    &very_long_name,
-                    "Wine missing",
-                    true,
-                    185.0,
-                );
+            for (rice, expected_height) in [(Flavor::ChromeOS, 38.0), (Flavor::FrutigerAero, 36.0)]
+            {
+                let response = program_row(ui, rice, &very_long_name, "Wine missing", true, 185.0);
                 assert!(
                     response.rect.width() <= 185.5,
                     "{rice:?} overflowed to {} px",

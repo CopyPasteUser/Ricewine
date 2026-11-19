@@ -601,7 +601,9 @@ impl RiceWineApp {
         } else if let Err(error) = &wine {
             notice = Some((
                 true,
-                format!("{error}. Install Wine to enable setup and launch."),
+                format!(
+                    "{error}. System Wine installs and launches are unavailable; configured custom Wine or Proton/umu runners may still work."
+                ),
             ));
         }
         let preferences_result = store

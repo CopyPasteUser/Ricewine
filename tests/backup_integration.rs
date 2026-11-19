@@ -97,6 +97,27 @@ fn snapshot_preserves_symlink_instead_of_dereferencing_external_content() {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn restore_rejects_symlinked_snapshot_prefix_without_creating_a_target() {
+    let temp = Temp::new();
+    let store = Store::open_at(temp.0.join("data")).unwrap();
+    let app = sample_app(store.root());
+    let snapshot = backup::create_backup(store.root(), &app).unwrap();
+    let saved_prefix = snapshot.folder.join("prefix");
+    fs::remove_dir_all(&saved_prefix).unwrap();
+    let outside = temp.0.join("outside");
+    fs::create_dir(&outside).unwrap();
+    fs::write(outside.join("sentinel.txt"), b"preserve").unwrap();
+    std::os::unix::fs::symlink(&outside, &saved_prefix).unwrap();
+
+    let before = fs::read_dir(store.root().join("prefixes")).unwrap().count();
+    let error = backup::restore_backup(store.root(), &snapshot.folder).unwrap_err();
+    assert!(error.contains("real directory"), "{error}");
+    assert_eq!(fs::read_dir(store.root().join("prefixes")).unwrap().count(), before);
+    assert_eq!(fs::read(outside.join("sentinel.txt")).unwrap(), b"preserve");
+}
+
 #[test]
 fn import_requires_real_prefix_markers_and_does_not_change_files() {
     let temp = Temp::new();

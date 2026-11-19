@@ -367,6 +367,40 @@ fn launch_passes_arguments_and_environment_without_shell_evaluation() {
 }
 
 #[test]
+fn proton_msi_preflight_does_not_create_an_orphan_prefix() {
+    let tmp = Temp::new();
+    let store = Store::open_at(tmp.0.join("data")).unwrap();
+    let msi = tmp.0.join("setup.msi");
+    File::create(&msi).unwrap();
+    // Even if Proton/umu is unavailable, this combination is unsupported
+    // and must be rejected before any prefix or metadata is written.
+    let profile = PrefixProfile {
+        runner: Runner::ProtonUmu {
+            proton: tmp.0.join("unavailable-proton"),
+            game_id: "test-app".into(),
+        },
+        ..Default::default()
+    };
+    let error = runtime::install_with_profile(
+        store.root(),
+        None,
+        &profile,
+        "Unsupported MSI",
+        &msi,
+        InstallMode::Installer,
+    )
+    .unwrap_err();
+    assert!(error.contains("MSI via Proton"), "{error}");
+    assert!(
+        fs::read_dir(store.root().join("prefixes"))
+            .unwrap()
+            .next()
+            .is_none(),
+        "Unsupported installations must not create orphaned prefixes"
+    );
+}
+
+#[test]
 fn invalid_profile_never_creates_an_orphan_prefix() {
     let tmp = Temp::new();
     let store = Store::open_at(tmp.0.join("data")).unwrap();

@@ -4,7 +4,7 @@
 use crate::core::{self, Application};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -31,6 +31,10 @@ fn backups_root(data_root: &Path) -> PathBuf {
 
 fn copy_tree(source: &Path, target: &Path) -> Result<(), String> {
     fs::create_dir(target).map_err(|e| format!("Creating {}: {e}", target.display()))?;
+    copy_tree_contents(source, target)
+}
+
+fn copy_tree_contents(source: &Path, target: &Path) -> Result<(), String> {
     let entries = fs::read_dir(source).map_err(|e| format!("Reading {}: {e}", source.display()))?;
     for entry in entries {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -67,6 +71,66 @@ fn copy_tree(source: &Path, target: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Verify a completed copy without following links or loading entire prefix files
+/// into memory. This detects truncated, missing, altered and unexpected files.
+fn verify_copy(source: &Path, destination: &Path) -> Result<(), String> {
+    let mut expected_entries = 0;
+    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        expected_entries += 1;
+        let from = entry.path();
+        let to = destination.join(entry.file_name());
+        let from_type = entry.file_type().map_err(|e| e.to_string())?;
+        let to_type = fs::symlink_metadata(&to)
+            .map_err(|e| format!("Backup copy is missing {}: {e}", to.display()))?
+            .file_type();
+        if from_type.is_dir() && to_type.is_dir() {
+            verify_copy(&from, &to)?;
+        } else if from_type.is_file() && to_type.is_file() {
+            let size = fs::metadata(&from).map_err(|e| e.to_string())?.len();
+            if fs::metadata(&to).map_err(|e| e.to_string())?.len() != size {
+                return Err(format!("Backup copy size mismatch: {}", to.display()));
+            }
+            let mut source_file = File::open(&from).map_err(|e| e.to_string())?;
+            let mut copied_file = File::open(&to).map_err(|e| e.to_string())?;
+            let mut source_bytes = [0u8; 64 * 1024];
+            let mut copied_bytes = [0u8; 64 * 1024];
+            let mut remaining = size;
+            while remaining > 0 {
+                let chunk = remaining.min(source_bytes.len() as u64) as usize;
+                source_file
+                    .read_exact(&mut source_bytes[..chunk])
+                    .map_err(|e| e.to_string())?;
+                copied_file
+                    .read_exact(&mut copied_bytes[..chunk])
+                    .map_err(|e| e.to_string())?;
+                if source_bytes[..chunk] != copied_bytes[..chunk] {
+                    return Err(format!("Backup copy content mismatch: {}", to.display()));
+                }
+                remaining -= chunk as u64;
+            }
+        } else if from_type.is_symlink() && to_type.is_symlink() {
+            if fs::read_link(&from).map_err(|e| e.to_string())?
+                != fs::read_link(&to).map_err(|e| e.to_string())?
+            {
+                return Err(format!("Backup copy symlink mismatch: {}", to.display()));
+            }
+        } else {
+            return Err(format!("Backup copy file type mismatch: {}", to.display()));
+        }
+    }
+    let actual_entries = fs::read_dir(destination)
+        .map_err(|e| e.to_string())?
+        .count();
+    if actual_entries != expected_entries {
+        return Err(format!(
+            "Backup copy entry count mismatch: {}",
+            destination.display()
+        ));
+    }
+    Ok(())
+}
+
 pub fn create_backup(data_root: &Path, app: &Application) -> Result<BackupEntry, String> {
     if !app.prefix.is_dir() {
         return Err("Cannot back up a missing Wine prefix".into());
@@ -84,6 +148,7 @@ pub fn create_backup(data_root: &Path, app: &Application) -> Result<BackupEntry,
     fs::create_dir(&stage).map_err(|e| e.to_string())?;
     let result = (|| -> Result<(), String> {
         copy_tree(&app.prefix, &stage.join("prefix"))?;
+        verify_copy(&app.prefix, &stage.join("prefix"))?;
         let manifest = Manifest {
             version: 1,
             created_unix: timestamp,
@@ -158,13 +223,21 @@ pub fn restore_backup(data_root: &Path, folder: &Path) -> Result<Application, St
     }
     let manifest = read_manifest(&folder)?;
     let source_prefix = folder.join("prefix");
-    if !source_prefix.is_dir() {
-        return Err("Backup prefix data is missing".into());
+    // Never follow a forged snapshot-root symlink into an unrelated directory.
+    // Symlinks *inside* the Wine prefix remain supported and copied as links.
+    if !fs::symlink_metadata(&source_prefix).is_ok_and(|metadata| metadata.file_type().is_dir()) {
+        return Err("Backup prefix data is missing or is not a real directory".into());
     }
     let id = core::new_id(&manifest.application.name);
     let new_prefix = data_root.join("prefixes").join(&id);
-    let result = copy_tree(&source_prefix, &new_prefix);
+    // Reserve the destination atomically. If it already exists, it belongs
+    // to another operation/user: never remove or modify it on error.
+    fs::create_dir(&new_prefix).map_err(|e| format!("Cannot reserve a new restore prefix: {e}"))?;
+    let result = copy_tree_contents(&source_prefix, &new_prefix)
+        .and_then(|_| verify_copy(&source_prefix, &new_prefix));
     if let Err(error) = result {
+        // Cleanup is safe only because create_dir above succeeded and
+        // this restore operation owns the freshly reserved destination.
         let _ = fs::remove_dir_all(&new_prefix);
         return Err(format!("Restore failed: {error}"));
     }
@@ -184,4 +257,44 @@ pub fn restore_backup(data_root: &Path, folder: &Path) -> Result<Application, St
     }
     app.prefix = new_prefix;
     Ok(app)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn copy_verification_rejects_modified_and_unexpected_files() {
+        let root = std::env::temp_dir().join(format!(
+            "ricewine-backup-verify-{}-{}",
+            std::process::id(),
+            NEXT_SNAPSHOT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let source = root.join("source");
+        let destination = root.join("copy");
+        fs::create_dir_all(source.join("nested")).unwrap();
+        fs::create_dir_all(destination.join("nested")).unwrap();
+        fs::write(source.join("nested/example.exe"), b"original").unwrap();
+        fs::write(destination.join("nested/example.exe"), b"original").unwrap();
+        assert!(verify_copy(&source, &destination).is_ok());
+
+        // Same-length corruption is not detected by metadata-only checks.
+        fs::write(destination.join("nested/example.exe"), b"modified").unwrap();
+        assert!(verify_copy(&source, &destination).is_err());
+        fs::write(destination.join("nested/example.exe"), b"original").unwrap();
+
+        fs::write(destination.join("extra.bin"), b"unexpected").unwrap();
+        assert!(verify_copy(&source, &destination).is_err());
+        fs::remove_file(destination.join("extra.bin")).unwrap();
+
+        fs::remove_file(destination.join("nested/example.exe")).unwrap();
+        assert!(verify_copy(&source, &destination).is_err());
+
+        // Copying into a pre-existing directory must fail without touching
+        // its files; restore cleanup must never own this destination.
+        fs::write(destination.join("protected"), b"keep").unwrap();
+        assert!(copy_tree(&source, &destination).is_err());
+        assert_eq!(fs::read(destination.join("protected")).unwrap(), b"keep");
+        fs::remove_dir_all(root).unwrap();
+    }
 }

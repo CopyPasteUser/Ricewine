@@ -247,3 +247,37 @@ pub fn restore_backup(data_root: &Path, folder: &Path) -> Result<Application, St
     app.prefix = new_prefix;
     Ok(app)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn copy_verification_rejects_modified_and_unexpected_files() {
+        let root = std::env::temp_dir().join(format!(
+            "ricewine-backup-verify-{}-{}",
+            std::process::id(),
+            NEXT_SNAPSHOT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let source = root.join("source");
+        let destination = root.join("copy");
+        fs::create_dir_all(source.join("nested")).unwrap();
+        fs::create_dir_all(destination.join("nested")).unwrap();
+        fs::write(source.join("nested/example.exe"), b"original").unwrap();
+        fs::write(destination.join("nested/example.exe"), b"original").unwrap();
+        assert!(verify_copy(&source, &destination).is_ok());
+
+        // Same-length corruption is not detected by metadata-only checks.
+        fs::write(destination.join("nested/example.exe"), b"modified").unwrap();
+        assert!(verify_copy(&source, &destination).is_err());
+        fs::write(destination.join("nested/example.exe"), b"original").unwrap();
+
+        fs::write(destination.join("extra.bin"), b"unexpected").unwrap();
+        assert!(verify_copy(&source, &destination).is_err());
+        fs::remove_file(destination.join("extra.bin")).unwrap();
+
+        fs::remove_file(destination.join("nested/example.exe")).unwrap();
+        assert!(verify_copy(&source, &destination).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+}

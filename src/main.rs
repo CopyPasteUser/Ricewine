@@ -4687,7 +4687,7 @@ impl RiceWineApp {
                 .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
                 .collapsible(false)
                 .resizable(true)
-                .vscroll(!win10_mode && self.theme != Theme::Windows98)
+                .vscroll(false)
                 .max_size([
                     (ctx.content_rect().width() - 24.0).max(280.0),
                     (ctx.content_rect().height() - 24.0).max(220.0),
@@ -4810,14 +4810,13 @@ impl RiceWineApp {
                     }
                     ui.add_space(9.0);
                     };
-                    if (win10_mode || self.theme == Theme::Windows98) && ctx.content_rect().height() < 520.0 {
-                        egui::ScrollArea::vertical()
-                            .max_height((ctx.content_rect().height() - 125.0).max(120.0))
-                            .auto_shrink([false, false])
-                            .show(ui, |ui| draw_form(ui));
-                    } else {
-                        draw_form(ui);
-                    }
+                    // Keep the primary action and Cancel reachable at the
+                    // smallest supported viewport in every Rice. Scroll only
+                    // the editable form, never the dialog footer.
+                    egui::ScrollArea::vertical()
+                        .max_height((ctx.content_rect().height() - 142.0).max(120.0))
+                        .auto_shrink([false, true])
+                        .show(ui, |ui| draw_form(ui));
                     ui.separator();
                     let install_label = if draft.portable {
                         "Add portable program"

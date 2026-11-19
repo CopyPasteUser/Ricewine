@@ -47,8 +47,10 @@ capture_page() {
     local page="$1"
     local dialog="${2:-}"
     local output_name="${3:-$page}"
+    local wizard_step="${4:-}"
     local window_id=''
-    RICEWINE_CAPTURE_PAGE="$page" RICEWINE_CAPTURE_DIALOG="$dialog" ./target/release/ricewine &
+    RICEWINE_CAPTURE_PAGE="$page" RICEWINE_CAPTURE_DIALOG="$dialog" \
+    RICEWINE_CAPTURE_WIZARD_STEP="$wizard_step" ./target/release/ricewine &
     ricewine_pid="$!"
     for _ in $(seq 1 80); do
         window_id="$(xdotool search --onlyvisible --name '^RiceWine$' 2>/dev/null | head -n 1 || true)"
@@ -94,6 +96,17 @@ for page in library prefixes runners settings; do
 done
 capture_page library install install
 capture_page library import import
+if [[ "$theme" == windows98 ]]; then
+    capture_page library install install-compatibility compatibility
+    capture_page library install install-review review
+    capture_page library import import-review review
+    # Review and compatibility must be distinct real app frames.
+    wizard_count="$(sha256sum docs/screenshots/win98-{install,install-compatibility,install-review,import,import-review}"$capture_suffix".webp | awk '{print $1}' | sort -u | wc -l)"
+    if [[ "$wizard_count" -ne 5 ]]; then
+        echo "Expected five distinct Windows 98 wizard frames, found $wizard_count" >&2
+        exit 1
+    fi
+fi
 
 # Render a *populated* library as well as the empty state. These records and
 # non-executable placeholders live only in the isolated XDG_DATA_HOME and can

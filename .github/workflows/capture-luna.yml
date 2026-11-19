@@ -164,6 +164,9 @@ jobs:
             docs/screenshots/win98-settings.webp
             docs/screenshots/win98-install.webp
             docs/screenshots/win98-import.webp
+            docs/screenshots/win98-install-compatibility.webp
+            docs/screenshots/win98-install-review.webp
+            docs/screenshots/win98-import-review.webp
           retention-days: 14
           if-no-files-found: error
       - name: Upload seven full-size Windows 7 screenshots

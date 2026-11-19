@@ -391,6 +391,15 @@ pub fn program_row(
         } else {
             rice.radius()
         }));
+    // Truncate the hidden semantic label instead of letting a very long
+    // program name increase the button's minimum width or wrap its height.
+    // Report selection to assistive technologies while retaining the
+    // original full name as the button's accessible label.
+    let button = if left_aligned {
+        button.truncate().selected(selected)
+    } else {
+        button
+    };
     let response = ui.add_sized([width.max(0.0), height], button);
     let icon_size = if rice == Flavor::Classic98 {
         16.0
@@ -579,6 +588,36 @@ mod row_tests {
     fn chrome_and_frutiger_are_compact_left_aligned_lists() {
         assert_eq!(row_layout(Flavor::ChromeOS), (38.0, true));
         assert_eq!(row_layout(Flavor::FrutigerAero), (36.0, true));
+    }
+
+    #[test]
+    fn long_names_do_not_expand_compact_row_geometry() {
+        let very_long_name = "A Very Long Windows Program Name ".repeat(30);
+        egui::__run_test_ui(|ui| {
+            for (rice, expected_height) in [
+                (Flavor::ChromeOS, 38.0),
+                (Flavor::FrutigerAero, 36.0),
+            ] {
+                let response = program_row(
+                    ui,
+                    rice,
+                    &very_long_name,
+                    "Wine missing",
+                    true,
+                    185.0,
+                );
+                assert!(
+                    response.rect.width() <= 185.5,
+                    "{rice:?} overflowed to {} px",
+                    response.rect.width()
+                );
+                assert!(
+                    response.rect.height() <= expected_height + 0.5,
+                    "{rice:?} wrapped to {} px",
+                    response.rect.height()
+                );
+            }
+        });
     }
 
     #[test]

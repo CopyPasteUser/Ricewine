@@ -4,7 +4,7 @@
 use crate::core::{self, Application};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -67,6 +67,66 @@ fn copy_tree(source: &Path, target: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Verify a completed copy without following links or loading entire prefix files
+/// into memory. This detects truncated, missing, altered and unexpected files.
+fn verify_copy(source: &Path, destination: &Path) -> Result<(), String> {
+    let mut expected_entries = 0;
+    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        expected_entries += 1;
+        let from = entry.path();
+        let to = destination.join(entry.file_name());
+        let from_type = entry.file_type().map_err(|e| e.to_string())?;
+        let to_type = fs::symlink_metadata(&to)
+            .map_err(|e| format!("Backup copy is missing {}: {e}", to.display()))?
+            .file_type();
+        if from_type.is_dir() && to_type.is_dir() {
+            verify_copy(&from, &to)?;
+        } else if from_type.is_file() && to_type.is_file() {
+            let size = fs::metadata(&from).map_err(|e| e.to_string())?.len();
+            if fs::metadata(&to).map_err(|e| e.to_string())?.len() != size {
+                return Err(format!("Backup copy size mismatch: {}", to.display()));
+            }
+            let mut source_file = File::open(&from).map_err(|e| e.to_string())?;
+            let mut copied_file = File::open(&to).map_err(|e| e.to_string())?;
+            let mut source_bytes = [0u8; 64 * 1024];
+            let mut copied_bytes = [0u8; 64 * 1024];
+            let mut remaining = size;
+            while remaining > 0 {
+                let chunk = remaining.min(source_bytes.len() as u64) as usize;
+                source_file
+                    .read_exact(&mut source_bytes[..chunk])
+                    .map_err(|e| e.to_string())?;
+                copied_file
+                    .read_exact(&mut copied_bytes[..chunk])
+                    .map_err(|e| e.to_string())?;
+                if source_bytes[..chunk] != copied_bytes[..chunk] {
+                    return Err(format!("Backup copy content mismatch: {}", to.display()));
+                }
+                remaining -= chunk as u64;
+            }
+        } else if from_type.is_symlink() && to_type.is_symlink() {
+            if fs::read_link(&from).map_err(|e| e.to_string())?
+                != fs::read_link(&to).map_err(|e| e.to_string())?
+            {
+                return Err(format!("Backup copy symlink mismatch: {}", to.display()));
+            }
+        } else {
+            return Err(format!("Backup copy file type mismatch: {}", to.display()));
+        }
+    }
+    let actual_entries = fs::read_dir(destination)
+        .map_err(|e| e.to_string())?
+        .count();
+    if actual_entries != expected_entries {
+        return Err(format!(
+            "Backup copy entry count mismatch: {}",
+            destination.display()
+        ));
+    }
+    Ok(())
+}
+
 pub fn create_backup(data_root: &Path, app: &Application) -> Result<BackupEntry, String> {
     if !app.prefix.is_dir() {
         return Err("Cannot back up a missing Wine prefix".into());
@@ -84,6 +144,7 @@ pub fn create_backup(data_root: &Path, app: &Application) -> Result<BackupEntry,
     fs::create_dir(&stage).map_err(|e| e.to_string())?;
     let result = (|| -> Result<(), String> {
         copy_tree(&app.prefix, &stage.join("prefix"))?;
+        verify_copy(&app.prefix, &stage.join("prefix"))?;
         let manifest = Manifest {
             version: 1,
             created_unix: timestamp,
@@ -163,7 +224,8 @@ pub fn restore_backup(data_root: &Path, folder: &Path) -> Result<Application, St
     }
     let id = core::new_id(&manifest.application.name);
     let new_prefix = data_root.join("prefixes").join(&id);
-    let result = copy_tree(&source_prefix, &new_prefix);
+    let result = copy_tree(&source_prefix, &new_prefix)
+        .and_then(|_| verify_copy(&source_prefix, &new_prefix));
     if let Err(error) = result {
         let _ = fs::remove_dir_all(&new_prefix);
         return Err(format!("Restore failed: {error}"));
